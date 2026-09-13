@@ -1,5 +1,16 @@
 export type UserRole = 'teacher' | 'parent' | 'admin';
 
+export interface InstitutionInfo {
+  id: string;
+  code: string; // e.g. "KRM-8842" or "KRM123"
+  name: string; // e.g. "Cumhuriyet İlkokulu"
+  adminUid: string;
+  adminName: string;
+  adminEmail: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -9,6 +20,9 @@ export interface UserProfile {
   userType?: 'teacher' | 'parent'; // friendly role
   studentName?: string; // If parent, the child's name (e.g. 'Ali Yılmaz')
   parentName?: string; // Name of the parent
+  institutionId?: string; // Connected institution document ID
+  institutionCode?: string; // e.g. "KRM-8842"
+  institutionName?: string; // e.g. "Cumhuriyet İlkokulu"
   classId?: string; // Connected classroom document ID
   classCode?: string; // 6-character connect code
   className?: string; // Name of classroom (e.g. '4-A Sınıfı')
@@ -23,6 +37,9 @@ export interface ClassroomInfo {
   id: string;
   code: string; // 6-digit or upper-case code e.g. 'SINIF4A'
   name: string; // e.g. '4-A Sınıfı - Öğretmen Ayşe'
+  institutionId?: string; // Parent institution
+  institutionCode?: string;
+  institutionName?: string;
   teacherUid: string;
   teacherName: string;
   teacherEmail: string;

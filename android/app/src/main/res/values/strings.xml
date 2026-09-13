@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Haftalık Ekran Süresi</string>
+    <string name="title_activity_main">Haftalık Ekran Süresi</string>
+    <string name="package_name">com.olcico.ekransuresi</string>
+    <string name="custom_url_scheme">com.olcico.ekransuresi</string>
+</resources>

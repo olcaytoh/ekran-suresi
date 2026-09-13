@@ -47,6 +47,11 @@ googleProvider.setCustomParameters({
 // Admin email configured by default
 export const DEFAULT_ADMIN_EMAIL = 'olcaytoh@gmail.com';
 
+export function isAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  return email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase();
+}
+
 /**
  * Sign in with Google Account
  */
@@ -371,6 +376,87 @@ function generateClassCode(): string {
 }
 
 /**
+ * Generate institution code like "KRM-8492"
+ */
+function generateInstitutionCode(): string {
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `KRM-${num}`;
+}
+
+/**
+ * Admin: Create a new institution with a code
+ */
+export async function createInstitution(
+  adminUid: string,
+  adminName: string,
+  adminEmail: string,
+  institutionName: string
+): Promise<{ id: string; code: string; name: string }> {
+  const code = generateInstitutionCode();
+  const instRef = doc(collection(db, 'institutions'));
+  const instData = {
+    id: instRef.id,
+    code,
+    name: institutionName.trim(),
+    adminUid,
+    adminName: adminName || 'Admin',
+    adminEmail: adminEmail || '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(instRef, instData);
+
+  // Update admin's profile
+  const adminRef = doc(db, 'users', adminUid);
+  await updateDoc(adminRef, {
+    role: 'admin',
+    userType: 'teacher',
+    institutionId: instRef.id,
+    institutionCode: code,
+    institutionName: institutionName.trim(),
+    updatedAt: serverTimestamp(),
+  });
+
+  return { id: instRef.id, code, name: institutionName.trim() };
+}
+
+/**
+ * Teacher: Join an institution with code
+ */
+export async function joinInstitutionWithCode(
+  userUid: string,
+  rawCode: string
+): Promise<{ id: string; code: string; name: string }> {
+  const cleanedCode = rawCode.trim().toUpperCase();
+  if (!cleanedCode) {
+    throw new Error('Lütfen geçerli bir kurum kodu girin.');
+  }
+
+  const instRef = collection(db, 'institutions');
+  const q = query(instRef, where('code', '==', cleanedCode));
+  const snap = await getDocs(q);
+
+  if (snap.empty) {
+    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı. Lütfen yöneticinizden aldığınız kodu kontrol edin.`);
+  }
+
+  const instDoc = snap.docs[0];
+  const instData = instDoc.data();
+
+  // Update user's profile
+  const userRef = doc(db, 'users', userUid);
+  await updateDoc(userRef, {
+    institutionId: instDoc.id,
+    institutionCode: instData.code,
+    institutionName: instData.name,
+    updatedAt: serverTimestamp(),
+  });
+
+  return { id: instDoc.id, code: instData.code, name: instData.name };
+}
+
+/**
  * Teacher: Create a new classroom with a 6-character code
  */
 export async function createClassroom(
@@ -378,7 +464,8 @@ export async function createClassroom(
   teacherName: string,
   teacherEmail: string,
   className: string,
-  studentTargetCount = 25
+  studentTargetCount = 25,
+  institution?: { code: string; name: string }
 ): Promise<ClassroomInfo> {
   const classCode = generateClassCode();
   const classRef = doc(collection(db, 'classes'));
@@ -390,6 +477,8 @@ export async function createClassroom(
     teacherName: teacherName || 'Öğretmen',
     teacherEmail: teacherEmail || '',
     studentTargetCount,
+    institutionCode: institution?.code,
+    institutionName: institution?.name,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -404,6 +493,10 @@ export async function createClassroom(
     classId: classRef.id,
     classCode: classCode,
     className: className.trim(),
+    ...(institution ? {
+      institutionCode: institution.code,
+      institutionName: institution.name,
+    } : {}),
     updatedAt: serverTimestamp(),
   });
 

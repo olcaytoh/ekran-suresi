@@ -11,6 +11,7 @@ import {
   LogOut,
   Sparkles,
   GraduationCap,
+  Building2,
 } from 'lucide-react';
 
 interface ParentClassroomViewProps {
@@ -19,6 +20,7 @@ interface ParentClassroomViewProps {
   onOpenClassSetup: () => void;
   onSwitchToTeacher?: () => void;
   isTeacher?: boolean;
+  onSignOut?: () => void;
 }
 
 export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
@@ -27,6 +29,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
   onOpenClassSetup,
   onSwitchToTeacher,
   isTeacher = false,
+  onSignOut,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameVal, setNameVal] = useState(userProfile?.studentName || userProfile?.displayName || '');
@@ -85,6 +88,12 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
               <p className="text-xs text-slate-500 mt-0.5">
                 Öğretmen: {classroom?.teacherName || 'Sınıf Öğretmeni'}
               </p>
+              {(userProfile?.institutionName || classroom?.institutionName) && (
+                <p className="text-[11px] text-rose-700 font-bold mt-0.5 flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-rose-500" />
+                  <span>Kurum: {userProfile?.institutionName || classroom?.institutionName}</span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -160,8 +169,15 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
 
         <button
           type="button"
-          onClick={() => signOutUser()}
-          className="btn-3d-white px-4 py-2 sm:py-2.5 rounded-2xl text-xs font-black text-rose-600 hover:text-rose-700 flex items-center gap-1.5 cursor-pointer ml-auto"
+          id="btn-classroom-signout"
+          onClick={() => {
+            if (onSignOut) {
+              onSignOut();
+            } else {
+              signOutUser();
+            }
+          }}
+          className="btn-3d-white px-4 py-2 sm:py-2.5 rounded-2xl text-xs font-black text-rose-600 hover:text-rose-700 flex items-center gap-1.5 cursor-pointer ml-auto active:scale-95"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Çıkış Yap</span>

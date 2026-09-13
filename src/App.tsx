@@ -13,7 +13,9 @@ import {
   subscribeClassroomStudents,
   updateStageProgress,
   syncUserProfile,
+  signOutUser,
   DEFAULT_ADMIN_EMAIL,
+  isAdminEmail,
 } from './lib/firebase';
 import { UserProfile, ClassroomInfo } from './types';
 import { getCurrentWeekInfo } from './lib/weekUtils';
@@ -32,6 +34,19 @@ import { Loader2 } from 'lucide-react';
 export default function App() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [demoProfile, setDemoProfile] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('demoUserProfile');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [classroom, setClassroom] = useState<ClassroomInfo | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -40,6 +55,48 @@ export default function App() {
   const [showClassSetup, setShowClassSetup] = useState(false);
 
   const weekInfo = getCurrentWeekInfo();
+
+  const handleDemoLogin = (role: 'teacher' | 'parent' | 'admin') => {
+    const isAdminRole = role === 'admin';
+    const isTeacherRole = role === 'teacher' || isAdminRole;
+    const profile: UserProfile = {
+      uid: isAdminRole ? 'admin_demo_super' : isTeacherRole ? 'teacher_demo_olcayto' : 'parent_demo_user',
+      displayName: isAdminRole
+        ? 'Olcayto (Süper Yönetici / Admin)'
+        : isTeacherRole
+        ? 'Olcayto (Öğretmen)'
+        : 'Fatma Yılmaz',
+      email: isTeacherRole ? 'olcaytoh@gmail.com' : 'veli.fatma@example.com',
+      role: isAdminRole ? 'admin' : isTeacherRole ? 'teacher' : 'parent',
+      userType: 'teacher',
+      studentName: isTeacherRole ? undefined : 'Ali Yılmaz',
+      institutionId: 'demo-institution-1',
+      institutionCode: 'KRM-1071',
+      institutionName: 'Cumhuriyet İlkokulu',
+      classId: 'demo-class-5a',
+      className: '5-A Sınıfı (Örnek)',
+      classCode: 'SINIF-5A',
+      currentWeekId: weekInfo.weekId,
+      currentWeekStage: 4,
+      currentWeekMinutes: 120,
+    };
+    if (!isTeacherRole) {
+      profile.userType = 'parent';
+    }
+    setDemoProfile(profile);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('demoUserProfile', JSON.stringify(profile));
+    }
+    setParentTab('home');
+  };
+
+  const handleSignOut = async () => {
+    setDemoProfile(null);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('demoUserProfile');
+    }
+    await signOutUser();
+  };
 
   // Listen to Firebase Auth state
   useEffect(() => {
@@ -62,14 +119,16 @@ export default function App() {
         }
       } else {
         setUserProfile(null);
-        setAllUsers([]);
-        setClassroom(null);
+        if (!demoProfile) {
+          setAllUsers([]);
+          setClassroom(null);
+        }
       }
       setAuthLoading(false);
     });
 
     return () => unsubscribeAuth();
-  }, []);
+  }, [demoProfile]);
 
   // Listen to current user profile updates
   useEffect(() => {
@@ -82,48 +141,116 @@ export default function App() {
     return () => unsubscribe();
   }, [authUser]);
 
+  const effectiveProfile = authUser ? userProfile : demoProfile;
+
   // Listen to classroom data if user belongs to a class
   useEffect(() => {
-    if (!userProfile?.classId) {
+    if (!effectiveProfile?.classId) {
       setClassroom(null);
       return;
     }
-    const unsubscribeClass = subscribeClassroom(userProfile.classId, (classData) => {
-      setClassroom(classData);
-    });
-    return () => unsubscribeClass();
-  }, [userProfile?.classId]);
+    if (authUser) {
+      const unsubscribeClass = subscribeClassroom(effectiveProfile.classId, (classData) => {
+        setClassroom(classData);
+      });
+      return () => unsubscribeClass();
+    } else if (demoProfile) {
+      setClassroom({
+        id: 'demo-class-5a',
+        name: '5-A Sınıfı',
+        code: 'SINIF-5A',
+        teacherId: 'teacher_demo_olcayto',
+        teacherName: 'Olcayto Öğretmen',
+        teacherEmail: 'olcaytoh@gmail.com',
+        createdAt: null,
+      });
+    }
+  }, [effectiveProfile?.classId, authUser, demoProfile]);
 
   const isTeacher =
-    userProfile?.role === 'admin' ||
-    userProfile?.role === 'teacher' ||
-    userProfile?.userType === 'teacher' ||
-    authUser?.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase();
+    effectiveProfile?.role === 'admin' ||
+    effectiveProfile?.role === 'teacher' ||
+    effectiveProfile?.userType === 'teacher' ||
+    isAdminEmail(authUser?.email || demoProfile?.email);
 
   // Listen to students/users list:
-  // If user is a teacher with a classroom, listen to that classroom's students
   useEffect(() => {
-    if (!authUser) return;
-
-    if (isTeacher && userProfile?.classId) {
-      const unsubscribeStudents = subscribeClassroomStudents(userProfile.classId, (students) => {
-        setAllUsers(students);
-      });
-      return () => unsubscribeStudents();
-    } else {
-      const unsubscribeAll = subscribeAllUsers((users) => {
-        setAllUsers(users);
-      });
-      return () => unsubscribeAll();
+    if (authUser) {
+      if (isTeacher && userProfile?.classId) {
+        const unsubscribeStudents = subscribeClassroomStudents(userProfile.classId, (students) => {
+          setAllUsers(students);
+        });
+        return () => unsubscribeStudents();
+      } else {
+        const unsubscribeAll = subscribeAllUsers((users) => {
+          setAllUsers(users);
+        });
+        return () => unsubscribeAll();
+      }
+    } else if (demoProfile) {
+      setAllUsers([
+        {
+          uid: 'student_1',
+          displayName: 'Ali Yılmaz',
+          studentName: 'Ali Yılmaz',
+          email: 'veli.ali@example.com',
+          role: 'parent',
+          userType: 'parent',
+          classId: 'demo-class-5a',
+          className: '5-A Sınıfı',
+          currentWeekStage: 4,
+          currentWeekMinutes: 120,
+          currentWeekId: weekInfo.weekId,
+        },
+        {
+          uid: 'student_2',
+          displayName: 'Zeynep Kaya',
+          studentName: 'Zeynep Kaya',
+          email: 'veli.zeynep@example.com',
+          role: 'parent',
+          userType: 'parent',
+          classId: 'demo-class-5a',
+          className: '5-A Sınıfı',
+          currentWeekStage: 8,
+          currentWeekMinutes: 240,
+          currentWeekId: weekInfo.weekId,
+        },
+        {
+          uid: 'student_3',
+          displayName: 'Can Demir',
+          studentName: 'Can Demir',
+          email: 'veli.can@example.com',
+          role: 'parent',
+          userType: 'parent',
+          classId: 'demo-class-5a',
+          className: '5-A Sınıfı',
+          currentWeekStage: 12,
+          currentWeekMinutes: 360,
+          currentWeekId: weekInfo.weekId,
+        },
+      ]);
     }
-  }, [authUser, isTeacher, userProfile?.classId]);
+  }, [authUser, isTeacher, userProfile?.classId, demoProfile]);
 
   // Handle stage change (0 to 14)
   const handleUpdateStage = async (newStage: number) => {
-    if (!authUser || isUpdatingStage) return;
+    if (isUpdatingStage) return;
     try {
       setIsUpdatingStage(true);
-      await updateStageProgress(authUser.uid, newStage);
+      if (authUser) {
+        await updateStageProgress(authUser.uid, newStage);
+      } else if (demoProfile) {
+        const clampedStage = Math.max(0, Math.min(14, newStage));
+        const updated: UserProfile = {
+          ...demoProfile,
+          currentWeekStage: clampedStage,
+          currentWeekMinutes: clampedStage * 30,
+        };
+        setDemoProfile(updated);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('demoUserProfile', JSON.stringify(updated));
+        }
+      }
     } catch (err) {
       console.error('Failed to update stage:', err);
     } finally {
@@ -132,7 +259,7 @@ export default function App() {
   };
 
   // Loading spinner
-  if (authLoading) {
+  if (authLoading && !demoProfile) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 border border-indigo-200">
@@ -146,15 +273,15 @@ export default function App() {
   }
 
   // If not logged in, show AuthScreen
-  if (!authUser) {
-    return <AuthScreen />;
+  if (!authUser && !demoProfile) {
+    return <AuthScreen onDemoLogin={handleDemoLogin} />;
   }
 
-  const currentStage = userProfile?.currentWeekStage ?? 0;
+  const currentStage = effectiveProfile?.currentWeekStage ?? 0;
 
   // Calculate class average minutes for teacher
   const studentList = allUsers.filter(
-    (u) => u.role !== 'admin' && (u.userType !== 'teacher' || u.uid !== authUser.uid)
+    (u) => u.role !== 'admin' && (u.userType !== 'teacher' || u.uid !== (authUser?.uid || demoProfile?.uid))
   );
   const totalClassMinutes = studentList.reduce(
     (sum, s) => sum + (s.currentWeekMinutes ?? (s.currentWeekStage || 0) * 30),
@@ -166,13 +293,14 @@ export default function App() {
     <div className="h-screen max-h-screen w-full flex flex-col justify-between overflow-hidden bg-slate-100 select-none">
       {/* 1. Slim Top Navigation Header */}
       <Header
-        currentUser={userProfile}
+        currentUser={effectiveProfile}
         activeTab="tracker"
         setActiveTab={() => {}}
         isAdmin={isTeacher}
         memberCount={allUsers.length}
         currentWeekLabel={weekInfo.weekLabel}
         onOpenClassSetup={() => setShowClassSetup(true)}
+        onSignOut={handleSignOut}
       />
 
       {/* 2. Main Body: Smooth scrollable container with modern scrollbar */}
@@ -183,11 +311,11 @@ export default function App() {
             {parentTab === 'home' && (
               <TeacherHomeView
                 users={allUsers}
-                currentUserId={authUser.uid}
+                currentUserId={effectiveProfile?.uid || 'teacher_id'}
                 classroom={classroom}
-                teacherProfile={userProfile}
+                teacherProfile={effectiveProfile}
                 onOpenClassSetup={() => setShowClassSetup(true)}
-                userEmail={authUser.email || undefined}
+                userEmail={authUser?.email || effectiveProfile?.email || undefined}
               />
             )}
 
@@ -204,20 +332,21 @@ export default function App() {
             {parentTab === 'badges' && (
               <ParentBadgesView
                 currentStage={currentStage}
-                studentName={userProfile?.studentName || userProfile?.displayName}
-                userId={userProfile?.uid}
+                studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
+                userId={effectiveProfile?.uid}
                 isTeacher={true}
-                userEmail={authUser?.email || undefined}
+                userEmail={authUser?.email || effectiveProfile?.email || undefined}
                 students={allUsers}
               />
             )}
 
             {parentTab === 'classroom' && (
               <ParentClassroomView
-                userProfile={userProfile}
+                userProfile={effectiveProfile}
                 classroom={classroom}
                 onOpenClassSetup={() => setShowClassSetup(true)}
                 isTeacher={true}
+                onSignOut={handleSignOut}
               />
             )}
           </div>
@@ -228,7 +357,7 @@ export default function App() {
             <div className="flex-shrink-0">
               <ParentHeroBanner
                 currentStage={currentStage}
-                studentName={userProfile?.studentName || userProfile?.displayName}
+                studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
               />
             </div>
 
@@ -254,19 +383,20 @@ export default function App() {
               {parentTab === 'badges' && (
                 <ParentBadgesView
                   currentStage={currentStage}
-                  studentName={userProfile?.studentName || userProfile?.displayName}
-                  userId={userProfile?.uid}
+                  studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
+                  userId={effectiveProfile?.uid}
                   isTeacher={false}
-                  userEmail={authUser?.email || undefined}
+                  userEmail={authUser?.email || effectiveProfile?.email || undefined}
                 />
               )}
 
               {parentTab === 'classroom' && (
                 <ParentClassroomView
-                  userProfile={userProfile}
+                  userProfile={effectiveProfile}
                   classroom={classroom}
                   onOpenClassSetup={() => setShowClassSetup(true)}
                   isTeacher={false}
+                  onSignOut={handleSignOut}
                 />
               )}
             </div>
@@ -284,12 +414,12 @@ export default function App() {
       </footer>
 
       {/* Classroom Setup & Role Selection Modal */}
-      {showClassSetup && userProfile && (
+      {showClassSetup && effectiveProfile && (
         <ClassroomSetupModal
-          currentUser={userProfile}
+          currentUser={effectiveProfile}
           onCompleted={() => setShowClassSetup(false)}
           onCancel={() => setShowClassSetup(false)}
-          canCancel={Boolean(userProfile.classId || userProfile.role)}
+          canCancel={Boolean(effectiveProfile.classId || effectiveProfile.role)}
         />
       )}
     </div>

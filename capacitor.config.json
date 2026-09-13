@@ -1,0 +1,8 @@
+{
+  "appId": "com.olcico.ekransuresi",
+  "appName": "Haftalık Ekran Süresi",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

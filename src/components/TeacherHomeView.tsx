@@ -9,6 +9,7 @@ import {
   UserPlus,
   ShieldCheck,
   ShieldAlert,
+  Building2,
 } from 'lucide-react';
 import { seed25ClassroomStudents } from '../lib/demoData';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
@@ -35,6 +36,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   currentUserId,
   classroom,
   teacherProfile,
+  onOpenClassSetup,
   userEmail,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,6 +163,9 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
     return 0;
   });
 
+  const instCode = classroom?.institutionCode || teacherProfile?.institutionCode;
+  const instName = classroom?.institutionName || teacherProfile?.institutionName;
+
   return (
     <div className="relative flex-1 flex flex-col gap-3 pb-8 select-none">
       {/* Pastel Arka Plan Katmanı (Bulanık Renk Lekeleri) */}
@@ -170,6 +175,24 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         <div className="absolute top-4 right-0 w-48 h-48 bg-pink-300/30 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-1/3 w-52 h-52 bg-sky-300/25 rounded-full blur-3xl" />
       </div>
+
+      {/* Bağlı Kurum Bilgisi (Varsa zarif ince çubuk) */}
+      {instCode && (
+        <div className="relative z-10 flex items-center justify-between px-3.5 py-1.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/80 shadow-2xs text-xs text-slate-700">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Building2 className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <span className="font-extrabold text-slate-900 truncate">
+              {instName || 'Bağlı Kurum'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[10px] text-slate-500 font-medium">Kurum Kodu:</span>
+            <span className="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 font-mono font-black text-[11px] border border-rose-200">
+              {instCode}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 1. ÖĞRETMEN ANASAYFA KAHRAMAN KARTI (Buzlu Cam / Pastel) */}
       {(() => {
@@ -189,11 +212,6 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             : accent === 'amber'
             ? 'bg-gradient-to-r from-emerald-200 via-lime-300 to-yellow-300'
             : 'bg-gradient-to-r from-teal-200 via-emerald-300 to-green-200';
-
-        const shieldTint =
-          hasCritical
-            ? 'bg-rose-50 border-rose-100 text-rose-600'
-            : 'bg-emerald-50 border-emerald-100 text-emerald-600';
 
         return (
           <div className="relative z-10 rounded-3xl p-4 sm:p-5 bg-white/75 backdrop-blur-xl border border-white/95 shadow-[0_2px_6px_rgba(0,0,0,0.16),0_8px_18px_rgba(0,0,0,0.10),0_20px_38px_rgba(124,58,237,0.18)] overflow-hidden flex items-stretch justify-between gap-3 sm:gap-4">
