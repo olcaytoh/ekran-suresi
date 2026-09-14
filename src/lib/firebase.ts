@@ -1,8 +1,11 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   signOut,
   onAuthStateChanged,
   signInAnonymously,
@@ -55,9 +58,28 @@ export function isAdminEmail(email?: string | null): boolean {
 
 /**
  * Sign in with Google Account
+ * - Native (Android/iOS, Capacitor): cihazın kendi Google hesap seçici akışını kullanır.
+ *   WebView içinde signInWithPopup/signInWithRedirect güvenilir çalışmadığı için
+ *   @capacitor-firebase/authentication ile native oturum açılır, dönen idToken ile
+ *   Firebase Web SDK'nın auth durumu da senkronize edilir.
+ * - Web: mevcut popup akışı aynen kullanılmaya devam eder.
  */
 export async function signInWithGoogle(): Promise<User | null> {
   try {
+    if (Capacitor.isNativePlatform()) {
+      const nativeResult = await FirebaseAuthentication.signInWithGoogle();
+      const idToken = nativeResult.credential?.idToken;
+
+      if (!idToken) {
+        throw new Error('Google girişinden idToken alınamadı.');
+      }
+
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCred = await signInWithCredential(auth, credential);
+      await syncUserProfile(userCred.user);
+      return userCred.user;
+    }
+
     const result = await signInWithPopup(auth, googleProvider);
     await syncUserProfile(result.user);
     return result.user;
@@ -65,7 +87,8 @@ export async function signInWithGoogle(): Promise<User | null> {
     if (
       error?.code === 'auth/popup-closed-by-user' ||
       error?.code === 'auth/cancelled-popup-request' ||
-      error?.message?.includes('popup-closed-by-user')
+      error?.message?.includes('popup-closed-by-user') ||
+      error?.message?.toLowerCase?.().includes('cancel')
     ) {
       console.info('Google Sign-in was dismissed or closed by user.');
       return null;
