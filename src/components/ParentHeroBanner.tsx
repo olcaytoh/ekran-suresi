@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Flame, AlertTriangle, Sparkles } from 'lucide-react';
+import { TransparentMascotVideo } from './TransparentMascotVideo';
 
 interface ParentHeroBannerProps {
   currentStage: number; // 0 to 14
@@ -15,13 +16,6 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
   const isYellow = currentStage >= 5 && currentStage <= 8;
   const isOrange = currentStage >= 9 && currentStage <= 13;
   const isRed = currentStage >= 14;
-
-  // Kedi maskotunun kademeye göre değişimi:
-  // 1 - 7. kademede: kedd.png
-  // 8. kademeye gelince: kedu.png
-  // 13. kademe ve üzeri: keu.png
-  const mascotImg =
-    currentStage >= 13 ? '/keu.png' : currentStage >= 8 ? '/kedu.png' : '/kedd.png';
 
   const remainingStages = Math.max(0, 14 - currentStage);
   const remainingMinutes = remainingStages * 30;
@@ -108,13 +102,11 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
         </div>
       </div>
 
-      {/* Right Side: Kedi Maskotu */}
-      <div className="relative z-10 flex-shrink-0 self-stretch -my-3 sm:-my-3.5 flex items-end justify-center">
-        <img
-          src={mascotImg}
-          alt={`Kedi Maskotu (${currentStage}. Kademe)`}
-          className="h-full w-auto max-h-[120px] sm:max-h-[145px] md:max-h-[165px] max-w-[125px] sm:max-w-[155px] md:max-w-[185px] object-contain object-bottom filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.30)] transition-all duration-300 select-none pointer-events-none"
-          draggable={false}
+      {/* Right Side: Kedi Maskotu (Şeffaf Arka Planlı Video) */}
+      <div className="relative z-10 flex-shrink-0 self-stretch -my-3 sm:-my-3.5 flex items-end justify-center pointer-events-none select-none">
+        <TransparentMascotVideo
+          src="/mascot.mp4"
+          className="h-full w-auto max-h-[120px] sm:max-h-[145px] md:max-h-[165px] max-w-[125px] sm:max-w-[155px] md:max-w-[185px] drop-shadow-[0_10px_20px_rgba(0,0,0,0.30)] transition-all duration-300"
         />
       </div>
     </div>

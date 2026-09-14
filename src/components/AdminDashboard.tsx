@@ -18,6 +18,9 @@ import {
   BarChart3,
   Sparkles,
   Calendar,
+  Building2,
+  KeyRound,
+  Edit3,
 } from 'lucide-react';
 import { seed25ClassroomStudents, remove25ClassroomStudents } from '../lib/demoData';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
@@ -168,8 +171,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const hasDemoStudents = users.some((u) => u.uid.startsWith('demo_std'));
 
+  const instCode = classroom?.institutionCode || teacherProfile?.institutionCode;
+  const instName = classroom?.institutionName || teacherProfile?.institutionName;
+
   return (
     <div className="space-y-5">
+      {/* Okul / Kurum Bilgi ve Yönetim Çubuğu (Admin Kurum İsmi ve Kodunu Buradan Yönetebilir) */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-3 sm:p-4 shadow-xs flex items-center justify-between gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200 flex-shrink-0">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-slate-900 truncate">
+                {instName || 'Bağlı Okul / Kurum'}
+              </span>
+              <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800">
+                Okul Hesabı
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+              <span>Kurum Kodu (Öğretmen Katılımı):</span>
+              <span className="font-mono font-black text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 text-[11px]">
+                {instCode || 'Belirtilmedi'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {onOpenClassSetup && (
+          <button
+            type="button"
+            id="btn-edit-school-details"
+            onClick={onOpenClassSetup}
+            className="btn-3d-rose inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black cursor-pointer ml-auto"
+            title="Okul ismini ve kurum kodunu değiştir"
+          >
+            <Edit3 className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Okul & Kod Değiştir</span>
+          </button>
+        )}
+      </div>
+
       {/* 1. Üst Başlık ve 3D Gamified Kahraman Kartı (Veli Ekranı ile Birebir Aynı Tasarım) */}
       <div className="relative bg-gradient-to-b from-sky-100/70 via-white to-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden pt-6 pb-6 px-4 sm:px-6">
         {/* Dekoratif arkaplan efekti */}

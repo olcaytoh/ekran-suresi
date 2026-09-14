@@ -10,9 +10,13 @@ import {
   ShieldCheck,
   ShieldAlert,
   Building2,
+  Trash2,
+  AlertTriangle,
+  UserX,
 } from 'lucide-react';
 import { seed25ClassroomStudents } from '../lib/demoData';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
+import { TransparentMascotVideo } from './TransparentMascotVideo';
 import badgeRed from '../buttons/badge_red.png';
 import badgeBlue from '../buttons/badge_blue.png';
 import badgeOrange from '../buttons/badge_orange.png';
@@ -29,6 +33,7 @@ interface TeacherHomeViewProps {
   teacherProfile: UserProfile | null;
   onOpenClassSetup?: () => void;
   userEmail?: string;
+  onDeleteUser?: (userUid: string) => Promise<void> | void;
 }
 
 export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
@@ -38,6 +43,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   teacherProfile,
   onOpenClassSetup,
   userEmail,
+  onDeleteUser,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<'all' | 'critical' | 'warning' | 'moderate' | 'safe'>('all');
@@ -48,6 +54,23 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   const [calendarConfig, setCalendarConfig] = useState<AcademicCalendarConfig>(
     generateDefaultAcademicCalendar()
   );
+
+  // Student deletion state
+  const [studentToDelete, setStudentToDelete] = useState<UserProfile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    try {
+      setIsDeleting(true);
+      await onDeleteUser?.(studentToDelete.uid);
+      setStudentToDelete(null);
+    } catch (err) {
+      console.error('Error deleting student:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   React.useEffect(() => {
     const unsub = subscribeAcademicCalendar((config) => {
@@ -94,13 +117,6 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   const avgMinutes = totalStudents > 0 ? Math.round(totalMinutes / totalStudents) : 0;
   const avgStage = Math.min(14, Math.max(0, Math.round(avgMinutes / 30)));
   const avgFormatted = formatMinutes(avgMinutes);
-
-  // Kedi maskotunun kademeye göre değişimi:
-  // 1 ve 2. kademede: kedd.png
-  // 3. kademeye gelince: kedu.png
-  // 4. kademe ve üzeri: keu.png
-  const catMascotSrc =
-    avgStage >= 4 ? '/keu.png' : avgStage >= 3 ? '/kedu.png' : '/kedd.png';
 
   const hasCritical = criticalStudents.length > 0;
   const currentMascot = hasCritical ? '/kirmizi.png' : '/yesil.png';
@@ -288,13 +304,11 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
               </div>
             </div>
 
-            {/* Sağ Taraf: Kedi Maskotu (Kademeye göre: kedd.png -> kedu.png -> keu.png) */}
+            {/* Sağ Taraf: Kedi Maskotu (Şeffaf Arka Planlı Video) */}
             <div className="relative z-10 flex-shrink-0 self-stretch flex items-end justify-center w-[110px] sm:w-[140px] md:w-[165px] -my-4 sm:-my-5 -mr-2 sm:-mr-3 overflow-hidden pointer-events-none select-none">
-              <img
-                src={catMascotSrc}
-                alt={`Kedi Maskotu (${avgStage}. Kademe)`}
-                className="h-full w-auto max-h-[160px] sm:max-h-[195px] md:max-h-[220px] object-contain object-bottom select-none drop-shadow-[0_10px_20px_rgba(124,58,237,0.18)] transition-all duration-300"
-                draggable={false}
+              <TransparentMascotVideo
+                src="/mascot.mp4"
+                className="h-full w-auto max-h-[160px] sm:max-h-[195px] md:max-h-[220px] drop-shadow-[0_10px_20px_rgba(124,58,237,0.18)] transition-all duration-300"
               />
             </div>
           </div>
@@ -608,14 +622,28 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Sağ: Süre ve Kademe Göstergeleri */}
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
-                      {minutes} dk
+                  {/* Sağ: Süre, Kademe ve Silme Butonu */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="text-right">
+                      <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                        {minutes} dk
+                      </div>
+                      <div className="text-[9.5px] font-bold text-slate-500">
+                        {timeInfo.longStr} • {stage}. Kademe
+                      </div>
                     </div>
-                    <div className="text-[9.5px] font-bold text-slate-500">
-                      {timeInfo.longStr} • {stage}. Kademe
-                    </div>
+
+                    {onDeleteUser && (
+                      <button
+                        type="button"
+                        id={`btn-teacher-delete-student-${user.uid}`}
+                        onClick={() => setStudentToDelete(user)}
+                        title="Öğrenciyi Sınıftan Sil"
+                        className="p-1.5 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -631,6 +659,56 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         calendarConfig={calendarConfig}
         userEmail={userEmail}
       />
+
+      {/* ÖĞRENCİ HESABI SİLME ONAY MODALI */}
+      {studentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-rose-200 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+              <UserX className="w-6 h-6 stroke-[2.5]" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h4 className="text-base font-black text-slate-900">
+                Öğrenciyi Sınıftan Sil?
+              </h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Bu öğrenciyi ve veli bağlantısını sınıftan silmek üzeresiniz.
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+              <div className="font-bold text-slate-900 flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                <span>Öğrenci: {studentToDelete.studentName || studentToDelete.displayName || 'Öğrenci'}</span>
+              </div>
+              <div className="text-slate-500 text-[10px]">
+                Veli: {studentToDelete.parentName || studentToDelete.displayName || 'Veli'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setStudentToDelete(null)}
+                disabled={isDeleting}
+                className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteStudent}
+                disabled={isDeleting}
+                className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Siliniyor...' : 'Evet, Sil'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

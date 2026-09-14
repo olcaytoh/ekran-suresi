@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, Palmtree, Calendar, Edit3, X, Sparkles, ChevronDown } from 'lucide-react';
-import { WeekRecord, AcademicCalendarConfig, AcademicWeekConfig, UserProfile } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Lock, Palmtree, Calendar, Edit3, X, Sparkles, ChevronDown, School } from 'lucide-react';
+import { WeekRecord, AcademicCalendarConfig, AcademicWeekConfig, UserProfile, ClassroomInfo } from '../types';
 import { subscribeUserWeeks } from '../lib/firebase';
 import {
   subscribeAcademicCalendar,
@@ -15,8 +15,11 @@ interface ParentBadgesViewProps {
   studentName?: string;
   userId?: string;
   isTeacher?: boolean;
+  isSuperAdmin?: boolean;
   userEmail?: string;
   students?: UserProfile[];
+  classrooms?: ClassroomInfo[];
+  defaultClassName?: string;
 }
 
 interface BadgeLevel {
@@ -91,8 +94,11 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
   currentStage,
   userId,
   isTeacher = false,
+  isSuperAdmin = false,
   userEmail,
   students = [],
+  classrooms = [],
+  defaultClassName,
 }) => {
   const [pastWeeks, setPastWeeks] = useState<Record<string, WeekRecord>>({});
   const [selectedWeekNum, setSelectedWeekNum] = useState<number | null>(null);
@@ -100,6 +106,58 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
     generateDefaultAcademicCalendar()
   );
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<string>('all');
+
+  // Tek bir sınıf varsa doğrudan onu seç
+  useEffect(() => {
+    if (classrooms.length === 1) {
+      setSelectedClassId(classrooms[0].id);
+    }
+  }, [classrooms]);
+
+  // Seçilen sınıfa göre filtrelenmiş öğrenciler
+  const activeStudentsForModal = useMemo(() => {
+    if (classrooms && classrooms.length > 0) {
+      if (selectedClassId !== 'all') {
+        const targetCls = classrooms.find((c) => c.id === selectedClassId);
+        const targetName = targetCls?.name?.trim().toLowerCase();
+        return students.filter(
+          (s) =>
+            s.classId === selectedClassId ||
+            (targetName && s.className?.trim().toLowerCase() === targetName)
+        );
+      }
+      // 'all' veya tek sınıf durumu: Sadece classrooms listesindeki sınıflara ait öğrenciler
+      const validClassIds = new Set(classrooms.map((c) => c.id));
+      const validClassNames = new Set(
+        classrooms.map((c) => (c.name || '').trim().toLowerCase())
+      );
+      return students.filter(
+        (s) =>
+          (s.classId && validClassIds.has(s.classId)) ||
+          (s.className && validClassNames.has(s.className.trim().toLowerCase()))
+      );
+    }
+    return students;
+  }, [students, classrooms, selectedClassId]);
+
+  // Modal ve başlık için dinamik sınıf adı
+  const activeClassNameTitle = useMemo(() => {
+    if (selectedClassId !== 'all') {
+      const cls = classrooms.find((c) => c.id === selectedClassId);
+      if (cls) return cls.name;
+    }
+    if (classrooms.length === 1) {
+      return classrooms[0].name;
+    }
+    if (classrooms.length > 1) {
+      return 'Tüm Sınıflar';
+    }
+    if (classrooms.length === 0 && students.length > 0 && students[0]?.className) {
+      return students[0].className;
+    }
+    return defaultClassName || 'Sınıf İstatistikleri';
+  }, [selectedClassId, classrooms, students, defaultClassName]);
 
   const TOTAL_WEEKS = 35; // 35 boxes in 5 columns
 
@@ -192,6 +250,12 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
               {activeWeekIndex}. Hafta Aktif ({activeWeekData.label})
             </span>
           )}
+          {isTeacher && classrooms.length === 1 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+              <School className="w-3 h-3 text-indigo-500" />
+              <span>{classrooms[0].name} ({students.length} Öğrenci)</span>
+            </span>
+          )}
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200/80 text-slate-600 flex items-center gap-0.5">
             <ChevronDown className="w-3 h-3 text-slate-500 animate-bounce" />
             <span>1 - 35. Hafta</span>
@@ -211,6 +275,51 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
           </button>
         )}
       </div>
+
+      {/* Birden çok sınıf varsa sınıf seçici sekmeleri, tek sınıf varsa net bilgi rozeti */}
+      {isTeacher && classrooms.length > 1 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar px-1">
+          <button
+            type="button"
+            onClick={() => setSelectedClassId('all')}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+              selectedClassId === 'all'
+                ? 'bg-slate-900 text-white shadow-2xs'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            Tüm Sınıflar ({students.length})
+          </button>
+          {classrooms.map((c) => {
+            const count = students.filter(
+              (s) =>
+                s.classId === c.id ||
+                (s.className && s.className.trim().toLowerCase() === c.name.trim().toLowerCase())
+            ).length;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setSelectedClassId(c.id)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                  selectedClassId === c.id
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {c.name} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {isTeacher && classrooms.length === 1 && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-900 text-xs font-bold w-fit">
+          <School className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+          <span>{classrooms[0].name} ({activeStudentsForModal.length} Kayıtlı Öğrenci)</span>
+        </div>
+      )}
 
       {/* 2. The 35 Boxes Grid (5 Columns x 7 Rows) - Starting right at the top */}
       <div className="bg-white/95 backdrop-blur-md rounded-2xl p-2 sm:p-2.5 border border-slate-200/90 shadow-2xs">
@@ -383,10 +492,10 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
               isHoliday: false,
             }
           }
-          students={students}
+          students={activeStudentsForModal}
           isActiveWeek={selectedWeekNum === activeWeekIndex}
           activeWeekNumber={activeWeekIndex}
-          classNameTitle={students[0]?.className || '2-C Sınıfı'}
+          classNameTitle={activeClassNameTitle}
         />
       )}
 

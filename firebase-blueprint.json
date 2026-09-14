@@ -30,6 +30,34 @@
         }
       }
     },
+    "classes": {
+      "description": "Classroom documents managed by teachers",
+      "fields": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "teacherUid": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "studentTargetCount": { "type": "number" },
+        "institutionCode": { "type": "string", "optional": true },
+        "institutionName": { "type": "string", "optional": true },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+    "institutions": {
+      "description": "School / institution documents managed by admins",
+      "fields": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "adminUid": { "type": "string" },
+        "adminName": { "type": "string" },
+        "adminEmail": { "type": "string" },
+        "createdAt": { "type": "timestamp" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
     "app_settings": {
       "description": "Global application configuration including academic calendar and week schedules",
       "fields": {

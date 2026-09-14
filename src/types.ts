@@ -2,7 +2,8 @@ export type UserRole = 'teacher' | 'parent' | 'admin';
 
 export interface InstitutionInfo {
   id: string;
-  code: string; // e.g. "KRM-8842" or "KRM123"
+  code: string; // e.g. "KRM-8842" or "KRM123" — shared with teachers to join
+  adminCode: string; // e.g. "ADM-8842" — shared with other admins to join as co-admin
   name: string; // e.g. "Cumhuriyet İlkokulu"
   adminUid: string;
   adminName: string;
@@ -13,7 +14,7 @@ export interface InstitutionInfo {
 
 export interface UserProfile {
   uid: string;
-  email: string;
+  email?: string;
   displayName: string;
   photoURL?: string;
   role: UserRole;
@@ -21,7 +22,8 @@ export interface UserProfile {
   studentName?: string; // If parent, the child's name (e.g. 'Ali Yılmaz')
   parentName?: string; // Name of the parent
   institutionId?: string; // Connected institution document ID
-  institutionCode?: string; // e.g. "KRM-8842"
+  institutionCode?: string; // e.g. "KRM-8842" — Kurum Kodu (for teachers)
+  institutionAdminCode?: string; // e.g. "ADM-8842" — Admin Kodu (for co-admins)
   institutionName?: string; // e.g. "Cumhuriyet İlkokulu"
   classId?: string; // Connected classroom document ID
   classCode?: string; // 6-character connect code

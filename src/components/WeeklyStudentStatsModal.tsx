@@ -33,7 +33,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
   students,
   isActiveWeek = false,
   activeWeekNumber = 1,
-  classNameTitle = '2-C Sınıfı',
+  classNameTitle = 'Sınıf Detayı',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<'all' | 'critical' | 'warning' | 'moderate' | 'safe'>('all');
@@ -68,6 +68,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
       uid: st.uid,
       studentName: st.studentName || st.displayName || `Öğrenci #${idx + 1}`,
       parentName: st.parentName || (st.displayName !== st.studentName ? st.displayName : 'Veli'),
+      className: st.className,
       stage,
       minutes,
       category,
@@ -284,6 +285,11 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                         <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
                           {item.studentName}
                         </span>
+                        {item.className && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 leading-none">
+                            {item.className}
+                          </span>
+                        )}
                         <span className={`text-[8.5px] font-black px-1.5 py-0.5 rounded-md leading-none ${badgeClass}`}>
                           {item.category.name}
                         </span>

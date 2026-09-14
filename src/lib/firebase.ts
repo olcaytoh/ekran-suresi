@@ -19,6 +19,7 @@ import {
   collection,
   updateDoc,
   deleteDoc,
+  deleteField,
   serverTimestamp,
   query,
   where,
@@ -376,7 +377,7 @@ function generateClassCode(): string {
 }
 
 /**
- * Generate institution code like "KRM-8492"
+ * Generate institution code like "KRM-8492" (used by teachers to join)
  */
 function generateInstitutionCode(): string {
   const num = Math.floor(1000 + Math.random() * 9000);
@@ -384,19 +385,59 @@ function generateInstitutionCode(): string {
 }
 
 /**
- * Admin: Create a new institution with a code
+ * Generate an admin invite code like "ADM-8492" (used by other admins to join
+ * the SAME institution as co-admin)
+ */
+function generateAdminCode(): string {
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `ADM-${num}`;
+}
+
+/**
+ * Check if a given code already exists in the institutions collection,
+ * under either the teacher-facing `code` field or the `adminCode` field.
+ */
+async function isCodeTaken(field: 'code' | 'adminCode', code: string): Promise<boolean> {
+  const instRef = collection(db, 'institutions');
+  const q = query(instRef, where(field, '==', code));
+  const snap = await getDocs(q);
+  return !snap.empty;
+}
+
+/**
+ * Admin: Create a new institution.
+ * Generates TWO codes:
+ *  - `code` (Kurum Kodu): shared with teachers so they can join this institution.
+ *  - `adminCode` (Admin Kodu): shared with other people who should ALSO become
+ *    admin of this same institution (multi-admin support).
  */
 export async function createInstitution(
   adminUid: string,
   adminName: string,
   adminEmail: string,
   institutionName: string
-): Promise<{ id: string; code: string; name: string }> {
-  const code = generateInstitutionCode();
+): Promise<{ id: string; code: string; adminCode: string; name: string }> {
+  // Auto-generate the institution (teacher) code, retrying on rare collision
+  let code = generateInstitutionCode();
+  let codeTries = 0;
+  while ((await isCodeTaken('code', code)) && codeTries < 5) {
+    code = generateInstitutionCode();
+    codeTries += 1;
+  }
+
+  // Auto-generate the admin invite code, retrying on rare collision
+  let adminCode = generateAdminCode();
+  let adminCodeTries = 0;
+  while ((await isCodeTaken('adminCode', adminCode)) && adminCodeTries < 5) {
+    adminCode = generateAdminCode();
+    adminCodeTries += 1;
+  }
+
   const instRef = doc(collection(db, 'institutions'));
   const instData = {
     id: instRef.id,
     code,
+    adminCode,
     name: institutionName.trim(),
     adminUid,
     adminName: adminName || 'Admin',
@@ -414,15 +455,79 @@ export async function createInstitution(
     userType: 'teacher',
     institutionId: instRef.id,
     institutionCode: code,
+    institutionAdminCode: adminCode,
     institutionName: institutionName.trim(),
     updatedAt: serverTimestamp(),
   });
 
-  return { id: instRef.id, code, name: institutionName.trim() };
+  return { id: instRef.id, code, adminCode, name: institutionName.trim() };
 }
 
 /**
- * Teacher: Join an institution with code
+ * Admin: Backfill an Admin Kodu for an OLDER institution that was created
+ * before the multi-admin feature existed (so it has no `adminCode` yet).
+ */
+export async function ensureInstitutionAdminCode(
+  institutionId: string,
+  adminUid: string
+): Promise<string> {
+  const instRef = doc(db, 'institutions', institutionId);
+  const snap = await getDoc(instRef);
+  if (!snap.exists()) {
+    throw new Error('Kurum bulunamadı.');
+  }
+  const data = snap.data();
+  if (data.adminCode) {
+    return data.adminCode as string;
+  }
+
+  let adminCode = generateAdminCode();
+  let tries = 0;
+  while ((await isCodeTaken('adminCode', adminCode)) && tries < 5) {
+    adminCode = generateAdminCode();
+    tries += 1;
+  }
+
+  await updateDoc(instRef, { adminCode, updatedAt: serverTimestamp() });
+  await updateDoc(doc(db, 'users', adminUid), {
+    institutionAdminCode: adminCode,
+    updatedAt: serverTimestamp(),
+  });
+
+  return adminCode;
+}
+
+/**
+ * Admin: Update the name of an EXISTING institution (keeps the same codes)
+ */
+export async function updateInstitutionName(
+  institutionId: string,
+  adminUid: string,
+  newName: string
+): Promise<{ id: string; name: string }> {
+  const trimmed = newName.trim();
+  if (!trimmed) {
+    throw new Error('Lütfen geçerli bir kurum / okul adı girin.');
+  }
+
+  const instRef = doc(db, 'institutions', institutionId);
+  await updateDoc(instRef, {
+    name: trimmed,
+    updatedAt: serverTimestamp(),
+  });
+
+  // Keep the admin's own cached profile field in sync
+  const adminRef = doc(db, 'users', adminUid);
+  await updateDoc(adminRef, {
+    institutionName: trimmed,
+    updatedAt: serverTimestamp(),
+  });
+
+  return { id: institutionId, name: trimmed };
+}
+
+/**
+ * Teacher: Join an institution with the teacher-facing Kurum Kodu
  */
 export async function joinInstitutionWithCode(
   userUid: string,
@@ -457,7 +562,50 @@ export async function joinInstitutionWithCode(
 }
 
 /**
+ * Admin: Join an EXISTING institution as a CO-ADMIN using the Admin Kodu
+ * created by the institution's original admin. This is how a second (or
+ * third...) person becomes admin of the same institution, instead of relying
+ * on a single hardcoded admin e-mail.
+ */
+export async function joinInstitutionAsAdmin(
+  userUid: string,
+  rawAdminCode: string
+): Promise<{ id: string; code: string; adminCode: string; name: string }> {
+  const cleanedCode = rawAdminCode.trim().toUpperCase();
+  if (!cleanedCode) {
+    throw new Error('Lütfen geçerli bir Admin Kodu girin.');
+  }
+
+  const instRef = collection(db, 'institutions');
+  const q = query(instRef, where('adminCode', '==', cleanedCode));
+  const snap = await getDocs(q);
+
+  if (snap.empty) {
+    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı. Lütfen diğer yöneticinizden aldığınız Admin Kodunu kontrol edin.`);
+  }
+
+  const instDoc = snap.docs[0];
+  const instData = instDoc.data();
+
+  // Update user's profile: this user becomes an admin of the SAME institution
+  const userRef = doc(db, 'users', userUid);
+  await updateDoc(userRef, {
+    role: 'admin',
+    userType: 'teacher',
+    institutionId: instDoc.id,
+    institutionCode: instData.code,
+    institutionAdminCode: instData.adminCode,
+    institutionName: instData.name,
+    updatedAt: serverTimestamp(),
+  });
+
+  return { id: instDoc.id, code: instData.code, adminCode: instData.adminCode, name: instData.name };
+}
+
+/**
  * Teacher: Create a new classroom with a 6-character code
+ * Kural: 1 Hesap = 1 Sınıf. Bir öğretmenin zaten bir sınıfı varsa ikinci bir sınıf eklemez,
+ * mevcut sınıfı günceller ve mükerrer sınıfları temizler.
  */
 export async function createClassroom(
   teacherUid: string,
@@ -465,18 +613,89 @@ export async function createClassroom(
   teacherEmail: string,
   className: string,
   studentTargetCount = 25,
-  institution?: { code: string; name: string }
+  institution?: { id?: string; code: string; name: string }
 ): Promise<ClassroomInfo> {
+  const trimmedName = className.trim();
+  const classesRef = collection(db, 'classes');
+
+  // 1 Hesap 1 Sınıf: Öğretmenin mevcut sınıfı var mı kontrol et
+  const qExisting = query(classesRef, where('teacherUid', '==', teacherUid));
+  const snapExisting = await getDocs(qExisting);
+
+  if (!snapExisting.empty) {
+    // Mevcut sınıf bulundu: Yeni sınıf ekleme, mevcut sınıfı güncelle!
+    const primaryDoc = snapExisting.docs[0];
+    const classId = primaryDoc.id;
+    const existingData = primaryDoc.data() as ClassroomInfo;
+
+    const updatedData: Record<string, any> = {
+      name: trimmedName,
+      studentTargetCount,
+      teacherName: teacherName || existingData.teacherName || 'Öğretmen',
+      teacherEmail: teacherEmail || existingData.teacherEmail || '',
+      updatedAt: serverTimestamp(),
+    };
+
+    if (institution) {
+      updatedData.institutionId = institution.id;
+      updatedData.institutionCode = institution.code;
+      updatedData.institutionName = institution.name;
+    }
+
+    await updateDoc(doc(db, 'classes', classId), updatedData);
+
+    // Varsa eski testlerden kalan mükerrer sınıfları temizle (1 hesap 1 sınıf kuralı)
+    if (snapExisting.docs.length > 1) {
+      for (let i = 1; i < snapExisting.docs.length; i++) {
+        try {
+          await deleteDoc(doc(db, 'classes', snapExisting.docs[i].id));
+        } catch (err) {
+          console.warn('Duplicate class cleanup error:', err);
+        }
+      }
+    }
+
+    // Öğretmen profilini güncelle
+    const teacherRef = doc(db, 'users', teacherUid);
+    await updateDoc(teacherRef, {
+      role: 'teacher',
+      userType: 'teacher',
+      classId: classId,
+      classCode: existingData.code,
+      className: trimmedName,
+      ...(institution ? {
+        institutionId: institution.id,
+        institutionCode: institution.code,
+        institutionName: institution.name,
+      } : {}),
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      ...existingData,
+      id: classId,
+      name: trimmedName,
+      studentTargetCount,
+      ...(institution ? {
+        institutionId: institution.id,
+        institutionCode: institution.code,
+        institutionName: institution.name,
+      } : {}),
+    };
+  }
+
+  // Öğretmenin daha önce hiç sınıfı yoksa tek bir yeni sınıf oluştur
   const classCode = generateClassCode();
   const classRef = doc(collection(db, 'classes'));
   const classroom: ClassroomInfo = {
     id: classRef.id,
     code: classCode,
-    name: className.trim(),
+    name: trimmedName,
     teacherUid,
     teacherName: teacherName || 'Öğretmen',
     teacherEmail: teacherEmail || '',
     studentTargetCount,
+    institutionId: institution?.id,
     institutionCode: institution?.code,
     institutionName: institution?.name,
     createdAt: serverTimestamp(),
@@ -492,8 +711,9 @@ export async function createClassroom(
     userType: 'teacher',
     classId: classRef.id,
     classCode: classCode,
-    className: className.trim(),
+    className: trimmedName,
     ...(institution ? {
+      institutionId: institution.id,
       institutionCode: institution.code,
       institutionName: institution.name,
     } : {}),
@@ -501,6 +721,124 @@ export async function createClassroom(
   });
 
   return classroom;
+}
+
+/**
+ * Admin: Delete a user account (student, parent, or teacher profile)
+ */
+export async function adminDeleteUser(userUid: string): Promise<void> {
+  if (!userUid) return;
+  const userRef = doc(db, 'users', userUid);
+  await deleteDoc(userRef);
+}
+
+/**
+ * Admin: Delete a classroom and unlink teacher & enrolled students
+ */
+export async function adminDeleteClassroom(classId: string, teacherUid?: string): Promise<void> {
+  if (!classId) return;
+
+  // 1. Delete class document
+  const classRef = doc(db, 'classes', classId);
+  await deleteDoc(classRef);
+
+  // 2. Unlink teacher's class
+  if (teacherUid) {
+    try {
+      const teacherRef = doc(db, 'users', teacherUid);
+      const snap = await getDoc(teacherRef);
+      if (snap.exists()) {
+        await updateDoc(teacherRef, {
+          classId: deleteField(),
+          classCode: deleteField(),
+          className: deleteField(),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.warn('Error unlinking teacher profile:', err);
+    }
+  }
+
+  // 3. Unlink students
+  try {
+    const studentsQ = query(collection(db, 'users'), where('classId', '==', classId));
+    const snap = await getDocs(studentsQ);
+    const unlinks = snap.docs.map((d) =>
+      updateDoc(d.ref, {
+        classId: deleteField(),
+        classCode: deleteField(),
+        className: deleteField(),
+        updatedAt: serverTimestamp(),
+      })
+    );
+    await Promise.all(unlinks);
+  } catch (err) {
+    console.warn('Error unlinking classroom students:', err);
+  }
+}
+
+/**
+ * Teacher: Update existing classroom details
+ */
+export async function updateClassroom(
+  classId: string,
+  teacherUid: string,
+  className: string,
+  studentTargetCount?: number,
+  institution?: { id?: string; code: string; name: string }
+): Promise<void> {
+  const trimmedName = className.trim();
+  const classRef = doc(db, 'classes', classId);
+  await updateDoc(classRef, {
+    name: trimmedName,
+    ...(studentTargetCount ? { studentTargetCount } : {}),
+    ...(institution ? {
+      institutionId: institution.id,
+      institutionCode: institution.code,
+      institutionName: institution.name,
+    } : {}),
+    updatedAt: serverTimestamp(),
+  });
+
+  const teacherRef = doc(db, 'users', teacherUid);
+  await updateDoc(teacherRef, {
+    className: trimmedName,
+    ...(institution ? {
+      institutionId: institution.id,
+      institutionCode: institution.code,
+      institutionName: institution.name,
+    } : {}),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Admin: Subscribe to all classrooms (and thus teachers) belonging to an institution
+ */
+export function subscribeInstitutionClassrooms(
+  institutionId: string,
+  onUpdate: (classrooms: ClassroomInfo[]) => void,
+  onError?: (err: Error) => void
+) {
+  const classesRef = collection(db, 'classes');
+  const q = query(classesRef, where('institutionId', '==', institutionId));
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list: ClassroomInfo[] = [];
+      snap.forEach((d) => {
+        list.push({ id: d.id, ...d.data() } as ClassroomInfo);
+      });
+      list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
+      onUpdate(list);
+    },
+    (error) => {
+      console.error('Subscribe institution classrooms error:', error);
+      if (onError) onError(error);
+    }
+  );
 }
 
 /**
@@ -530,8 +868,26 @@ export async function joinClassroomWithCode(
   const classData = classDoc.data() as ClassroomInfo;
   classData.id = classDoc.id;
 
-  // Update parent user profile
+  // Güvenlik Kontrolü 1: Öğretmen kendi sınıfına veli olarak katılamaz
+  if (classData.teacherUid === userUid) {
+    throw new Error(
+      'Siz bu sınıfın öğretmenisiniz! Kendi sınıfınıza veli olarak katılamazsınız. Öğrencilerinizi ve velilerinizi sınıfa dahil etmek için lütfen sınıf kodunuzu velilerinizle paylaşınız veya doğrudan öğrenci ekleyiniz.'
+    );
+  }
+
+  // Güvenlik Kontrolü 2: Öğretmen veya Yönetici hesabı olan kullanıcı veli/öğrenci rolüne dönüştürülemez
   const userRef = doc(db, 'users', userUid);
+  const userSnap = await getDoc(userRef);
+  if (userSnap.exists()) {
+    const userData = userSnap.data();
+    if (userData.role === 'teacher' || userData.userType === 'teacher' || userData.role === 'admin') {
+      throw new Error(
+        'Öğretmen veya Yönetici yetkisine sahip bir hesapla veli olarak sınıfa katılamazsınız! Bu hesap öğretmen yetkisine sahiptir. Veli girişi için lütfen ayrı bir veli hesabı ile giriş yapınız.'
+      );
+    }
+  }
+
+  // Update parent user profile
   await updateDoc(userRef, {
     role: 'parent',
     userType: 'parent',
@@ -545,6 +901,45 @@ export async function joinClassroomWithCode(
   });
 
   return classData;
+}
+
+/**
+ * Teacher or Admin: Add a student directly to a classroom without changing the teacher's profile
+ */
+export async function addStudentToClassroom(
+  classId: string,
+  classCode: string,
+  className: string,
+  studentName: string,
+  parentName?: string
+): Promise<UserProfile> {
+  const trimmedStudent = studentName.trim();
+  const trimmedParent = parentName?.trim() || '';
+  if (!trimmedStudent) {
+    throw new Error('Lütfen öğrencinin adını ve soyadını girin.');
+  }
+
+  const { weekId } = getCurrentWeekInfo();
+  const studentRef = doc(collection(db, 'users'));
+  const newStudent: UserProfile = {
+    uid: studentRef.id,
+    role: 'parent',
+    userType: 'parent',
+    studentName: trimmedStudent,
+    parentName: trimmedParent || undefined,
+    displayName: trimmedStudent + (trimmedParent ? ` (${trimmedParent})` : ''),
+    classId,
+    classCode,
+    className,
+    currentWeekId: weekId,
+    currentWeekStage: 0,
+    currentWeekMinutes: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(studentRef, newStudent);
+  return newStudent;
 }
 
 /**

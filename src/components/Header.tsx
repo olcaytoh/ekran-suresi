@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import { signOutUser } from '../lib/firebase';
+import { signOutUser, isAdminEmail } from '../lib/firebase';
 import {
   Users,
   LogOut,
@@ -11,7 +11,8 @@ import {
   Copy,
   Check,
   ShieldAlert,
-  Building2,
+  HeartHandshake,
+  User,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -33,9 +34,13 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [copiedInst, setCopiedInst] = useState(false);
-  const isTeacher = isAdmin || currentUser?.role === 'teacher' || currentUser?.userType === 'teacher';
-  const isSuperAdmin = currentUser?.role === 'admin';
+  const isSuperAdmin =
+    currentUser?.role === 'admin' ||
+    (currentUser?.email && isAdminEmail(currentUser.email));
+  const isTeacher = !isSuperAdmin && (isAdmin || currentUser?.role === 'teacher' || currentUser?.userType === 'teacher');
+  const isStudentOnly = !isSuperAdmin && !isTeacher && (currentUser?.role === 'student' || currentUser?.userType === 'student');
+  const isParent = !isSuperAdmin && !isTeacher && !isStudentOnly;
+
   const stage = currentUser?.currentWeekStage ?? 0;
   const isRed = stage >= 14;
   const mascotImg = stage >= 13 ? '/keu.png' : stage >= 8 ? '/kedu.png' : '/kedd.png';
@@ -47,19 +52,10 @@ export const Header: React.FC<HeaderProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleCopyInstCode = () => {
-    if (!currentUser?.institutionCode) return;
-    navigator.clipboard.writeText(currentUser.institutionCode);
-    setCopiedInst(true);
-    setTimeout(() => setCopiedInst(false), 2000);
-  };
-
-  const className = currentUser?.className || '2-C Sınıfı';
-
   return (
     <header className="flex-shrink-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs">
       <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
-        {/* Left: Mascot, Title & Clean Class Pill (Strictly Single Line) */}
+        {/* Sol Taraf: Maskot, Başlık & Belirgin Hesap Rozetleri */}
         <div className="flex items-center gap-2 min-w-0">
           <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-slate-200 flex-shrink-0 bg-slate-50 shadow-2xs">
             <img
@@ -75,61 +71,76 @@ export const Header: React.FC<HeaderProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
             <h1 className="text-sm sm:text-base font-black text-slate-900 tracking-tight whitespace-nowrap">
               Ekran Süresi
             </h1>
 
-            {/* Sınıf & Rol Rozeti (Tek, düzenli ve sade) */}
-            {isTeacher ? (
-              <div className="flex items-center gap-1">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-slate-900 text-white shadow-2xs whitespace-nowrap">
-                  <School className="w-3 h-3 text-indigo-300" />
-                  <span>{className}</span>
+            {/* Hangi hesap açık olduğunu belirten net rozetler */}
+            {isSuperAdmin && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-rose-600 text-white shadow-2xs whitespace-nowrap">
+                <ShieldAlert className="w-3.5 h-3.5 text-white" />
+                <span>Yönetici (Admin)</span>
+              </span>
+            )}
+
+            {isTeacher && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-indigo-600 text-white shadow-2xs whitespace-nowrap">
+                  <GraduationCap className="w-3.5 h-3.5 text-white" />
+                  <span>Öğretmen</span>
                 </span>
-                {isSuperAdmin ? (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">
-                    <ShieldAlert className="w-3 h-3 text-rose-600" />
-                    <span>Admin</span>
-                  </span>
-                ) : (
-                  <span className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 whitespace-nowrap">
-                    <GraduationCap className="w-3 h-3 text-indigo-600" />
-                    <span>Öğretmen</span>
+                {currentUser?.className && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs whitespace-nowrap">
+                    <School className="w-3 h-3 text-indigo-300" />
+                    <span>{currentUser.className}</span>
                   </span>
                 )}
               </div>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-slate-800 text-white shadow-2xs whitespace-nowrap">
-                <School className="w-3 h-3 text-emerald-300" />
-                <span>{className}</span>
-              </span>
+            )}
+
+            {isParent && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-emerald-600 text-white shadow-2xs whitespace-nowrap">
+                  <HeartHandshake className="w-3.5 h-3.5 text-white" />
+                  <span>Veli Hesabı</span>
+                </span>
+                {currentUser?.className && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-800 text-white shadow-2xs whitespace-nowrap">
+                    <School className="w-3 h-3 text-emerald-300" />
+                    <span>{currentUser.className}</span>
+                  </span>
+                )}
+                {currentUser?.studentName && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200 whitespace-nowrap">
+                    <span>Öğrenci:</span>
+                    <strong className="font-bold text-emerald-950">{currentUser.studentName}</strong>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {isStudentOnly && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-sky-600 text-white shadow-2xs whitespace-nowrap">
+                  <User className="w-3.5 h-3.5 text-white" />
+                  <span>Öğrenci</span>
+                </span>
+                {currentUser?.className && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-800 text-white shadow-2xs whitespace-nowrap">
+                    <School className="w-3 h-3 text-sky-300" />
+                    <span>{currentUser.className}</span>
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Right: Streamlined Actions (Single Line, No Stacking) */}
+        {/* Sağ Taraf: Aksiyonlar & Bilgiler */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Admin veya Öğretmen için: Kurum Kodu */}
-          {currentUser?.institutionCode && (
-            <button
-              type="button"
-              onClick={handleCopyInstCode}
-              title="Kurum kodunu kopyalamak için tıklayın"
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-black bg-rose-950 text-rose-200 border border-rose-800 hover:bg-rose-900 transition-all shadow-2xs cursor-pointer active:scale-95"
-            >
-              <Building2 className="w-3 h-3 text-rose-400 flex-shrink-0" />
-              <span className="font-mono">{currentUser.institutionCode}</span>
-              {copiedInst ? (
-                <Check className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />
-              ) : (
-                <Copy className="w-2.5 h-2.5 text-rose-300 flex-shrink-0" />
-              )}
-            </button>
-          )}
-
-          {/* Öğretmen için: Tek satırda şık sınıf kodu ve üye sayısı */}
-          {isTeacher && currentUser?.classCode && (
+          {/* Öğretmen için: Tek satırda şık sınıf kodu ve üye sayısı (Admin için gösterilmez) */}
+          {isTeacher && !isSuperAdmin && currentUser?.classCode && (
             <button
               type="button"
               onClick={handleCopyCode}
@@ -149,9 +160,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Öğrenci/Veli için: İsteğe bağlı sade üye sayısı (mobilde yer kaplamaz) */}
-          {!isTeacher && memberCount > 0 && (
-            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
+          {/* Veli/Öğrenci için: Sınıf üye sayısı (mobilde gizli, masaüstünde görünür) */}
+          {!isTeacher && !isSuperAdmin && memberCount > 0 && (
+            <span className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
               <Users className="w-3 h-3 text-slate-500" />
               <span>{memberCount} Öğrenci</span>
             </span>

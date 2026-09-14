@@ -29,15 +29,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
   const [domainCopied, setDomainCopied] = useState(false);
 
   // Remember previously chosen role from localStorage if any
-  const [selectedRole, setSelectedRole] = useState<'teacher' | 'parent' | null>(() => {
+  const [selectedRole, setSelectedRole] = useState<'teacher' | 'parent' | 'admin' | null>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('pendingUserRole');
-      if (stored === 'teacher' || stored === 'parent') return stored;
+      if (stored === 'teacher' || stored === 'parent' || stored === 'admin') return stored;
     }
     return null;
   });
 
-  const handleSelectRole = (role: 'teacher' | 'parent') => {
+  const handleSelectRole = (role: 'teacher' | 'parent' | 'admin') => {
     setSelectedRole(role);
     setPromptWarning(false);
     setError(null);
@@ -47,7 +47,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
   const handleGoogleLogin = async () => {
     if (!selectedRole) {
       setPromptWarning(true);
-      setError('Lütfen önce yukarıdaki Öğretmen veya Veli butonuna dokunarak rolünüzü seçin.');
+      setError('Lütfen önce yukarıdaki Öğretmen, Veli veya Admin butonuna dokunarak rolünüzü seçin.');
       return;
     }
 
@@ -56,6 +56,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
       setLoadingText(
         selectedRole === 'teacher'
           ? 'Öğretmen olarak Google ile giriş yapılıyor...'
+          : selectedRole === 'admin'
+          ? 'Admin olarak Google ile giriş yapılıyor...'
           : 'Veli olarak Google ile giriş yapılıyor...'
       );
       setError(null);
@@ -103,10 +105,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
     const role = selectedRole || 'teacher';
     try {
       setLoading(true);
-      setLoadingText(`${role === 'teacher' ? 'Öğretmen' : 'Veli'} test girişi yapılıyor...`);
+      setLoadingText(
+        `${role === 'admin' ? 'Admin' : role === 'teacher' ? 'Öğretmen' : 'Veli'} test girişi yapılıyor...`
+      );
       setError(null);
       localStorage.setItem('pendingUserRole', role);
-      if (role === 'teacher') {
+      if (role === 'admin') {
+        if (onDemoLogin) {
+          onDemoLogin('admin');
+          return;
+        }
+        await signInAsGuest('Olcayto (Öğretmen - Yönetici)');
+      } else if (role === 'teacher') {
         await signInAsGuest('Olcayto (Öğretmen - Yönetici)');
       } else {
         await signInAsGuest('Fatma Yılmaz (Öğrenci: Ali Yılmaz)');
@@ -309,19 +319,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               </div>
             </div>
 
-            {/* ADMİN BUTONU (Aynı stil ve tasarımda) */}
+            {/* ADMİN BUTONU (Aynı stil ve tasarımda) - Sadece rol seçer, otomatik giriş yapmaz */}
             <button
               type="button"
               id="btn-admin-access"
-              onClick={() => {
-                if (onDemoLogin) {
-                  onDemoLogin('admin');
-                } else {
-                  handleGuestTestLogin();
-                }
-              }}
-              title="Admin / Süper Yönetici Modu"
-              className="relative aspect-[1264/848] w-full flex items-center justify-center select-none pointer-events-auto cursor-pointer active:scale-95 transition-transform group"
+              onClick={() => handleSelectRole('admin')}
+              disabled={loading}
+              title="Admin Rolünü Seç"
+              aria-label="Admin Girişi"
+              className={`relative aspect-[1264/848] w-full flex items-center justify-center select-none pointer-events-auto cursor-pointer active:scale-95 transition-transform group rounded-lg ${
+                selectedRole === 'admin'
+                  ? 'ring-2 ring-rose-500 bg-rose-500/10 shadow-[0_0_12px_rgba(244,63,94,0.5)]'
+                  : promptWarning && !selectedRole
+                  ? 'ring-2 ring-amber-400 animate-pulse bg-amber-400/10'
+                  : ''
+              }`}
             >
               <img
                 src="/buton.png"
@@ -335,18 +347,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                 <span className="text-[7.5px] sm:text-[8.5px] font-black text-rose-700 leading-tight">Admin</span>
                 <span className="text-[6px] sm:text-[6.5px] font-bold text-rose-500">Yönetim</span>
               </div>
+              {selectedRole === 'admin' && (
+                <div className="absolute -top-1 -right-1 bg-rose-600 text-white rounded-full p-0.5 shadow-md animate-in zoom-in-75">
+                  <Check className="w-2 h-2 stroke-[3]" />
+                </div>
+              )}
             </button>
           </div>
 
-          {/* Google Play Denetçi / Test Girişi Butonu */}
+          {/* Google Play Denetçi / Test Girişi Butonları */}
           <div className="flex flex-col items-center gap-1 w-full pointer-events-auto mt-0.5">
-            {/* Google Denetçisi / Şifresiz İnceleme Butonu */}
+            {/* Google Denetçisi / Şifresiz İnceleme Butonu - Öğretmen / Veli */}
             <button
               type="button"
               id="btn-demo-reviewer-login"
               onClick={() => {
+                const role = selectedRole === 'admin' ? 'teacher' : selectedRole || 'teacher';
                 if (onDemoLogin) {
-                  onDemoLogin(selectedRole || 'teacher');
+                  onDemoLogin(role);
                 } else {
                   handleGuestTestLogin();
                 }
@@ -355,6 +373,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
             >
               <span>🧪 Giriş Yapmadan İncele / Test Et ({selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
               <ArrowRight className="w-3 h-3 text-indigo-600" />
+            </button>
+
+            {/* Google Denetçisi / Şifresiz İnceleme Butonu - Admin (Play Store incelemesi için) */}
+            <button
+              type="button"
+              id="btn-demo-reviewer-login-admin"
+              onClick={() => {
+                if (onDemoLogin) {
+                  onDemoLogin('admin');
+                } else {
+                  handleGuestTestLogin();
+                }
+              }}
+              className="px-3 py-1 bg-white/95 hover:bg-white text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-400 rounded-full text-[9px] sm:text-[10px] font-black shadow-xs hover:shadow-sm active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+            >
+              <span>🧪 Giriş Yapmadan İncele - Admin</span>
+              <ArrowRight className="w-3 h-3 text-rose-600" />
             </button>
           </div>
         </div>
@@ -391,7 +426,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                 onClick={handleGuestTestLogin}
                 className="text-[11px] font-black text-indigo-700 hover:underline cursor-pointer"
               >
-                Test Olarak Doğrudan Giriş Yap ({selectedRole === 'parent' ? 'Veli' : 'Öğretmen'}) →
+                Test Olarak Doğrudan Giriş Yap ({selectedRole === 'admin' ? 'Admin' : selectedRole === 'parent' ? 'Veli' : 'Öğretmen'}) →
               </button>
             </div>
           </div>
@@ -468,7 +503,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                 }}
                 className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-98 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
               >
-                <span>Önizlemede Hemen Giriş Yap ({selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
+                <span>Önizlemede Hemen Giriş Yap ({selectedRole === 'admin' ? 'Admin' : selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
