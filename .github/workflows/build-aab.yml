@@ -38,7 +38,7 @@ jobs:
       - name: Build AAB with Gradle
         run: |
           cd android
-          ./gradlew bundleRelease -PversionCode=${{ github.run_number }}
+          ./gradlew bundleRelease -PversionCode=${{ github.run_number }} --no-daemon -x test
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
