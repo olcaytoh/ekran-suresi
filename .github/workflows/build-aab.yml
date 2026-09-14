@@ -20,13 +20,24 @@ jobs:
           distribution: 'temurin'
 
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: |
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+          elif [ -f "android/gradlew" ]; then
+            chmod +x android/gradlew
+          fi
 
       - name: Build AAB with Gradle
-        run: ./gradlew bundleRelease -PversionCode=${{ github.run_number }}
+        run: |
+          if [ -f "gradlew" ]; then
+            ./gradlew bundleRelease -PversionCode=${{ github.run_number }}
+          elif [ -f "android/gradlew" ]; then
+            cd android && ./gradlew bundleRelease -PversionCode=${{ github.run_number }}
+          fi
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: app/build/outputs/bundle/release/*.aab
+          path: |
+            **/build/outputs/bundle/release/*.aab
