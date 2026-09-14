@@ -1,12 +1,8 @@
 {
-  "projectId": "giga-arbor-1thv3",
-  "appId": "1:972927930009:web:b685d222e49d9c6ec8b208",
   "apiKey": "AIzaSyA_1d76H_ZG0ROfIdH75vUnpMqb4HfCpgk",
   "authDomain": "giga-arbor-1thv3.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-haftalkekransres-f68ddf04-8d2f-4dc8-b8ff-9b1967e70335",
+  "projectId": "giga-arbor-1thv3",
   "storageBucket": "giga-arbor-1thv3.firebasestorage.app",
   "messagingSenderId": "972927930009",
-  "measurementId": "",
-  "oAuthClientId": "972927930009-etvreg1m7g91d0qj1kg9d96fcgh58vkf.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "appId": "1:972927930009:web:b685d222e49d9c6ec8b208"
 }
