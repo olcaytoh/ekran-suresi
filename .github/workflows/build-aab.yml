@@ -1,4 +1,5 @@
-name: Build Android App Bundle (AAB)
+- name: Build AAB
+  run: flutter build appbundle --build-number=${{ github.run_number }}
 
 on:
   workflow_dispatch:
