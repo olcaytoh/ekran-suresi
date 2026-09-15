@@ -166,6 +166,28 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           referrerPolicy="no-referrer"
         />
 
+        {/* Çocuk illüstrasyonunun yerine oynayan tanıtım videosu
+            giris.png üzerindeki çocuk figürünün kapladığı alana yaklaşık olarak yerleştirildi.
+            Gerekirse top/left/width/height yüzdeleri ince ayar için değiştirilebilir. */}
+        <div
+          className="absolute z-10 overflow-hidden pointer-events-none"
+          style={{
+            top: '17.5%',
+            left: '14%',
+            width: '72%',
+            height: '31%',
+          }}
+        >
+          <video
+            src="/cocuk-selam.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-contain"
+          />
+        </div>
+
         {/* 1. ÖĞRETMEN GİRİŞİ BUTONU (Sol Üst Kart Butonu)
             Exact Coordinates on giris.png:
             Top: 51.0%, Left: 13.5%, Width: 34.0%, Height: 18.3% */}
