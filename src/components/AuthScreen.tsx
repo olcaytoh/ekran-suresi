@@ -156,37 +156,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
       <div className="absolute inset-0 bg-gradient-to-b from-[#6b6b88] via-[#757593] to-[#585872] pointer-events-none" />
 
       {/* Main Container constrained to exact giris.png aspect ratio & fits viewport */}
-      <div className="relative z-10 w-full max-w-[390px] sm:max-w-[430px] aspect-[1536/2752] max-h-[96vh] flex items-center justify-center">
-        {/* The Base Design Image: giris.png */}
-        <img
-          src="/giris.png"
-          alt="Giriş Ekranı"
+      <div className="relative z-10 w-[min(390px,calc(96vh*1536/2752))] sm:w-[min(430px,calc(96vh*1536/2752))] aspect-[1536/2752] flex items-center justify-center">
+        {/* Tam ekran animasyonlu arka plan videosu (giris.png tasarımının animasyonlu hali).
+            Buton koordinatları giris.png ile aynı oranlarla eşleştiği için değiştirilmedi. */}
+        <video
+          src="/ekran-video.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
           className="w-full h-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.35)] rounded-[2rem] pointer-events-none"
-          draggable={false}
-          referrerPolicy="no-referrer"
         />
-
-        {/* Çocuk illüstrasyonunun yerine oynayan tanıtım videosu (kırpılmış, sadece karakter).
-            Koordinatlar, videonun orijinal 1080x1920 karesindeki karakter alanından
-            hesaplanarak giris.png ile aynı en-boy oranına göre ölçeklendi. */}
-        <div
-          className="absolute z-10 overflow-hidden pointer-events-none"
-          style={{
-            top: '18.2%',
-            left: '15.2%',
-            width: '69.6%',
-            height: '29.5%',
-          }}
-        >
-          <video
-            src="/cocuk.mp4"
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        </div>
 
         {/* 1. ÖĞRETMEN GİRİŞİ BUTONU (Sol Üst Kart Butonu)
             Exact Coordinates on giris.png:
