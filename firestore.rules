@@ -16,33 +16,34 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if true;
+      allow write: if isAuthenticated() || isOwner(userId);
 
       match /weeks/{weekId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
+        allow read: if true;
+        allow write: if isAuthenticated() || isOwner(userId);
       }
 
       match /logs/{logId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
+        allow read: if true;
+        allow write: if isAuthenticated() || isOwner(userId);
       }
     }
 
     match /classes/{classId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAuthenticated();
     }
 
-   match /institutions/{instId} {
-      allow read: if isAuthenticated();
+    match /institutions/{instId} {
+      allow read: if true;
       allow write: if isAuthenticated();
     }
 
     match /app_settings/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAuthenticated();
     }
   }
 }
+

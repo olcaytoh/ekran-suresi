@@ -1,9 +1,12 @@
 {
+  "projectId": "ekransuresi-c3373",
+  "appId": "1:190901376041:web:abb562013e8635bab57838",
   "apiKey": "AIzaSyDhjuWmfiMsBm9r0N9UQPAX9kUMc1nZIp4",
   "authDomain": "ekransuresi-c3373.firebaseapp.com",
-  "projectId": "ekransuresi-c3373",
+  "firestoreDatabaseId": "ai-studio-haftalkekransres-f68ddf04-8d2f-4dc8-b8ff-9b1967e70335",
   "storageBucket": "ekransuresi-c3373.firebasestorage.app",
   "messagingSenderId": "190901376041",
-  "appId": "1:190901376041:web:a1dc8cc35b8325e7b57838",
-  "measurementId": "G-2SXJBWRSDD"
+  "measurementId": "",
+  "oAuthClientId": "190901376041-spp6ubi8hvs937sgj8imsnp6vh4sbm88.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }

@@ -188,8 +188,19 @@ export default function App() {
           if (!profile.classId && !profile.className) {
             setShowClassSetup(true);
           }
-        } catch (err) {
-          console.error('Error syncing user profile on login:', err);
+        } catch (err: any) {
+          console.warn('Error syncing user profile on login:', err);
+          // If a stale token from previous project causes permission-denied, clear auth session
+          if (
+            err?.code === 'permission-denied' ||
+            err?.message?.includes('insufficient permissions') ||
+            err?.message?.includes('Missing or insufficient permissions')
+          ) {
+            console.warn('Stale auth session detected from previous project. Clearing session...');
+            await signOutUser().catch(() => {});
+            setAuthUser(null);
+            setUserProfile(null);
+          }
         }
       } else {
         setUserProfile(null);
@@ -207,11 +218,19 @@ export default function App() {
   // Listen to current user profile updates
   useEffect(() => {
     if (!authUser) return;
-    const unsubscribe = subscribeUserProfile(authUser.uid, (profile) => {
-      if (profile) {
-        setUserProfile(profile);
+    const unsubscribe = subscribeUserProfile(
+      authUser.uid,
+      (profile) => {
+        if (profile) {
+          setUserProfile(profile);
+        }
+      },
+      (err: any) => {
+        if (err?.code !== 'permission-denied') {
+          console.error('User profile subscription error:', err);
+        }
       }
-    });
+    );
     return () => unsubscribe();
   }, [authUser]);
 
@@ -254,14 +273,29 @@ export default function App() {
   useEffect(() => {
     if (authUser) {
       if (isTeacher && userProfile?.classId) {
-        const unsubscribeStudents = subscribeClassroomStudents(userProfile.classId, (students) => {
-          setAllUsers(students);
-        });
+        const unsubscribeStudents = subscribeClassroomStudents(
+          userProfile.classId,
+          (students) => {
+            setAllUsers(students);
+          },
+          (err: any) => {
+            if (err?.code !== 'permission-denied') {
+              console.error('Error subscribing classroom students:', err);
+            }
+          }
+        );
         return () => unsubscribeStudents();
       } else {
-        const unsubscribeAll = subscribeAllUsers((users) => {
-          setAllUsers(users);
-        });
+        const unsubscribeAll = subscribeAllUsers(
+          (users) => {
+            setAllUsers(users);
+          },
+          (err: any) => {
+            if (err?.code !== 'permission-denied') {
+              console.error('Error subscribing all users:', err);
+            }
+          }
+        );
         return () => unsubscribeAll();
       }
     } else if (demoProfile) {
