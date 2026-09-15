@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
-import { signOutUser, isAdminEmail } from '../lib/firebase';
+import { signOutUser } from '../lib/firebase';
 import {
   Users,
   LogOut,
@@ -24,6 +24,7 @@ interface HeaderProps {
   currentWeekLabel: string;
   onOpenClassSetup?: () => void;
   onSignOut?: () => void;
+  onSwitchRole?: (role: 'admin' | 'teacher') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -32,12 +33,11 @@ export const Header: React.FC<HeaderProps> = ({
   memberCount,
   onOpenClassSetup,
   onSignOut,
+  onSwitchRole,
 }) => {
   const [copied, setCopied] = useState(false);
-  const isSuperAdmin =
-    currentUser?.role === 'admin' ||
-    (currentUser?.email && isAdminEmail(currentUser.email));
-  const isTeacher = !isSuperAdmin && (isAdmin || currentUser?.role === 'teacher' || currentUser?.userType === 'teacher');
+  const isSuperAdmin = currentUser?.role === 'admin';
+  const isTeacher = currentUser?.role === 'teacher';
   const isStudentOnly = !isSuperAdmin && !isTeacher && (currentUser?.role === 'student' || currentUser?.userType === 'student');
   const isParent = !isSuperAdmin && !isTeacher && !isStudentOnly;
 
@@ -78,14 +78,27 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Hangi hesap açık olduğunu belirten net rozetler */}
             {isSuperAdmin && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-rose-600 text-white shadow-2xs whitespace-nowrap">
-                <ShieldAlert className="w-3.5 h-3.5 text-white" />
-                <span>Yönetici (Admin)</span>
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-rose-600 text-white shadow-2xs whitespace-nowrap">
+                  <ShieldAlert className="w-3.5 h-3.5 text-white" />
+                  <span>Yönetici (Admin)</span>
+                </span>
+                {onSwitchRole && (
+                  <button
+                    type="button"
+                    onClick={() => onSwitchRole('teacher')}
+                    title="Öğretmen moduna geçiş yap"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
+                  >
+                    <GraduationCap className="w-3 h-3 text-indigo-600" />
+                    <span>Öğretmen Modu</span>
+                  </button>
+                )}
+              </div>
             )}
 
             {isTeacher && (
-              <div className="flex items-center gap-1 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-indigo-600 text-white shadow-2xs whitespace-nowrap">
                   <GraduationCap className="w-3.5 h-3.5 text-white" />
                   <span>Öğretmen</span>

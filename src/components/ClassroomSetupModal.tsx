@@ -55,8 +55,8 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
   onDemoProfileUpdate,
   onAddStudent,
 }) => {
-  const isTeacherUser = currentUser.role === 'teacher' || currentUser.userType === 'teacher';
   const isAdminUser = currentUser.role === 'admin';
+  const isTeacherUser = currentUser.role === 'teacher';
   const isEstablishedUser = Boolean(canCancel && (isTeacherUser || isAdminUser));
 
   // Initial role determination
@@ -863,33 +863,6 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                 </div>
               )}
 
-              {createdAdminCode ? (
-                <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-2xl text-center space-y-1">
-                  <p className="text-xs font-bold text-indigo-800">Admin Kodunuz (diğer yöneticiler için):</p>
-                  <p className="text-xl font-mono font-black text-indigo-700 tracking-wider">
-                    {createdAdminCode}
-                  </p>
-                  <p className="text-[10px] text-indigo-600">
-                    Bu kodu sizinle birlikte aynı kurumu yönetecek diğer yöneticilerle paylaşabilirsiniz.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-4 bg-indigo-50 border border-indigo-200 border-dashed rounded-2xl text-center space-y-2">
-                  <p className="text-[11px] text-indigo-700 leading-relaxed">
-                    İkinci bir yönetici (müdür yardımcısı vb.) eklemek için bir Admin Kodu üretebilirsiniz.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleGenerateAdminCodeForExistingInstitution}
-                    disabled={generatingAdminCode}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs active:scale-95 cursor-pointer disabled:opacity-60 transition-all"
-                  >
-                    <KeyRound className="w-3.5 h-3.5" />
-                    {generatingAdminCode ? 'Oluşturuluyor...' : 'Admin Kodu Oluştur'}
-                  </button>
-                </div>
-              )}
-
               <div className="pt-2 flex items-center gap-2">
                 {canCancel && onCancel && (
                   <button
@@ -996,119 +969,45 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
               </div>
             )}
 
-            {/* 3a. ADMİN: Kurum Oluşturma / Katılma */}
+            {/* 3a. ADMİN: Kurum Kodu Oluştur */}
             {selectedRole === 'admin' && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAdminSubMode('create');
-                      setError(null);
-                      setSuccessMsg(null);
-                    }}
-                    className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      adminSubMode === 'create'
-                        ? 'bg-white text-rose-900 shadow-xs border border-slate-200'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Building2 className="w-3.5 h-3.5" />
-                    Yeni Kurum Oluştur
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAdminSubMode('join');
-                      setError(null);
-                      setSuccessMsg(null);
-                    }}
-                    className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      adminSubMode === 'join'
-                        ? 'bg-white text-rose-900 shadow-xs border border-slate-200'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <KeyRound className="w-3.5 h-3.5" />
-                    Admin Kodu ile Katıl
-                  </button>
-                </div>
+                <form onSubmit={handleAdminCreateInstitution} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5 text-rose-600" />
+                      Okul / Kurum Adı:
+                    </label>
+                    <input
+                      type="text"
+                      value={institutionName}
+                      onChange={(e) => setInstitutionName(e.target.value)}
+                      placeholder="Örn: Atatürk İlkokulu, Bilim Koleji..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:ring-2 focus:ring-rose-500 focus:bg-white"
+                      required
+                    />
+                  </div>
 
-                {adminSubMode === 'create' ? (
-                  <form onSubmit={handleAdminCreateInstitution} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                        <Building2 className="w-3.5 h-3.5 text-rose-600" />
-                        Okul / Kurum Adı:
-                      </label>
-                      <input
-                        type="text"
-                        value={institutionName}
-                        onChange={(e) => setInstitutionName(e.target.value)}
-                        placeholder="Örn: Atatürk İlkokulu, Bilim Koleji..."
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:ring-2 focus:ring-rose-500 focus:bg-white"
-                        required
-                      />
-                    </div>
-
-                    <div className="pt-2 flex items-center gap-2">
-                      {canCancel && onCancel && (
-                        <button
-                          type="button"
-                          onClick={onCancel}
-                          className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
-                        >
-                          Kapat
-                        </button>
-                      )}
+                  <div className="pt-2 flex items-center gap-2">
+                    {canCancel && onCancel && (
                       <button
-                        type="submit"
-                        disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-700 text-white shadow-md active:scale-95 cursor-pointer disabled:opacity-60 transition-all"
+                        type="button"
+                        onClick={onCancel}
+                        className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
                       >
-                        <span>{loading ? 'Oluşturuluyor...' : 'Kurum Oluştur'}</span>
-                        <ArrowRight className="w-4 h-4" />
+                        Kapat
                       </button>
-                    </div>
-                  </form>
-                ) : (
-                  <form onSubmit={handleAdminJoinAsCoAdmin} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
-                        <KeyRound className="w-3.5 h-3.5 text-rose-600" />
-                        Admin Kodu:
-                      </label>
-                      <input
-                        type="text"
-                        value={adminCodeInput}
-                        onChange={(e) => setAdminCodeInput(e.target.value.toUpperCase())}
-                        placeholder="Örn: ADM-8492"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:ring-2 focus:ring-rose-500 focus:bg-white uppercase font-mono tracking-wider"
-                        required
-                      />
-                    </div>
-
-                    <div className="pt-2 flex items-center gap-2">
-                      {canCancel && onCancel && (
-                        <button
-                          type="button"
-                          onClick={onCancel}
-                          className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
-                        >
-                          Kapat
-                        </button>
-                      )}
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-700 text-white shadow-md active:scale-95 cursor-pointer disabled:opacity-60 transition-all"
-                      >
-                        <span>{loading ? 'Katılınıyor...' : 'Admin Olarak Katıl'}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </form>
-                )}
+                    )}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-700 text-white shadow-md active:scale-95 cursor-pointer disabled:opacity-60 transition-all"
+                    >
+                      <span>{loading ? 'Oluşturuluyor...' : 'Kurum Kodu Oluştur'}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 

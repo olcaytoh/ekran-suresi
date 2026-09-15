@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { UserProfile, ClassroomInfo } from '../types';
-import { updateStudentName, signOutUser } from '../lib/firebase';
+import {
+  updateStudentName,
+  signOutUser,
+  forgetAndClearAllDeviceData,
+  setUserRole,
+  verifyAdminCodeAndUpgrade,
+} from '../lib/firebase';
 import {
   School,
   ShieldCheck,
@@ -21,6 +27,8 @@ interface ParentClassroomViewProps {
   classroom: ClassroomInfo | null;
   onOpenClassSetup: () => void;
   onSwitchToTeacher?: () => void;
+  onSwitchRole?: (role: 'admin' | 'teacher') => void;
+  onUpgradeToAdminWithCode?: (code: string) => Promise<void>;
   isTeacher?: boolean;
   isSuperAdmin?: boolean;
   onSignOut?: () => void;
@@ -32,6 +40,8 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
   classroom,
   onOpenClassSetup,
   onSwitchToTeacher,
+  onSwitchRole,
+  onUpgradeToAdminWithCode,
   isTeacher = false,
   isSuperAdmin = false,
   onSignOut,
@@ -42,6 +52,14 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
   const [savingName, setSavingName] = useState(false);
   const [showForgetModal, setShowForgetModal] = useState(false);
   const [isForgetting, setIsForgetting] = useState(false);
+  const [isSettingTeacher, setIsSettingTeacher] = useState(false);
+
+  // Admin Kodu Doğrulama Modalı State'leri
+  const [showAdminCodeModal, setShowAdminCodeModal] = useState(false);
+  const [adminCodeInput, setAdminCodeInput] = useState('');
+  const [adminCodeError, setAdminCodeError] = useState<string | null>(null);
+  const [adminCodeSuccess, setAdminCodeSuccess] = useState<string | null>(null);
+  const [isVerifyingAdminCode, setIsVerifyingAdminCode] = useState(false);
 
   const handleSaveName = async () => {
     if (!userProfile?.uid || !nameVal.trim()) return;
@@ -56,20 +74,67 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
     }
   };
 
+  const handleVerifyAndSubmitAdminCode = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleaned = adminCodeInput.trim().toUpperCase();
+    if (!cleaned) {
+      setAdminCodeError('Lütfen kurumunuzun Admin Kodunu giriniz.');
+      return;
+    }
+    setAdminCodeError(null);
+    setIsVerifyingAdminCode(true);
+    try {
+      if (onUpgradeToAdminWithCode) {
+        await onUpgradeToAdminWithCode(cleaned);
+      } else if (userProfile?.uid) {
+        await verifyAdminCodeAndUpgrade(userProfile.uid, cleaned, userProfile.institutionId);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('pendingUserRole', 'admin');
+          window.location.reload();
+        }
+      }
+      setAdminCodeSuccess('Yönetici yetkisi başarıyla doğrulandı! Admin paneline geçiliyor...');
+      setTimeout(() => {
+        setShowAdminCodeModal(false);
+      }, 700);
+    } catch (err: any) {
+      setAdminCodeError(err.message || 'Girdiğiniz Admin Kodu hatalı. Lütfen kurum yöneticinizden aldığınız kodu kontrol edin.');
+    } finally {
+      setIsVerifyingAdminCode(false);
+    }
+  };
+
+  const handleSetAsTeacher = async () => {
+    if (onSwitchRole) {
+      onSwitchRole('teacher');
+      return;
+    }
+    if (!userProfile?.uid) return;
+    try {
+      setIsSettingTeacher(true);
+      await setUserRole(userProfile.uid, 'teacher');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingUserRole', 'teacher');
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('Failed to switch to teacher:', err);
+    } finally {
+      setIsSettingTeacher(false);
+    }
+  };
+
   const handleConfirmForget = async () => {
     try {
       setIsForgetting(true);
       if (onForgetAccount) {
         await onForgetAccount();
       } else {
-        if (typeof window !== 'undefined') {
-          localStorage.clear();
-          sessionStorage.clear();
-        }
-        await signOutUser();
+        await forgetAndClearAllDeviceData();
       }
     } catch (err) {
       console.error('Error forgetting account:', err);
+      await forgetAndClearAllDeviceData().catch(() => {});
     } finally {
       setIsForgetting(false);
       setShowForgetModal(false);
@@ -104,14 +169,68 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenClassSetup}
-          className="text-xs font-black text-indigo-600 hover:text-indigo-700 underline cursor-pointer"
-        >
-          {isSuperAdmin ? 'Kurum Ayarları' : isTeacher ? 'Sınıfı Düzenle' : 'Sınıfı Değiştir'}
-        </button>
+        {!isSuperAdmin && (
+          <button
+            type="button"
+            onClick={onOpenClassSetup}
+            className="text-xs font-black text-indigo-600 hover:text-indigo-700 underline cursor-pointer"
+          >
+            {isTeacher ? 'Sınıfı Düzenle' : 'Sınıfı Değiştir'}
+          </button>
+        )}
       </div>
+
+      {/* Yalnızca Öğretmen için Admin Moduna Geçiş (Admin Kodu Doğrulamasıyla - Velilere Kesinlikle Gösterilmez) */}
+      {isTeacher && !isSuperAdmin && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-3 sm:p-3.5 border border-amber-200/90 flex items-center justify-between gap-2.5 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center flex-shrink-0">
+              <KeyRound className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-amber-950">
+                Kurum Yöneticisi misiniz?
+              </div>
+              <div className="text-[11px] text-amber-800/90 truncate">
+                Admin kodunu girerek kurum yönetici paneline geçebilirsiniz.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setAdminCodeInput('');
+              setAdminCodeError(null);
+              setAdminCodeSuccess(null);
+              setShowAdminCodeModal(true);
+            }}
+            className="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-600 hover:bg-amber-700 active:scale-95 text-white shadow-2xs flex-shrink-0 cursor-pointer transition-all flex items-center gap-1.5"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Admin Moduna Geç</span>
+          </button>
+        </div>
+      )}
+
+      {/* Yönetici için Öğretmen Moduna Geçiş */}
+      {isSuperAdmin && (
+        <div className="bg-indigo-50 rounded-2xl p-3 border border-indigo-200 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+            <div className="text-xs text-indigo-950 font-medium">
+              <strong className="font-bold">Öğretmen Modu:</strong> Sınıfınızı ve öğrenci listenizi öğretmen gözüyle yönetebilirsiniz.
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={isSettingTeacher}
+            onClick={handleSetAsTeacher}
+            className="px-3 py-1.5 rounded-xl text-xs font-black bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-2xs flex-shrink-0 cursor-pointer disabled:opacity-50 transition-all"
+          >
+            {isSettingTeacher ? 'Geçiliyor...' : 'Öğretmen Moduna Geç'}
+          </button>
+        </div>
+      )}
 
       {/* 2. Status Card */}
       <div className="bg-white rounded-3xl p-3.5 sm:p-4 border border-slate-200/90 shadow-2xs">
@@ -332,9 +451,108 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                 className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
               >
                 <UserX className="w-3.5 h-3.5" />
-                <span>{isForgetting ? 'Unutuluyor...' : 'Evet, Hesabı Unut'}</span>
+                <span>{isForgetting ? 'Siliniyor & Unutuluyor...' : 'Evet, Hesabı Unut'}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Kodu Doğrulama Modalı */}
+      {showAdminCodeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center flex-shrink-0">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-base font-black text-slate-900">
+                  Kurum Admin Doğrulaması
+                </h4>
+                <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                  Yönetici (Admin) paneline geçiş yapmak için lütfen kurumunuza ait <strong className="text-amber-900 font-bold">Admin Kodunu</strong> giriniz.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyAndSubmitAdminCode} className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1">
+                  Kurum Admin Kodu (ADM-XXXX)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={adminCodeInput}
+                    onChange={(e) => {
+                      setAdminCodeInput(e.target.value.toUpperCase());
+                      setAdminCodeError(null);
+                    }}
+                    placeholder="Örn: ADM-2090"
+                    autoFocus
+                    disabled={isVerifyingAdminCode}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono font-bold text-sm tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-slate-50 disabled:opacity-50"
+                  />
+                  {adminCodeInput && (
+                    <button
+                      type="button"
+                      onClick={() => setAdminCodeInput('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                    >
+                      Temizle
+                    </button>
+                  )}
+                </div>
+                {userProfile?.institutionCode && (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Bağlı Kurum: <span className="font-bold text-slate-700">{userProfile.institutionName || userProfile.institutionCode}</span> ({userProfile.institutionCode})
+                  </p>
+                )}
+              </div>
+
+              {adminCodeError && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2 text-rose-800 text-xs">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <span className="font-semibold">{adminCodeError}</span>
+                </div>
+              )}
+
+              {adminCodeSuccess && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center gap-2 text-emerald-800 text-xs">
+                  <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span className="font-bold">{adminCodeSuccess}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={isVerifyingAdminCode}
+                  onClick={() => setShowAdminCodeModal(false)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer disabled:opacity-50"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  disabled={isVerifyingAdminCode || !adminCodeInput.trim()}
+                  className="px-4 py-2 rounded-xl text-xs font-black bg-amber-600 hover:bg-amber-700 active:scale-95 text-white shadow-2xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5 transition-all"
+                >
+                  {isVerifyingAdminCode ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Doğrulanıyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Doğrula ve Admin Ol</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

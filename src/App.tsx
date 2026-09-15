@@ -15,10 +15,11 @@ import {
   updateStageProgress,
   syncUserProfile,
   signOutUser,
+  forgetAndClearAllDeviceData,
   adminDeleteClassroom,
   adminDeleteUser,
-  DEFAULT_ADMIN_EMAIL,
-  isAdminEmail,
+  setUserRole,
+  verifyAdminCodeAndUpgrade,
 } from './lib/firebase';
 import { UserProfile, ClassroomInfo } from './types';
 import { getCurrentWeekInfo } from './lib/weekUtils';
@@ -33,6 +34,7 @@ import { ParentClassroomView } from './components/ParentClassroomView';
 import { BottomDock, ParentTabType } from './components/BottomDock';
 import { AuthScreen } from './components/AuthScreen';
 import { ClassroomSetupModal } from './components/ClassroomSetupModal';
+import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -63,38 +65,120 @@ export default function App() {
   const weekInfo = getCurrentWeekInfo();
 
   const handleDemoLogin = (role: 'teacher' | 'parent' | 'admin') => {
-    const isAdminRole = role === 'admin';
-    const isTeacherRole = role === 'teacher' || isAdminRole;
-    const profile: UserProfile = {
-      uid: isAdminRole ? 'admin_demo_super' : isTeacherRole ? 'teacher_demo_olcayto' : 'parent_demo_user',
-      displayName: isAdminRole
-        ? 'Olcayto (Süper Yönetici / Admin)'
-        : isTeacherRole
-        ? 'Olcayto (Öğretmen)'
-        : 'Fatma Yılmaz',
-      email: isTeacherRole ? 'olcaytoh@gmail.com' : 'veli.fatma@example.com',
-      role: isAdminRole ? 'admin' : isTeacherRole ? 'teacher' : 'parent',
-      userType: 'teacher',
-      studentName: isTeacherRole ? undefined : 'Ali Yılmaz',
-      institutionId: 'demo-institution-1',
-      institutionCode: 'KRM-1071',
-      institutionAdminCode: 'ADM-2090',
-      institutionName: 'Cumhuriyet İlkokulu',
-      classId: 'demo-class-5a',
-      className: '5-A Sınıfı (Örnek)',
-      classCode: 'SINIF-5A',
-      currentWeekId: weekInfo.weekId,
-      currentWeekStage: 4,
-      currentWeekMinutes: 120,
-    };
-    if (!isTeacherRole) {
-      profile.userType = 'parent';
+    let profile: UserProfile;
+    if (role === 'admin') {
+      profile = {
+        uid: 'admin_demo_super',
+        displayName: 'Olcayto (Kurum Yöneticisi)',
+        email: 'olcaytoh@gmail.com',
+        role: 'admin',
+        userType: 'teacher',
+        institutionId: 'demo-institution-1',
+        institutionCode: 'KRM-1071',
+        institutionAdminCode: 'ADM-2090',
+        institutionName: 'Cumhuriyet İlkokulu',
+        currentWeekId: weekInfo.weekId,
+        currentWeekStage: 4,
+        currentWeekMinutes: 120,
+      };
+    } else if (role === 'teacher') {
+      profile = {
+        uid: 'teacher_demo_olcayto',
+        displayName: 'Olcayto Öğretmen',
+        email: 'olcaytoh@gmail.com',
+        role: 'teacher',
+        userType: 'teacher',
+        institutionId: 'demo-institution-1',
+        institutionCode: 'KRM-1071',
+        // Teachers do not receive institutionAdminCode
+        institutionName: 'Cumhuriyet İlkokulu',
+        classId: 'demo-class-5a',
+        className: '5-A Sınıfı (Örnek)',
+        classCode: 'SINIF-5A',
+        currentWeekId: weekInfo.weekId,
+        currentWeekStage: 4,
+        currentWeekMinutes: 120,
+      };
+    } else {
+      profile = {
+        uid: 'parent_demo_user',
+        displayName: 'Fatma Yılmaz',
+        email: 'veli.fatma@example.com',
+        role: 'parent',
+        userType: 'parent',
+        studentName: 'Ali Yılmaz',
+        institutionId: 'demo-institution-1',
+        institutionCode: 'KRM-1071',
+        institutionName: 'Cumhuriyet İlkokulu',
+        classId: 'demo-class-5a',
+        className: '5-A Sınıfı (Örnek)',
+        classCode: 'SINIF-5A',
+        currentWeekId: weekInfo.weekId,
+        currentWeekStage: 4,
+        currentWeekMinutes: 120,
+      };
     }
     setDemoProfile(profile);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('demoUserProfile', JSON.stringify(profile));
     }
     setParentTab('home');
+  };
+
+  const handleSwitchRole = async (newRole: 'admin' | 'teacher') => {
+    // Admin moduna geçmek için geçerli bir kurum admin kodu girilmiş olmalıdır
+    if (newRole === 'admin' && !effectiveProfile?.institutionAdminCode && !isSuperAdmin) {
+      console.warn('Admin moduna geçmek için kurum admin kodu gereklidir.');
+      return;
+    }
+    if (authUser) {
+      try {
+        await setUserRole(authUser.uid, newRole);
+        setUserProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                role: newRole,
+                userType: 'teacher',
+                institutionAdminCode: newRole === 'admin' ? prev.institutionAdminCode : undefined,
+              }
+            : null
+        );
+      } catch (err) {
+        console.error('Failed to switch role:', err);
+      }
+    } else if (demoProfile) {
+      handleDemoLogin(newRole);
+    }
+  };
+
+  const handleUpgradeToAdminWithCode = async (adminCode: string) => {
+    const cleaned = adminCode.trim().toUpperCase();
+    if (authUser) {
+      const instData = await verifyAdminCodeAndUpgrade(
+        authUser.uid,
+        cleaned,
+        effectiveProfile?.institutionId
+      );
+      setUserProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              role: 'admin',
+              userType: 'teacher',
+              institutionId: instData.id,
+              institutionCode: instData.code,
+              institutionAdminCode: instData.adminCode,
+              institutionName: instData.name,
+            }
+          : null
+      );
+    } else if (demoProfile) {
+      if (!cleaned.startsWith('ADM-')) {
+        throw new Error('Geçersiz admin kodu! Kod "ADM-" ile başlamalıdır (Örn: ADM-2090).');
+      }
+      handleDemoLogin('admin');
+    }
   };
 
   const handleSignOut = async () => {
@@ -107,10 +191,6 @@ export default function App() {
 
   const handleForgetAccount = async () => {
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.clear();
-        sessionStorage.clear();
-      }
       setDemoProfile(null);
       setUserProfile(null);
       setAuthUser(null);
@@ -119,13 +199,14 @@ export default function App() {
       setInstitutionClassrooms([]);
       setClassStudentsMap({});
       setParentTab('home');
-      await signOutUser();
+      await forgetAndClearAllDeviceData();
     } catch (err) {
       console.error('Failed to forget account:', err);
       setDemoProfile(null);
       setUserProfile(null);
       setAuthUser(null);
       setParentTab('home');
+      await forgetAndClearAllDeviceData().catch(() => {});
     }
   };
 
@@ -235,9 +316,9 @@ export default function App() {
   }, [authUser]);
 
   const effectiveProfile = authUser ? userProfile : demoProfile;
-  const isSuperAdmin =
-    effectiveProfile?.role === 'admin' ||
-    isAdminEmail(authUser?.email || demoProfile?.email);
+  const isSuperAdmin = effectiveProfile?.role === 'admin';
+  const isTeacher = effectiveProfile?.role === 'teacher';
+  const isStaffOrAdmin = isSuperAdmin || isTeacher;
 
   // Listen to classroom data if user belongs to a class
   useEffect(() => {
@@ -251,23 +332,21 @@ export default function App() {
       });
       return () => unsubscribeClass();
     } else if (demoProfile) {
-      setClassroom({
-        id: 'demo-class-5a',
-        name: '5-A Sınıfı',
-        code: 'SINIF-5A',
-        teacherId: 'teacher_demo_olcayto',
-        teacherName: 'Olcayto Öğretmen',
-        teacherEmail: 'olcaytoh@gmail.com',
-        createdAt: null,
-      });
+      if (demoProfile.role === 'teacher' || demoProfile.role === 'parent') {
+        setClassroom({
+          id: 'demo-class-5a',
+          name: '5-A Sınıfı',
+          code: 'SINIF-5A',
+          teacherId: 'teacher_demo_olcayto',
+          teacherName: 'Olcayto Öğretmen',
+          teacherEmail: 'olcaytoh@gmail.com',
+          createdAt: null,
+        });
+      } else {
+        setClassroom(null);
+      }
     }
-  }, [effectiveProfile?.classId, authUser, demoProfile]);
-
-  const isTeacher =
-    effectiveProfile?.role === 'admin' ||
-    effectiveProfile?.role === 'teacher' ||
-    effectiveProfile?.userType === 'teacher' ||
-    isAdminEmail(authUser?.email || demoProfile?.email);
+  }, [effectiveProfile?.classId, effectiveProfile?.role, authUser, demoProfile]);
 
   // Listen to students/users list:
   useEffect(() => {
@@ -612,17 +691,18 @@ export default function App() {
         currentUser={effectiveProfile}
         activeTab="tracker"
         setActiveTab={() => {}}
-        isAdmin={isTeacher}
+        isAdmin={isStaffOrAdmin}
         memberCount={effectiveStudents.length}
         currentWeekLabel={weekInfo.weekLabel}
         onOpenClassSetup={() => setShowClassSetup(true)}
         onSignOut={handleSignOut}
+        onSwitchRole={handleSwitchRole}
       />
 
       {/* 2. Main Body: Smooth scrollable container with modern scrollbar */}
       <main className="flex-1 min-h-0 overflow-y-auto px-2.5 sm:px-4 py-2 max-w-lg sm:max-w-xl md:max-w-2xl mx-auto w-full custom-scrollbar flex flex-col touch-pan-y">
-        {isTeacher ? (
-          /* TEACHER VIEW */
+        {isStaffOrAdmin ? (
+          /* TEACHER OR ADMIN VIEW */
           <div className="flex-1 min-h-0 flex flex-col gap-2.5 pb-8">
             {parentTab === 'home' && (
               isSuperAdmin ? (
@@ -682,10 +762,12 @@ export default function App() {
                 userProfile={effectiveProfile}
                 classroom={classroom}
                 onOpenClassSetup={() => setShowClassSetup(true)}
-                isTeacher={true}
+                isTeacher={isTeacher}
                 isSuperAdmin={isSuperAdmin}
                 onSignOut={handleSignOut}
                 onForgetAccount={handleForgetAccount}
+                onSwitchRole={handleSwitchRole}
+                onUpgradeToAdminWithCode={handleUpgradeToAdminWithCode}
               />
             )}
           </div>
@@ -735,8 +817,11 @@ export default function App() {
                   classroom={classroom}
                   onOpenClassSetup={() => setShowClassSetup(true)}
                   isTeacher={false}
+                  isSuperAdmin={false}
                   onSignOut={handleSignOut}
                   onForgetAccount={handleForgetAccount}
+                  onSwitchRole={handleSwitchRole}
+                  onUpgradeToAdminWithCode={handleUpgradeToAdminWithCode}
                 />
               )}
             </div>
@@ -749,23 +834,33 @@ export default function App() {
         <BottomDock
           activeTab={parentTab}
           onSelectTab={(tab) => setParentTab(tab)}
-          isTeacher={isTeacher}
+          isTeacher={isStaffOrAdmin}
         />
       </footer>
 
       {/* Classroom Setup & Role Selection Modal */}
       {showClassSetup && effectiveProfile && (
-        <ClassroomSetupModal
-          currentUser={effectiveProfile}
-          onCompleted={() => setShowClassSetup(false)}
-          onCancel={() => setShowClassSetup(false)}
-          canCancel={Boolean(effectiveProfile.classId || effectiveProfile.role)}
-          isDemo={!authUser && !!demoProfile}
-          onDemoProfileUpdate={handleDemoProfileUpdate}
-          onAddStudent={(newStudent) => {
-            setAllUsers((prev) => [newStudent, ...prev.filter((u) => u.uid !== newStudent.uid)]);
-          }}
-        />
+        isSuperAdmin ? (
+          <AdminSettingsModal
+            currentUser={effectiveProfile}
+            onCompleted={() => setShowClassSetup(false)}
+            onCancel={() => setShowClassSetup(false)}
+            isDemo={!authUser && !!demoProfile}
+            onDemoProfileUpdate={handleDemoProfileUpdate}
+          />
+        ) : (
+          <ClassroomSetupModal
+            currentUser={effectiveProfile}
+            onCompleted={() => setShowClassSetup(false)}
+            onCancel={() => setShowClassSetup(false)}
+            canCancel={Boolean(effectiveProfile.classId || effectiveProfile.role)}
+            isDemo={!authUser && !!demoProfile}
+            onDemoProfileUpdate={handleDemoProfileUpdate}
+            onAddStudent={(newStudent) => {
+              setAllUsers((prev) => [newStudent, ...prev.filter((u) => u.uid !== newStudent.uid)]);
+            }}
+          />
+        )
       )}
     </div>
   );

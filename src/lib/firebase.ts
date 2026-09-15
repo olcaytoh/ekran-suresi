@@ -48,16 +48,18 @@ googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
 
-// Admin email configured by default
-export const DEFAULT_ADMIN_EMAIL = 'olcaytoh@gmail.com';
+// Kullanıcının açık talimatı: Hiçbir e-posta adresine doğrudan/otomatik yetki tanınmaz.
+// Yönetici olmak için kurumun Admin Kodunun (ADM-XXXX) girilmesi zorunludur.
+export const ADMIN_EMAILS: string[] = [];
+export const DEFAULT_ADMIN_EMAIL = '';
 
-export function isAdminEmail(email?: string | null): boolean {
-  if (!email) return false;
-  return email.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase();
+export function isAdminEmail(_email?: string | null): boolean {
+  // Hiçbir maile doğrudan admin yetkisi verilmez
+  return false;
 }
 
 /**
- * Sign in with Google Account
+ * Sign in with Google Account (always prompts account selection)
  */
 export async function signInWithGoogle(): Promise<User | null> {
   try {
@@ -73,7 +75,11 @@ export async function signInWithGoogle(): Promise<User | null> {
       return userCredential.user;
     }
 
-    const result = await signInWithPopup(auth, googleProvider);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account',
+    });
+    const result = await signInWithPopup(auth, provider);
     await syncUserProfile(result.user);
     return result.user;
   } catch (error: any) {
@@ -118,24 +124,86 @@ export async function signOutUser(): Promise<void> {
 }
 
 /**
+ * Completely forgets account credentials from this device, wiping IndexedDB,
+ * localStorage, sessionStorage, and signing out of Firebase Auth to ensure zero residual tokens.
+ */
+export async function forgetAndClearAllDeviceData(): Promise<void> {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+      sessionStorage.clear();
+    }
+  } catch (e) {
+    console.warn('Storage clear error:', e);
+  }
+
+  try {
+    if (Capacitor.isNativePlatform()) {
+      await FirebaseAuthentication.signOut().catch(() => {});
+    }
+  } catch (e) {
+    console.warn('Capacitor signOut error:', e);
+  }
+
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.warn('Firebase signOut error:', e);
+  }
+
+  if (typeof window !== 'undefined' && 'indexedDB' in window) {
+    try {
+      const knownDbs = [
+        'firebaseLocalStorageDb',
+        'firebase-heartbeat-database',
+        'firebase-installations-database',
+        'firestore/[DEFAULT]/[DEFAULT]/main',
+      ];
+      for (const dbName of knownDbs) {
+        try {
+          window.indexedDB.deleteDatabase(dbName);
+        } catch {}
+      }
+
+      if (window.indexedDB.databases) {
+        const allDbs = await window.indexedDB.databases();
+        for (const dbInfo of allDbs) {
+          if (dbInfo.name && (dbInfo.name.includes('firebase') || dbInfo.name.includes('firestore'))) {
+            try {
+              window.indexedDB.deleteDatabase(dbInfo.name);
+            } catch {}
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('IndexedDB cleanup error:', e);
+    }
+  }
+
+  // Force clean reload back to root
+  if (typeof window !== 'undefined') {
+    window.location.href = window.location.origin + window.location.pathname;
+  }
+}
+
+/**
  * Ensure user document exists in Firestore and sync role
  */
 export async function syncUserProfile(
   user: User,
   customName?: string,
-  roleOverride?: 'teacher' | 'parent'
+  roleOverride?: UserRole
 ): Promise<UserProfile> {
   const userRef = doc(db, 'users', user.uid);
   const snap = await getDoc(userRef);
   const { weekId } = getCurrentWeekInfo();
 
-  const isDefaultAdmin = user.email?.toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase();
-
-  let pendingRole: 'teacher' | 'parent' | null = roleOverride || null;
+  let pendingRole: UserRole | null = roleOverride || null;
   if (!pendingRole && typeof window !== 'undefined') {
     const stored = localStorage.getItem('pendingUserRole');
-    if (stored === 'teacher' || stored === 'parent') {
-      pendingRole = stored;
+    if (stored === 'teacher' || stored === 'parent' || stored === 'admin') {
+      pendingRole = stored as UserRole;
+      localStorage.removeItem('pendingUserRole');
     }
   }
 
@@ -147,26 +215,36 @@ export async function syncUserProfile(
     let role: UserRole;
     let userType: 'teacher' | 'parent';
 
-    if (isDefaultAdmin) {
-      role = 'admin';
-      userType = 'teacher';
-    } else if (pendingRole) {
-      role = pendingRole === 'teacher' ? 'teacher' : 'parent';
-      userType = pendingRole;
-    } else {
-      role = data.role || (data.userType === 'teacher' ? 'teacher' : 'parent');
-      userType = data.userType || (role === 'admin' || role === 'teacher' ? 'teacher' : 'parent');
+    // 1. If user explicitly selected a role (e.g., login screen or role switcher), use that
+    if (pendingRole) {
+      role = pendingRole;
+      userType = pendingRole === 'parent' ? 'parent' : 'teacher';
+    }
+    // 2. Otherwise respect their existing saved role in Firestore
+    else if (data.role) {
+      role = data.role;
+      userType = data.userType || (role === 'parent' ? 'parent' : 'teacher');
+    }
+    // 3. Default to parent (no automatic email elevation)
+    else {
+      role = data.userType === 'teacher' ? 'teacher' : 'parent';
+      userType = data.userType || 'parent';
     }
 
     userProfile = {
       uid: user.uid,
       email: user.email || data.email || 'misafir@ekran.takip',
-      displayName: data.displayName || user.displayName || customName || (userType === 'teacher' ? 'Öğretmen' : 'Veli'),
+      displayName: data.displayName || user.displayName || customName || (role === 'admin' ? 'Yönetici' : role === 'teacher' ? 'Öğretmen' : 'Veli'),
       photoURL: user.photoURL || data.photoURL || undefined,
       role: role,
       userType: userType,
-      studentName: data.studentName,
-      parentName: data.parentName,
+      studentName: role === 'parent' ? data.studentName : undefined,
+      parentName: role === 'parent' ? data.parentName : undefined,
+      institutionId: data.institutionId,
+      institutionCode: data.institutionCode,
+      // Admin code belongs EXCLUSIVELY to admins, never to teachers!
+      institutionAdminCode: role === 'admin' ? data.institutionAdminCode : undefined,
+      institutionName: data.institutionName,
       classId: data.classId,
       classCode: data.classCode,
       className: data.className,
@@ -176,30 +254,37 @@ export async function syncUserProfile(
       updatedAt: serverTimestamp(),
     };
 
-    await updateDoc(userRef, {
+    const updatePayload: any = {
       displayName: userProfile.displayName,
       email: userProfile.email,
       role: userProfile.role,
       userType: userProfile.userType,
       updatedAt: serverTimestamp(),
       ...(user.photoURL ? { photoURL: user.photoURL } : {}),
-    });
+    };
+
+    // If user is a teacher or parent, ensure institutionAdminCode is wiped from DB
+    if (role !== 'admin' && data.institutionAdminCode) {
+      updatePayload.institutionAdminCode = deleteField();
+    }
+
+    await updateDoc(userRef, updatePayload);
   } else {
-    const role: UserRole = isDefaultAdmin
-      ? 'admin'
-      : pendingRole === 'teacher'
-      ? 'teacher'
-      : 'parent';
-    const userType: 'teacher' | 'parent' = isDefaultAdmin
-      ? 'teacher'
-      : pendingRole === 'teacher'
-      ? 'teacher'
-      : 'parent';
+    let role: UserRole;
+    let userType: 'teacher' | 'parent';
+
+    if (pendingRole) {
+      role = pendingRole;
+      userType = pendingRole === 'parent' ? 'parent' : 'teacher';
+    } else {
+      role = 'parent';
+      userType = 'parent';
+    }
 
     userProfile = {
       uid: user.uid,
       email: user.email || 'misafir@ekran.takip',
-      displayName: user.displayName || customName || (userType === 'teacher' ? 'Öğretmen' : 'Veli'),
+      displayName: user.displayName || customName || (role === 'admin' ? 'Yönetici' : role === 'teacher' ? 'Öğretmen' : 'Veli'),
       photoURL: user.photoURL || undefined,
       role: role,
       userType: userType,
@@ -377,11 +462,15 @@ export function subscribeAllUsers(
  */
 export async function setUserRole(targetUid: string, role: UserRole): Promise<void> {
   const userRef = doc(db, 'users', targetUid);
-  await updateDoc(userRef, {
+  const payload: any = {
     role,
     userType: role === 'admin' || role === 'teacher' ? 'teacher' : 'parent',
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (role !== 'admin') {
+    payload.institutionAdminCode = deleteField();
+  }
+  await updateDoc(userRef, payload);
 }
 
 /**
@@ -547,6 +636,26 @@ export async function updateInstitutionName(
 }
 
 /**
+ * Admin: Generate or regenerate a new institution code (for teachers)
+ */
+export async function regenerateInstitutionCode(
+  institutionId: string,
+  adminUid: string
+): Promise<string> {
+  let code = generateInstitutionCode();
+  let tries = 0;
+  while ((await isCodeTaken('code', code)) && tries < 5) {
+    code = generateInstitutionCode();
+    tries += 1;
+  }
+  const instRef = doc(db, 'institutions', institutionId);
+  await updateDoc(instRef, { code, updatedAt: serverTimestamp() });
+  const adminRef = doc(db, 'users', adminUid);
+  await updateDoc(adminRef, { institutionCode: code, updatedAt: serverTimestamp() });
+  return code;
+}
+
+/**
  * Teacher: Join an institution with the teacher-facing Kurum Kodu
  */
 export async function joinInstitutionWithCode(
@@ -620,6 +729,77 @@ export async function joinInstitutionAsAdmin(
   });
 
   return { id: instDoc.id, code: instData.code, adminCode: instData.adminCode, name: instData.name };
+}
+
+/**
+ * Verifies the institution's Admin Code (adminCode) and upgrades the user to 'admin'.
+ * Used when a teacher or user clicks "Admin Moduna Geç" and enters their institution's admin code.
+ */
+export async function verifyAdminCodeAndUpgrade(
+  userUid: string,
+  rawAdminCode: string,
+  currentInstitutionId?: string
+): Promise<{ id: string; code: string; adminCode: string; name: string }> {
+  const cleanedCode = rawAdminCode.trim().toUpperCase();
+  if (!cleanedCode) {
+    throw new Error('Lütfen kurumunuzun Admin Kodunu giriniz.');
+  }
+
+  let matchedDoc: any = null;
+
+  // 1. If user is already linked to an institution (e.g. joined with Kurum Kodu), verify against that institution first
+  if (currentInstitutionId) {
+    try {
+      const directRef = doc(db, 'institutions', currentInstitutionId);
+      const snap = await getDoc(directRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data?.adminCode && data.adminCode.trim().toUpperCase() === cleanedCode) {
+          matchedDoc = snap;
+        } else {
+          throw new Error('Girdiğiniz Admin Kodu kurumunuzun admin kodu ile uyuşmuyor! Lütfen doğru Admin Kodunu giriniz.');
+        }
+      }
+    } catch (err: any) {
+      if (err.message && err.message.includes('uyuşmuyor')) {
+        throw err;
+      }
+    }
+  }
+
+  // 2. Fallback: Search all institutions for matching adminCode
+  if (!matchedDoc) {
+    const instRef = collection(db, 'institutions');
+    const q = query(instRef, where('adminCode', '==', cleanedCode));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      throw new Error(`"${cleanedCode}" koduna sahip bir kurum yöneticisi kodu bulunamadı. Lütfen geçerli Admin Kodunu kontrol ediniz.`);
+    }
+
+    matchedDoc = snap.docs[0];
+  }
+
+  const instData = matchedDoc.data();
+
+  // Upgrade user in Firestore to admin role with their institution's admin code
+  const userRef = doc(db, 'users', userUid);
+  await updateDoc(userRef, {
+    role: 'admin',
+    userType: 'teacher',
+    institutionId: matchedDoc.id,
+    institutionCode: instData.code,
+    institutionAdminCode: instData.adminCode,
+    institutionName: instData.name,
+    updatedAt: serverTimestamp(),
+  });
+
+  return {
+    id: matchedDoc.id,
+    code: instData.code,
+    adminCode: instData.adminCode,
+    name: instData.name,
+  };
 }
 
 /**
