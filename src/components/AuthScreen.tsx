@@ -166,25 +166,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           referrerPolicy="no-referrer"
         />
 
-        {/* Çocuk illüstrasyonunun yerine oynayan tanıtım videosu
-            giris.png üzerindeki çocuk figürünün kapladığı alana yaklaşık olarak yerleştirildi.
-            Gerekirse top/left/width/height yüzdeleri ince ayar için değiştirilebilir. */}
+        {/* Çocuk illüstrasyonunun yerine oynayan tanıtım videosu (kırpılmış, sadece karakter).
+            Koordinatlar, videonun orijinal 1080x1920 karesindeki karakter alanından
+            hesaplanarak giris.png ile aynı en-boy oranına göre ölçeklendi. */}
         <div
           className="absolute z-10 overflow-hidden pointer-events-none"
           style={{
-            top: '17.5%',
-            left: '14%',
-            width: '72%',
-            height: '31%',
+            top: '18.2%',
+            left: '15.2%',
+            width: '69.6%',
+            height: '29.5%',
           }}
         >
           <video
-            src="/cocuk-selam.mp4"
+            src="/cocuk.mp4"
             autoPlay
             loop
             muted
             playsInline
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
         </div>
 
