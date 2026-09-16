@@ -27,6 +27,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
   const [promptWarning, setPromptWarning] = useState(false);
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
   const [domainCopied, setDomainCopied] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
 
   // Remember previously chosen role from localStorage if any
   const [selectedRole, setSelectedRole] = useState<'teacher' | 'parent' | 'admin' | null>(() => {
@@ -103,6 +104,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
         setError(
           'Google Play Store Giriş Hatası (DEVELOPER_ERROR / 10): Google Play Console\'daki "Uygulama İmzalama (Play App Signing) SHA-1" anahtarının Firebase Console > Proje Ayarları > Android Uygulaması bölümüne eklenmesi gerekmektedir.'
         );
+      } else if (
+        errMsg.includes('not implemented') ||
+        errMsg.includes('FirebaseAuthentication')
+      ) {
+        setError(
+          'Android Eklenti Bildirimi: Android Studio\'da "Sync Project with Gradle Files" (fil simgesi) yapıp ardından Build > Clean Project ve Rebuild Project ile yeni APK/AAB derlemeniz gerekmektedir. Şimdi uygulamayı test etmek için aşağıdaki "Test Olarak Doğrudan Giriş Yap" butonuna dokunabilirsiniz.'
+        );
       } else {
         setError(errMsg || 'Google ile giriş yapılırken bir sorun oluştu.');
       }
@@ -167,15 +175,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
 
       {/* Main Container constrained to exact giris.png aspect ratio & fits viewport */}
       <div className="relative z-10 w-[min(390px,calc(96vh*1536/2752))] sm:w-[min(430px,calc(96vh*1536/2752))] aspect-[1536/2752] flex items-center justify-center">
-        {/* Tam ekran animasyonlu arka plan videosu (giris.png tasarımının animasyonlu hali).
-            Buton koordinatları giris.png ile aynı oranlarla eşleştiği için değiştirilmedi. */}
+        {/* Statik Arka Plan Görseli: Video yüklenene veya çözümlenene kadar asla siyah ekran veya play ikonu görünmez */}
+        <img
+          src="/giris.png"
+          alt="Giriş Ekranı"
+          className="absolute inset-0 w-full h-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.35)] rounded-[2rem] pointer-events-none"
+        />
+
+        {/* Tam ekran animasyonlu arka plan videosu (giris.png tasarımının animasyonlu hali) */}
         <video
           src="/ekran-video.mp4"
+          poster="/giris.png"
           autoPlay
           loop
           muted
           playsInline
-          className="w-full h-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.35)] rounded-[2rem] pointer-events-none"
+          // @ts-ignore
+          webkit-playsinline="true"
+          preload="auto"
+          onLoadedData={() => setVideoReady(true)}
+          onCanPlay={() => setVideoReady(true)}
+          className={`w-full h-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.35)] rounded-[2rem] pointer-events-none transition-opacity duration-300 ${
+            videoReady ? 'opacity-100' : 'opacity-0'
+          }`}
         />
 
         {/* 1. ÖĞRETMEN GİRİŞİ BUTONU (Sol Üst Kart Butonu)
