@@ -4,4 +4,5 @@
     <string name="title_activity_main">Haftalık Ekran Süresi</string>
     <string name="package_name">com.olcico.ekransuresi</string>
     <string name="custom_url_scheme">com.olcico.ekransuresi</string>
+    <string name="default_web_client_id">190901376041-spp6ubi8hvs937sgj8imsnp6vh4sbm88.apps.googleusercontent.com</string>
 </resources>

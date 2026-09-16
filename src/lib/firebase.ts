@@ -64,7 +64,17 @@ export function isAdminEmail(_email?: string | null): boolean {
 export async function signInWithGoogle(): Promise<User | null> {
   try {
     if (Capacitor.isNativePlatform()) {
-      const result = await FirebaseAuthentication.signInWithGoogle();
+      let result;
+      try {
+        result = await FirebaseAuthentication.signInWithGoogle({
+          useCredentialManager: true,
+        });
+      } catch (credErr: any) {
+        console.warn('Credential Manager signInWithGoogle failed, attempting fallback:', credErr);
+        result = await FirebaseAuthentication.signInWithGoogle({
+          useCredentialManager: false,
+        });
+      }
       const idToken = result.credential?.idToken;
       if (!idToken) {
         throw new Error('Google idToken alınamadı.');

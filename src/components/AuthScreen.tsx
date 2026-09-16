@@ -78,6 +78,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
         return;
       }
       console.error('Google Sign-in failed:', err);
+      const errMsg = err?.message || String(err);
       if (
         err?.code === 'auth/unauthorized-domain' ||
         err?.message?.includes('unauthorized-domain')
@@ -93,8 +94,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
         );
       } else if (err.code === 'auth/popup-blocked') {
         setError('Tarayıcınız Google giriş penceresini engelledi. Lütfen açılır pencerelere izin verin veya Test Girişi butonuna dokunun.');
+      } else if (
+        errMsg.includes('10') ||
+        errMsg.includes('DEVELOPER_ERROR') ||
+        errMsg.includes('12500') ||
+        errMsg.includes('GetCredentialException')
+      ) {
+        setError(
+          'Google Play Store Giriş Hatası (DEVELOPER_ERROR / 10): Google Play Console\'daki "Uygulama İmzalama (Play App Signing) SHA-1" anahtarının Firebase Console > Proje Ayarları > Android Uygulaması bölümüne eklenmesi gerekmektedir.'
+        );
       } else {
-        setError(err.message || 'Google ile giriş yapılırken bir sorun oluştu.');
+        setError(errMsg || 'Google ile giriş yapılırken bir sorun oluştu.');
       }
     } finally {
       setLoading(false);
