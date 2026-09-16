@@ -27,6 +27,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
   const [promptWarning, setPromptWarning] = useState(false);
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
   const [domainCopied, setDomainCopied] = useState(false);
+  const [showShaGuide, setShowShaGuide] = useState(false);
+  const [shaCopied, setShaCopied] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
 
   // Remember previously chosen role from localStorage if any
@@ -99,17 +101,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
         errMsg.includes('10') ||
         errMsg.includes('DEVELOPER_ERROR') ||
         errMsg.includes('12500') ||
-        errMsg.includes('GetCredentialException')
+        errMsg.includes('GetCredentialException') ||
+        errMsg.includes('missing initial state') ||
+        errMsg.includes('sessionStorage') ||
+        errMsg.includes('ApiException')
       ) {
+        setShowShaGuide(true);
         setError(
-          'Google Play Store Giriş Hatası (DEVELOPER_ERROR / 10): Google Play Console\'daki "Uygulama İmzalama (Play App Signing) SHA-1" anahtarının Firebase Console > Proje Ayarları > Android Uygulaması bölümüne eklenmesi gerekmektedir.'
+          'Google Kimlik Doğrulama / SHA-1 Parmak İzi Eksik: APK\'yı imzaladığınız release-key.jks anahtarının SHA-1 parmak izi Firebase Console\'a eklenmelidir. Detaylı rehber ve tek dokunuşla kopyalama penceresi açıldı.'
         );
       } else if (
         errMsg.includes('not implemented') ||
         errMsg.includes('FirebaseAuthentication')
       ) {
         setError(
-          'Android Eklenti Bildirimi: Android Studio\'da "Sync Project with Gradle Files" (fil simgesi) yapıp ardından Build > Clean Project ve Rebuild Project ile yeni APK/AAB derlemeniz gerekmektedir. Şimdi uygulamayı test etmek için aşağıdaki "Test Olarak Doğrudan Giriş Yap" butonuna dokunabilirsiniz.'
+          'Android Eklenti Bildirimi: Android Studio\'da "Sync Project with Gradle Files" (fil simgesi) yapıp ardından Build > Clean Project ve Rebuild Project ile yeni APK/AAB derlemeniz gerekmektedir. Şimdi uygulamayı test etmek için aşağıdaki "Test Girişi" butonuna dokunabilirsiniz.'
         );
       } else {
         setError(errMsg || 'Google ile giriş yapılırken bir sorun oluştu.');
@@ -295,65 +301,64 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           <span className="sr-only">Google ile giriş yap</span>
         </button>
 
-        {/* 4. Alt Bilgilendirme ve Hızlı Test Alanı (Google butonunun tamamen altında kalır, asla üstüne binmez)
-            Top: 81.5% (Google butonu 79.0%'da biter, arada güvenli boşluk vardır) */}
+        {/* 4. Alt Bilgilendirme ve Admin Butonları (Google butonu 79.0%'da biter, 84.0%'da başlar - 5.0% temiz mesafe vardır, ASLA üstüne binmez) */}
         <div
-          className="absolute z-20 pointer-events-none flex flex-col items-center justify-start text-center px-1"
+          className="absolute z-20 pointer-events-none flex items-center justify-center text-center px-1"
           style={{
-            top: '81.5%',
+            top: '84.0%',
             left: '12.0%',
             width: '76.0%',
-            bottom: '2.5%',
+            height: '7.6%',
           }}
         >
-          {/* 4 Küçük Bilgi & Admin Butonu - buton.png çerçeveleri ile */}
-          <div className="grid grid-cols-4 gap-1 w-full shrink-0">
-            <div className="relative aspect-[1264/848] w-full flex items-center justify-center select-none">
+          {/* 4 Küçük Bilgi & Admin Butonu - buton.png çerçeveleri ile tam hizada */}
+          <div className="grid grid-cols-4 gap-1.5 w-full h-full items-center">
+            <div className="relative h-full w-full flex items-center justify-center select-none">
               <img
                 src="/buton.png"
                 alt="14 Kademe"
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-xs"
+                className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-xs"
                 draggable={false}
                 referrerPolicy="no-referrer"
               />
               <div className="relative z-10 flex flex-col items-center justify-center text-center px-0.5">
-                <Clock className="w-2.5 h-2.5 text-emerald-700 mb-0.5" />
-                <span className="text-[7px] sm:text-[8px] font-black text-slate-800 leading-tight">14 Kademe</span>
+                <Clock className="w-2.5 h-2.5 text-emerald-700" />
+                <span className="text-[7.5px] sm:text-[8.5px] font-black text-slate-800 leading-tight">14 Kademe</span>
                 <span className="text-[5.5px] sm:text-[6px] font-bold text-slate-600">30 dk Adım</span>
               </div>
             </div>
 
-            <div className="relative aspect-[1264/848] w-full flex items-center justify-center select-none">
+            <div className="relative h-full w-full flex items-center justify-center select-none">
               <img
                 src="/buton.png"
                 alt="Canlı Sınıf"
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-xs"
+                className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-xs"
                 draggable={false}
                 referrerPolicy="no-referrer"
               />
               <div className="relative z-10 flex flex-col items-center justify-center text-center px-0.5">
-                <School className="w-2.5 h-2.5 text-indigo-700 mb-0.5" />
-                <span className="text-[7px] sm:text-[8px] font-black text-slate-800 leading-tight">Canlı Sınıf</span>
+                <School className="w-2.5 h-2.5 text-indigo-700" />
+                <span className="text-[7.5px] sm:text-[8.5px] font-black text-slate-800 leading-tight">Canlı Sınıf</span>
                 <span className="text-[5.5px] sm:text-[6px] font-bold text-slate-600">Veli Takibi</span>
               </div>
             </div>
 
-            <div className="relative aspect-[1264/848] w-full flex items-center justify-center select-none">
+            <div className="relative h-full w-full flex items-center justify-center select-none">
               <img
                 src="/buton.png"
                 alt="Dengeli Süre"
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-xs"
+                className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-xs"
                 draggable={false}
                 referrerPolicy="no-referrer"
               />
               <div className="relative z-10 flex flex-col items-center justify-center text-center px-0.5">
-                <ShieldCheck className="w-2.5 h-2.5 text-amber-700 mb-0.5" />
-                <span className="text-[7px] sm:text-[8px] font-black text-slate-800 leading-tight">Dengeli</span>
+                <ShieldCheck className="w-2.5 h-2.5 text-amber-700" />
+                <span className="text-[7.5px] sm:text-[8.5px] font-black text-slate-800 leading-tight">Dengeli</span>
                 <span className="text-[5.5px] sm:text-[6px] font-bold text-slate-600">4 Renk</span>
               </div>
             </div>
 
-            {/* ADMİN BUTONU (Aynı stil ve tasarımda) - Sadece rol seçer, otomatik giriş yapmaz */}
+            {/* ADMİN BUTONU (Aynı stil ve tasarımda) - Rol seçer ve Google butonuyla girişe hazırlar */}
             <button
               type="button"
               id="btn-admin-access"
@@ -361,7 +366,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               disabled={loading}
               title="Admin Rolünü Seç"
               aria-label="Admin Girişi"
-              className={`relative aspect-[1264/848] w-full flex items-center justify-center select-none pointer-events-auto cursor-pointer active:scale-95 transition-transform group rounded-lg ${
+              className={`relative h-full w-full flex items-center justify-center select-none pointer-events-auto cursor-pointer active:scale-95 transition-transform group rounded-lg ${
                 selectedRole === 'admin'
                   ? 'ring-2 ring-rose-500 bg-rose-500/10 shadow-[0_0_12px_rgba(244,63,94,0.5)]'
                   : promptWarning && !selectedRole
@@ -372,13 +377,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               <img
                 src="/buton.png"
                 alt="Admin"
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-xs group-hover:brightness-105"
+                className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-xs group-hover:brightness-105"
                 draggable={false}
                 referrerPolicy="no-referrer"
               />
               <div className="relative z-10 flex flex-col items-center justify-center text-center px-0.5">
-                <ShieldAlert className="w-2.5 h-2.5 text-rose-600 mb-0.5 group-hover:scale-110 transition-transform" />
-                <span className="text-[7px] sm:text-[8px] font-black text-rose-700 leading-tight">Admin</span>
+                <ShieldAlert className="w-2.5 h-2.5 text-rose-600 group-hover:scale-110 transition-transform" />
+                <span className="text-[7.5px] sm:text-[8.5px] font-black text-rose-700 leading-tight">Admin</span>
                 <span className="text-[5.5px] sm:text-[6px] font-bold text-rose-500">Yönetim</span>
               </div>
               {selectedRole === 'admin' && (
@@ -386,44 +391,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                   <Check className="w-2 h-2 stroke-[3]" />
                 </div>
               )}
-            </button>
-          </div>
-
-          {/* Google Play Denetçi / Test Girişi Butonları (Yan yana kompakt, kart altına mükemmel sığar) */}
-          <div className="grid grid-cols-2 gap-1.5 w-full pointer-events-auto mt-1.5 shrink-0">
-            {/* Öğretmen / Veli Test Girişi */}
-            <button
-              type="button"
-              id="btn-demo-reviewer-login"
-              onClick={() => {
-                const role = selectedRole === 'admin' ? 'teacher' : selectedRole || 'teacher';
-                if (onDemoLogin) {
-                  onDemoLogin(role);
-                } else {
-                  handleGuestTestLogin();
-                }
-              }}
-              className="py-1 px-1.5 bg-white/95 hover:bg-white text-indigo-700 hover:text-indigo-900 border border-indigo-200 hover:border-indigo-400 rounded-full text-[8px] sm:text-[9px] font-black shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
-            >
-              <span className="truncate">🧪 Test ({selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
-              <ArrowRight className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
-            </button>
-
-            {/* Admin Test Girişi */}
-            <button
-              type="button"
-              id="btn-demo-reviewer-login-admin"
-              onClick={() => {
-                if (onDemoLogin) {
-                  onDemoLogin('admin');
-                } else {
-                  handleGuestTestLogin();
-                }
-              }}
-              className="py-1 px-1.5 bg-white/95 hover:bg-white text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-400 rounded-full text-[8px] sm:text-[9px] font-black shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
-            >
-              <span className="truncate">🧪 Test (Admin)</span>
-              <ArrowRight className="w-2.5 h-2.5 text-rose-600 shrink-0" />
             </button>
           </div>
         </div>
@@ -453,18 +420,111 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               </button>
             </div>
 
-            {/* Test Login fallback if popup was blocked */}
-            <div className="pt-1 border-t border-rose-200/80 flex justify-end">
+            {/* Test Login fallback if error occurred */}
+            <div className="pt-1 border-t border-rose-200/80 flex items-center justify-between">
+              {showShaGuide && (
+                <button
+                  type="button"
+                  onClick={() => setShowShaGuide(true)}
+                  className="text-[11px] font-bold text-rose-700 underline cursor-pointer"
+                >
+                  SHA-1 Anahtarını Gör
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleGuestTestLogin}
-                className="text-[11px] font-black text-indigo-700 hover:underline cursor-pointer"
+                className="text-[11px] font-black text-indigo-700 hover:underline cursor-pointer ml-auto"
               >
                 Test Olarak Doğrudan Giriş Yap ({selectedRole === 'admin' ? 'Admin' : selectedRole === 'parent' ? 'Veli' : 'Öğretmen'}) →
               </button>
             </div>
           </div>
         )}
+
+        {/* Android Native Google Login SHA-1 Guide Card */}
+        {showShaGuide && (
+          <div className="absolute top-2 left-2 right-2 bottom-2 z-50 bg-white/95 backdrop-blur-md border-2 border-rose-400 p-4 rounded-[1.8rem] shadow-2xl flex flex-col justify-between text-xs animate-in fade-in zoom-in-95 overflow-y-auto">
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between border-b border-rose-100 pb-2">
+                <div className="flex items-center gap-1.5 font-black text-rose-900 text-xs sm:text-sm">
+                  <ShieldAlert className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  Google Girişi İçin SHA-1 Anahtarı Gerekli
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowShaGuide(false)}
+                  className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-[11px] text-slate-600 leading-snug text-left">
+                Google ile girişin telefonda hatasız çalışması için APK imza anahtarınızın (release-key.jks) SHA-1 parmak izi Firebase Console'a kaydedilmelidir:
+              </p>
+
+              {/* SHA-1 with copy button */}
+              <div className="flex flex-col gap-1 bg-slate-100 border border-slate-300/80 rounded-xl p-2.5 text-left">
+                <span className="text-[10px] font-bold text-slate-500">APK SHA-1 Parmak İzi:</span>
+                <div className="flex items-center gap-1.5">
+                  <code className="text-[9.5px] font-mono text-indigo-900 flex-1 break-all select-all font-bold">
+                    7D:C0:CD:B6:68:C4:F8:90:2A:6D:50:93:1E:F4:FA:80:9F:1F:22:0F
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText('7D:C0:CD:B6:68:C4:F8:90:2A:6D:50:93:1E:F4:FA:80:9F:1F:22:0F');
+                      setShaCopied(true);
+                      setTimeout(() => setShaCopied(false), 2500);
+                    }}
+                    className="flex items-center gap-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-[10.5px] font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer shrink-0"
+                  >
+                    {shaCopied ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-300" />
+                        Kopyalandı
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        Kopyala
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* 3 Step Instructions */}
+              <div className="text-[10.5px] text-slate-700 bg-rose-50/80 p-2.5 rounded-xl border border-rose-200/70 flex flex-col gap-1 text-left">
+                <span className="font-black text-rose-950">Firebase'e nasıl eklenir? (1 dakika)</span>
+                <span className="leading-tight">1. <b>Firebase Console</b> &gt; Proje Ayarları (⚙️) &gt; <b>Genel</b> sekmesini açın.</span>
+                <span className="leading-tight">2. Aşağı kaydırıp <b>com.olcico.ekransuresi</b> uygulamasını bulun.</span>
+                <span className="leading-tight">3. <b>"Parmak izi ekle"</b> butonuna basıp yukarıdaki SHA-1'i yapıştırın ve kaydedin.</span>
+              </div>
+            </div>
+
+            {/* Direct Test Login Button */}
+            <div className="pt-2 border-t border-slate-200 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowShaGuide(false);
+                  if (onDemoLogin) {
+                    onDemoLogin(selectedRole || 'teacher');
+                  } else {
+                    handleGuestTestLogin();
+                  }
+                }}
+                className="w-full py-2.5 px-3 bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 active:scale-98 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>🧪 Beklemeden Test Girişi Yap ({selectedRole === 'admin' ? 'Admin' : selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Unauthorized Domain Guide Card */}
         {unauthorizedDomain && (
           <div className="absolute top-2 left-2 right-2 bottom-2 z-50 bg-white/95 backdrop-blur-md border-2 border-amber-400 p-4 rounded-[1.8rem] shadow-2xl flex flex-col justify-between text-xs animate-in fade-in zoom-in-95">
@@ -543,6 +603,42 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* 5. Dış Hızlı Test Butonları (Kartın tamamen altında, asla telefon ekranındaki grafiklerle ve Google butonuyla çakışmaz) */}
+      <div className="relative z-20 mt-2 flex items-center justify-center gap-2 w-[min(380px,calc(90vh*1536/2752))] sm:w-[min(420px,calc(90vh*1536/2752))] px-2">
+        <button
+          type="button"
+          id="btn-demo-reviewer-login"
+          onClick={() => {
+            const role = selectedRole === 'admin' ? 'teacher' : selectedRole || 'teacher';
+            if (onDemoLogin) {
+              onDemoLogin(role);
+            } else {
+              handleGuestTestLogin();
+            }
+          }}
+          className="flex-1 py-1.5 px-2 bg-white/95 hover:bg-white text-indigo-700 hover:text-indigo-900 border border-indigo-200/80 rounded-full text-[10px] sm:text-xs font-black shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 backdrop-blur-xs"
+        >
+          <span className="truncate">🧪 Test ({selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
+          <ArrowRight className="w-3 h-3 text-indigo-600 shrink-0" />
+        </button>
+
+        <button
+          type="button"
+          id="btn-demo-reviewer-login-admin"
+          onClick={() => {
+            if (onDemoLogin) {
+              onDemoLogin('admin');
+            } else {
+              handleGuestTestLogin();
+            }
+          }}
+          className="flex-1 py-1.5 px-2 bg-white/95 hover:bg-white text-rose-700 hover:text-rose-900 border border-rose-200/80 rounded-full text-[10px] sm:text-xs font-black shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 backdrop-blur-xs"
+        >
+          <span className="truncate">🧪 Test (Admin)</span>
+          <ArrowRight className="w-3 h-3 text-rose-600 shrink-0" />
+        </button>
       </div>
     </div>
   );

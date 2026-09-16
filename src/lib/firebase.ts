@@ -65,56 +65,40 @@ export async function signInWithGoogle(): Promise<User | null> {
   try {
     if (Capacitor.isNativePlatform()) {
       let result: any = null;
-      let nativeFailed = false;
 
       try {
-        try {
-          result = await FirebaseAuthentication.signInWithGoogle({
-            useCredentialManager: true,
-          });
-        } catch (credErr: any) {
-          console.warn('Credential Manager signInWithGoogle failed, attempting fallback:', credErr);
-          result = await FirebaseAuthentication.signInWithGoogle({
-            useCredentialManager: false,
-          });
-        }
-      } catch (nativeErr: any) {
-        console.warn('Native FirebaseAuthentication failed, trying web fallback:', nativeErr);
-        nativeFailed = true;
-
-        // Try standard web signInWithPopup as fallback inside WebView
-        try {
-          const provider = new GoogleAuthProvider();
-          provider.setCustomParameters({
-            prompt: 'select_account',
-          });
-          const webResult = await signInWithPopup(auth, provider);
-          await syncUserProfile(webResult.user);
-          return webResult.user;
-        } catch (webErr: any) {
-          console.warn('Web popup in native webview failed as well:', webErr);
-          const errStr = nativeErr?.message || String(nativeErr);
-          if (errStr.includes('not implemented')) {
-            throw new Error(
-              'Android Studio Gradle Senkronizasyonu Gerekli: Android Studio\'da üst araç çubuğundaki "Sync Project with Gradle Files" (fil simgesi) butonuna basıp ardından Build > Clean Project ve Rebuild Project ile yeni APK/AAB derlemeniz gerekmektedir.'
-            );
-          }
-          throw nativeErr;
-        }
+        result = await FirebaseAuthentication.signInWithGoogle({
+          useCredentialManager: true,
+        });
+      } catch (credErr: any) {
+        console.warn('Credential Manager signInWithGoogle failed, attempting legacy GoogleSignIn:', credErr);
+        result = await FirebaseAuthentication.signInWithGoogle({
+          useCredentialManager: false,
+        });
       }
 
-      if (!nativeFailed && result) {
-        const idToken = result.credential?.idToken;
+      if (result) {
+        let idToken = result.credential?.idToken;
         if (!idToken) {
-          throw new Error('Google idToken alınamadı.');
+          try {
+            const tokenRes = await FirebaseAuthentication.getIdToken();
+            idToken = tokenRes?.token;
+          } catch (tErr) {
+            console.warn('getIdToken fallback failed:', tErr);
+          }
+        }
+        if (!idToken) {
+          throw new Error('Google oturum açma başarılı ancak kimlik doğrulama belirteci (idToken) alınamadı.');
         }
         const credential = GoogleAuthProvider.credential(idToken);
         const userCredential = await signInWithCredential(auth, credential);
         await syncUserProfile(userCredential.user);
         return userCredential.user;
       }
+      return null;
     }
 
+    // Web platform
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({
       prompt: 'select_account',
