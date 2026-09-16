@@ -295,19 +295,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           <span className="sr-only">Google ile giriş yap</span>
         </button>
 
-        {/* 4. Alt Boşluktaki Bilgilendirme Alanı (Aşağı kayma yapmaz, kartın alt içine tam sığar)
-            Top: 80.0% to 95.0%, Left: 13.0%, Width: 74.0% */}
+        {/* 4. Alt Bilgilendirme ve Hızlı Test Alanı (Google butonunun tamamen altında kalır, asla üstüne binmez)
+            Top: 81.5% (Google butonu 79.0%'da biter, arada güvenli boşluk vardır) */}
         <div
-          className="absolute z-20 pointer-events-none flex flex-col items-center justify-center text-center px-1.5"
+          className="absolute z-20 pointer-events-none flex flex-col items-center justify-start text-center px-1"
           style={{
-            top: '80.0%',
-            left: '13.0%',
-            width: '74.0%',
-            height: '15.5%',
+            top: '81.5%',
+            left: '12.0%',
+            width: '76.0%',
+            bottom: '2.5%',
           }}
         >
           {/* 4 Küçük Bilgi & Admin Butonu - buton.png çerçeveleri ile */}
-          <div className="grid grid-cols-4 gap-1 w-full mb-1">
+          <div className="grid grid-cols-4 gap-1 w-full shrink-0">
             <div className="relative aspect-[1264/848] w-full flex items-center justify-center select-none">
               <img
                 src="/buton.png"
@@ -318,8 +318,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               />
               <div className="relative z-10 flex flex-col items-center justify-center text-center px-0.5">
                 <Clock className="w-2.5 h-2.5 text-emerald-700 mb-0.5" />
-                <span className="text-[7.5px] sm:text-[8.5px] font-black text-slate-800 leading-tight">14 Kademe</span>
-                <span className="text-[6px] sm:text-[6.5px] font-bold text-slate-600">30 dk Adım</span>
+                <span className="text-[7px] sm:text-[8px] font-black text-slate-800 leading-tight">14 Kademe</span>
+                <span className="text-[5.5px] sm:text-[6px] font-bold text-slate-600">30 dk Adım</span>
               </div>
             </div>
 
@@ -333,8 +333,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               />
               <div className="relative z-10 flex flex-col items-center justify-center text-center px-0.5">
                 <School className="w-2.5 h-2.5 text-indigo-700 mb-0.5" />
-                <span className="text-[7.5px] sm:text-[8.5px] font-black text-slate-800 leading-tight">Canlı Sınıf</span>
-                <span className="text-[6px] sm:text-[6.5px] font-bold text-slate-600">Veli Takibi</span>
+                <span className="text-[7px] sm:text-[8px] font-black text-slate-800 leading-tight">Canlı Sınıf</span>
+                <span className="text-[5.5px] sm:text-[6px] font-bold text-slate-600">Veli Takibi</span>
               </div>
             </div>
 
@@ -348,8 +348,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               />
               <div className="relative z-10 flex flex-col items-center justify-center text-center px-0.5">
                 <ShieldCheck className="w-2.5 h-2.5 text-amber-700 mb-0.5" />
-                <span className="text-[7.5px] sm:text-[8.5px] font-black text-slate-800 leading-tight">Dengeli</span>
-                <span className="text-[6px] sm:text-[6.5px] font-bold text-slate-600">4 Renk</span>
+                <span className="text-[7px] sm:text-[8px] font-black text-slate-800 leading-tight">Dengeli</span>
+                <span className="text-[5.5px] sm:text-[6px] font-bold text-slate-600">4 Renk</span>
               </div>
             </div>
 
@@ -378,8 +378,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               />
               <div className="relative z-10 flex flex-col items-center justify-center text-center px-0.5">
                 <ShieldAlert className="w-2.5 h-2.5 text-rose-600 mb-0.5 group-hover:scale-110 transition-transform" />
-                <span className="text-[7.5px] sm:text-[8.5px] font-black text-rose-700 leading-tight">Admin</span>
-                <span className="text-[6px] sm:text-[6.5px] font-bold text-rose-500">Yönetim</span>
+                <span className="text-[7px] sm:text-[8px] font-black text-rose-700 leading-tight">Admin</span>
+                <span className="text-[5.5px] sm:text-[6px] font-bold text-rose-500">Yönetim</span>
               </div>
               {selectedRole === 'admin' && (
                 <div className="absolute -top-1 -right-1 bg-rose-600 text-white rounded-full p-0.5 shadow-md animate-in zoom-in-75">
@@ -389,9 +389,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
             </button>
           </div>
 
-          {/* Google Play Denetçi / Test Girişi Butonları */}
-          <div className="flex flex-col items-center gap-1 w-full pointer-events-auto mt-0.5">
-            {/* Google Denetçisi / Şifresiz İnceleme Butonu - Öğretmen / Veli */}
+          {/* Google Play Denetçi / Test Girişi Butonları (Yan yana kompakt, kart altına mükemmel sığar) */}
+          <div className="grid grid-cols-2 gap-1.5 w-full pointer-events-auto mt-1.5 shrink-0">
+            {/* Öğretmen / Veli Test Girişi */}
             <button
               type="button"
               id="btn-demo-reviewer-login"
@@ -403,13 +403,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                   handleGuestTestLogin();
                 }
               }}
-              className="px-3 py-1 bg-white/95 hover:bg-white text-indigo-700 hover:text-indigo-900 border border-indigo-200 hover:border-indigo-400 rounded-full text-[9px] sm:text-[10px] font-black shadow-xs hover:shadow-sm active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+              className="py-1 px-1.5 bg-white/95 hover:bg-white text-indigo-700 hover:text-indigo-900 border border-indigo-200 hover:border-indigo-400 rounded-full text-[8px] sm:text-[9px] font-black shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
             >
-              <span>🧪 Giriş Yapmadan İncele / Test Et ({selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
-              <ArrowRight className="w-3 h-3 text-indigo-600" />
+              <span className="truncate">🧪 Test ({selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
+              <ArrowRight className="w-2.5 h-2.5 text-indigo-600 shrink-0" />
             </button>
 
-            {/* Google Denetçisi / Şifresiz İnceleme Butonu - Admin (Play Store incelemesi için) */}
+            {/* Admin Test Girişi */}
             <button
               type="button"
               id="btn-demo-reviewer-login-admin"
@@ -420,10 +420,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                   handleGuestTestLogin();
                 }
               }}
-              className="px-3 py-1 bg-white/95 hover:bg-white text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-400 rounded-full text-[9px] sm:text-[10px] font-black shadow-xs hover:shadow-sm active:scale-95 transition-all cursor-pointer flex items-center gap-1"
+              className="py-1 px-1.5 bg-white/95 hover:bg-white text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-400 rounded-full text-[8px] sm:text-[9px] font-black shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
             >
-              <span>🧪 Giriş Yapmadan İncele - Admin</span>
-              <ArrowRight className="w-3 h-3 text-rose-600" />
+              <span className="truncate">🧪 Test (Admin)</span>
+              <ArrowRight className="w-2.5 h-2.5 text-rose-600 shrink-0" />
             </button>
           </div>
         </div>
