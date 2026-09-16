@@ -19,3 +19,10 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Capacitor Core and Plugins
+-keep class com.getcapacitor.** { *; }
+-keep class * extends com.getcapacitor.Plugin { *; }
+-keep class io.capawesome.capacitorjs.plugins.** { *; }
+-keep class com.google.android.gms.auth.** { *; }
+-keep class com.google.firebase.auth.** { *; }
