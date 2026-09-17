@@ -48,13 +48,11 @@ googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
 
-// Kullanıcının açık talimatı: Hiçbir e-posta adresine doğrudan/otomatik yetki tanınmaz.
 // Yönetici olmak için kurumun Admin Kodunun (ADM-XXXX) girilmesi zorunludur.
 export const ADMIN_EMAILS: string[] = [];
 export const DEFAULT_ADMIN_EMAIL = '';
 
 export function isAdminEmail(_email?: string | null): boolean {
-  // Hiçbir maile doğrudan admin yetkisi verilmez
   return false;
 }
 
@@ -67,27 +65,18 @@ export async function signInWithGoogle(): Promise<User | null> {
       let result: any = null;
 
       try {
-        result = await FirebaseAuthentication.signInWithGoogle({
-          useCredentialManager: true,
-        });
+        result = await FirebaseAuthentication.signInWithGoogle();
       } catch (credErr: any) {
-        console.warn('Credential Manager signInWithGoogle failed, attempting legacy GoogleSignIn:', credErr);
+        console.warn('Native GoogleSignIn failed, attempting web popup fallback:', credErr);
         try {
-          result = await FirebaseAuthentication.signInWithGoogle({
-            useCredentialManager: false,
-          });
-        } catch (legacyErr: any) {
-          console.warn('Native Google Auth failed, attempting web popup fallback:', legacyErr);
-          try {
-            const provider = new GoogleAuthProvider();
-            provider.setCustomParameters({ prompt: 'select_account' });
-            const webRes = await signInWithPopup(auth, provider);
-            await syncUserProfile(webRes.user);
-            return webRes.user;
-          } catch (webErr: any) {
-            console.error('Web popup fallback also failed:', webErr);
-            throw legacyErr;
-          }
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+          const webRes = await signInWithPopup(auth, provider);
+          await syncUserProfile(webRes.user);
+          return webRes.user;
+        } catch (webErr: any) {
+          console.error('Web popup fallback also failed:', webErr);
+          throw credErr;
         }
       }
 
@@ -115,7 +104,6 @@ export async function signInWithGoogle(): Promise<User | null> {
           await syncUserProfile(userCredential.user);
           return userCredential.user;
         }
-        // If native user exists even without idToken
         if (result.user) {
           const fallbackUser = await signInAsGuest(result.user.displayName || result.user.email || 'Google Kullanıcısı');
           return fallbackUser;
@@ -145,13 +133,12 @@ export async function signInWithGoogle(): Promise<User | null> {
       return null;
     }
     console.error('Google Sign-in error:', error);
-    // If popup is blocked in iframe, rethrow so UI can offer fallback or explanation
     throw error;
   }
 }
 
 /**
- * Quick demo/test sign in (useful for testing or when iframe restricts popups)
+ * Quick demo/test sign in
  */
 export async function signInAsGuest(customName?: string): Promise<User> {
   const result = await signInAnonymously(auth);
@@ -175,8 +162,7 @@ export async function signOutUser(): Promise<void> {
 }
 
 /**
- * Completely forgets account credentials from this device, wiping IndexedDB,
- * localStorage, sessionStorage, and signing out of Firebase Auth to ensure zero residual tokens.
+ * Completely forgets account credentials from this device
  */
 export async function forgetAndClearAllDeviceData(): Promise<void> {
   try {
@@ -231,7 +217,6 @@ export async function forgetAndClearAllDeviceData(): Promise<void> {
     }
   }
 
-  // Force clean reload back to root
   if (typeof window !== 'undefined') {
     window.location.href = window.location.origin + window.location.pathname;
   }
@@ -266,18 +251,13 @@ export async function syncUserProfile(
     let role: UserRole;
     let userType: 'teacher' | 'parent';
 
-    // 1. If user explicitly selected a role (e.g., login screen or role switcher), use that
     if (pendingRole) {
       role = pendingRole;
       userType = pendingRole === 'parent' ? 'parent' : 'teacher';
-    }
-    // 2. Otherwise respect their existing saved role in Firestore
-    else if (data.role) {
+    } else if (data.role) {
       role = data.role;
       userType = data.userType || (role === 'parent' ? 'parent' : 'teacher');
-    }
-    // 3. Default to parent (no automatic email elevation)
-    else {
+    } else {
       role = data.userType === 'teacher' ? 'teacher' : 'parent';
       userType = data.userType || 'parent';
     }
@@ -293,7 +273,6 @@ export async function syncUserProfile(
       parentName: role === 'parent' ? data.parentName : undefined,
       institutionId: data.institutionId,
       institutionCode: data.institutionCode,
-      // Admin code belongs EXCLUSIVELY to admins, never to teachers!
       institutionAdminCode: role === 'admin' ? data.institutionAdminCode : undefined,
       institutionName: data.institutionName,
       classId: data.classId,
@@ -314,7 +293,6 @@ export async function syncUserProfile(
       ...(user.photoURL ? { photoURL: user.photoURL } : {}),
     };
 
-    // If user is a teacher or parent, ensure institutionAdminCode is wiped from DB
     if (role !== 'admin' && data.institutionAdminCode) {
       updatePayload.institutionAdminCode = deleteField();
     }
@@ -399,7 +377,6 @@ export async function updateStageProgress(
   const timestamp = Date.now();
   const dateStr = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-  // Update user main document
   await updateDoc(userRef, {
     currentWeekStage: clampedStage,
     currentWeekMinutes: totalMinutes,
@@ -407,7 +384,6 @@ export async function updateStageProgress(
     updatedAt: serverTimestamp(),
   });
 
-  // Get current week subdocument to append stage history if exists
   const weekSnap = await getDoc(weekRef);
   let stageTimestamps = [];
   if (weekSnap.exists()) {
@@ -421,7 +397,6 @@ export async function updateStageProgress(
     addedAt: dateStr,
   });
 
-  // Keep max 50 log items
   if (stageTimestamps.length > 50) {
     stageTimestamps = stageTimestamps.slice(-50);
   }
@@ -496,7 +471,6 @@ export function subscribeAllUsers(
     },
     (error) => {
       console.error('Subscribe all users error:', error);
-      // Fallback without order by if index not ready
       onSnapshot(usersRef, (snap) => {
         const users: UserProfile[] = [];
         snap.forEach((doc) => {
@@ -524,9 +498,6 @@ export async function setUserRole(targetUid: string, role: UserRole): Promise<vo
   await updateDoc(userRef, payload);
 }
 
-/**
- * Generate a friendly 6-character classroom code like "KOD4A2" or "EKR892"
- */
 function generateClassCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -536,27 +507,16 @@ function generateClassCode(): string {
   return code;
 }
 
-/**
- * Generate institution code like "KRM-8492" (used by teachers to join)
- */
 function generateInstitutionCode(): string {
   const num = Math.floor(1000 + Math.random() * 9000);
   return `KRM-${num}`;
 }
 
-/**
- * Generate an admin invite code like "ADM-8492" (used by other admins to join
- * the SAME institution as co-admin)
- */
 function generateAdminCode(): string {
   const num = Math.floor(1000 + Math.random() * 9000);
   return `ADM-${num}`;
 }
 
-/**
- * Check if a given code already exists in the institutions collection,
- * under either the teacher-facing `code` field or the `adminCode` field.
- */
 async function isCodeTaken(field: 'code' | 'adminCode', code: string): Promise<boolean> {
   const instRef = collection(db, 'institutions');
   const q = query(instRef, where(field, '==', code));
@@ -564,20 +524,12 @@ async function isCodeTaken(field: 'code' | 'adminCode', code: string): Promise<b
   return !snap.empty;
 }
 
-/**
- * Admin: Create a new institution.
- * Generates TWO codes:
- *  - `code` (Kurum Kodu): shared with teachers so they can join this institution.
- *  - `adminCode` (Admin Kodu): shared with other people who should ALSO become
- *    admin of this same institution (multi-admin support).
- */
 export async function createInstitution(
   adminUid: string,
   adminName: string,
   adminEmail: string,
   institutionName: string
 ): Promise<{ id: string; code: string; adminCode: string; name: string }> {
-  // Auto-generate the institution (teacher) code, retrying on rare collision
   let code = generateInstitutionCode();
   let codeTries = 0;
   while ((await isCodeTaken('code', code)) && codeTries < 5) {
@@ -585,7 +537,6 @@ export async function createInstitution(
     codeTries += 1;
   }
 
-  // Auto-generate the admin invite code, retrying on rare collision
   let adminCode = generateAdminCode();
   let adminCodeTries = 0;
   while ((await isCodeTaken('adminCode', adminCode)) && adminCodeTries < 5) {
@@ -608,7 +559,6 @@ export async function createInstitution(
 
   await setDoc(instRef, instData);
 
-  // Update admin's profile
   const adminRef = doc(db, 'users', adminUid);
   await updateDoc(adminRef, {
     role: 'admin',
@@ -623,10 +573,6 @@ export async function createInstitution(
   return { id: instRef.id, code, adminCode, name: institutionName.trim() };
 }
 
-/**
- * Admin: Backfill an Admin Kodu for an OLDER institution that was created
- * before the multi-admin feature existed (so it has no `adminCode` yet).
- */
 export async function ensureInstitutionAdminCode(
   institutionId: string,
   adminUid: string
@@ -657,9 +603,6 @@ export async function ensureInstitutionAdminCode(
   return adminCode;
 }
 
-/**
- * Admin: Update the name of an EXISTING institution (keeps the same codes)
- */
 export async function updateInstitutionName(
   institutionId: string,
   adminUid: string,
@@ -676,7 +619,6 @@ export async function updateInstitutionName(
     updatedAt: serverTimestamp(),
   });
 
-  // Keep the admin's own cached profile field in sync
   const adminRef = doc(db, 'users', adminUid);
   await updateDoc(adminRef, {
     institutionName: trimmed,
@@ -686,9 +628,6 @@ export async function updateInstitutionName(
   return { id: institutionId, name: trimmed };
 }
 
-/**
- * Admin: Generate or regenerate a new institution code (for teachers)
- */
 export async function regenerateInstitutionCode(
   institutionId: string,
   adminUid: string
@@ -706,9 +645,6 @@ export async function regenerateInstitutionCode(
   return code;
 }
 
-/**
- * Teacher: Join an institution with the teacher-facing Kurum Kodu
- */
 export async function joinInstitutionWithCode(
   userUid: string,
   rawCode: string
@@ -729,7 +665,6 @@ export async function joinInstitutionWithCode(
   const instDoc = snap.docs[0];
   const instData = instDoc.data();
 
-  // Update user's profile
   const userRef = doc(db, 'users', userUid);
   await updateDoc(userRef, {
     institutionId: instDoc.id,
@@ -741,12 +676,6 @@ export async function joinInstitutionWithCode(
   return { id: instDoc.id, code: instData.code, name: instData.name };
 }
 
-/**
- * Admin: Join an EXISTING institution as a CO-ADMIN using the Admin Kodu
- * created by the institution's original admin. This is how a second (or
- * third...) person becomes admin of the same institution, instead of relying
- * on a single hardcoded admin e-mail.
- */
 export async function joinInstitutionAsAdmin(
   userUid: string,
   rawAdminCode: string
@@ -767,7 +696,6 @@ export async function joinInstitutionAsAdmin(
   const instDoc = snap.docs[0];
   const instData = instDoc.data();
 
-  // Update user's profile: this user becomes an admin of the SAME institution
   const userRef = doc(db, 'users', userUid);
   await updateDoc(userRef, {
     role: 'admin',
@@ -782,10 +710,6 @@ export async function joinInstitutionAsAdmin(
   return { id: instDoc.id, code: instData.code, adminCode: instData.adminCode, name: instData.name };
 }
 
-/**
- * Verifies the institution's Admin Code (adminCode) and upgrades the user to 'admin'.
- * Used when a teacher or user clicks "Admin Moduna Geç" and enters their institution's admin code.
- */
 export async function verifyAdminCodeAndUpgrade(
   userUid: string,
   rawAdminCode: string,
@@ -798,7 +722,6 @@ export async function verifyAdminCodeAndUpgrade(
 
   let matchedDoc: any = null;
 
-  // 1. If user is already linked to an institution (e.g. joined with Kurum Kodu), verify against that institution first
   if (currentInstitutionId) {
     try {
       const directRef = doc(db, 'institutions', currentInstitutionId);
@@ -818,7 +741,6 @@ export async function verifyAdminCodeAndUpgrade(
     }
   }
 
-  // 2. Fallback: Search all institutions for matching adminCode
   if (!matchedDoc) {
     const instRef = collection(db, 'institutions');
     const q = query(instRef, where('adminCode', '==', cleanedCode));
@@ -833,7 +755,6 @@ export async function verifyAdminCodeAndUpgrade(
 
   const instData = matchedDoc.data();
 
-  // Upgrade user in Firestore to admin role with their institution's admin code
   const userRef = doc(db, 'users', userUid);
   await updateDoc(userRef, {
     role: 'admin',
@@ -853,11 +774,6 @@ export async function verifyAdminCodeAndUpgrade(
   };
 }
 
-/**
- * Teacher: Create a new classroom with a 6-character code
- * Kural: 1 Hesap = 1 Sınıf. Bir öğretmenin zaten bir sınıfı varsa ikinci bir sınıf eklemez,
- * mevcut sınıfı günceller ve mükerrer sınıfları temizler.
- */
 export async function createClassroom(
   teacherUid: string,
   teacherName: string,
@@ -869,12 +785,10 @@ export async function createClassroom(
   const trimmedName = className.trim();
   const classesRef = collection(db, 'classes');
 
-  // 1 Hesap 1 Sınıf: Öğretmenin mevcut sınıfı var mı kontrol et
   const qExisting = query(classesRef, where('teacherUid', '==', teacherUid));
   const snapExisting = await getDocs(qExisting);
 
   if (!snapExisting.empty) {
-    // Mevcut sınıf bulundu: Yeni sınıf ekleme, mevcut sınıfı güncelle!
     const primaryDoc = snapExisting.docs[0];
     const classId = primaryDoc.id;
     const existingData = primaryDoc.data() as ClassroomInfo;
@@ -895,7 +809,6 @@ export async function createClassroom(
 
     await updateDoc(doc(db, 'classes', classId), updatedData);
 
-    // Varsa eski testlerden kalan mükerrer sınıfları temizle (1 hesap 1 sınıf kuralı)
     if (snapExisting.docs.length > 1) {
       for (let i = 1; i < snapExisting.docs.length; i++) {
         try {
@@ -906,7 +819,6 @@ export async function createClassroom(
       }
     }
 
-    // Öğretmen profilini güncelle
     const teacherRef = doc(db, 'users', teacherUid);
     await updateDoc(teacherRef, {
       role: 'teacher',
@@ -935,7 +847,6 @@ export async function createClassroom(
     };
   }
 
-  // Öğretmenin daha önce hiç sınıfı yoksa tek bir yeni sınıf oluştur
   const classCode = generateClassCode();
   const classRef = doc(collection(db, 'classes'));
   const classroom: ClassroomInfo = {
@@ -955,7 +866,6 @@ export async function createClassroom(
 
   await setDoc(classRef, classroom);
 
-  // Update teacher's profile
   const teacherRef = doc(db, 'users', teacherUid);
   await updateDoc(teacherRef, {
     role: 'teacher',
@@ -974,26 +884,18 @@ export async function createClassroom(
   return classroom;
 }
 
-/**
- * Admin: Delete a user account (student, parent, or teacher profile)
- */
 export async function adminDeleteUser(userUid: string): Promise<void> {
   if (!userUid) return;
   const userRef = doc(db, 'users', userUid);
   await deleteDoc(userRef);
 }
 
-/**
- * Admin: Delete a classroom and unlink teacher & enrolled students
- */
 export async function adminDeleteClassroom(classId: string, teacherUid?: string): Promise<void> {
   if (!classId) return;
 
-  // 1. Delete class document
   const classRef = doc(db, 'classes', classId);
   await deleteDoc(classRef);
 
-  // 2. Unlink teacher's class
   if (teacherUid) {
     try {
       const teacherRef = doc(db, 'users', teacherUid);
@@ -1011,7 +913,6 @@ export async function adminDeleteClassroom(classId: string, teacherUid?: string)
     }
   }
 
-  // 3. Unlink students
   try {
     const studentsQ = query(collection(db, 'users'), where('classId', '==', classId));
     const snap = await getDocs(studentsQ);
@@ -1029,9 +930,6 @@ export async function adminDeleteClassroom(classId: string, teacherUid?: string)
   }
 }
 
-/**
- * Teacher: Update existing classroom details
- */
 export async function updateClassroom(
   classId: string,
   teacherUid: string,
@@ -1064,9 +962,6 @@ export async function updateClassroom(
   });
 }
 
-/**
- * Admin: Subscribe to all classrooms (and thus teachers) belonging to an institution
- */
 export function subscribeInstitutionClassrooms(
   institutionId: string,
   onUpdate: (classrooms: ClassroomInfo[]) => void,
@@ -1092,9 +987,6 @@ export function subscribeInstitutionClassrooms(
   );
 }
 
-/**
- * Parent: Join a classroom using the 6-character code
- */
 export async function joinClassroomWithCode(
   userUid: string,
   rawCode: string,
@@ -1106,7 +998,6 @@ export async function joinClassroomWithCode(
     throw new Error('Lütfen geçerli bir sınıf kodu girin.');
   }
 
-  // Find class by code
   const classesRef = collection(db, 'classes');
   const q = query(classesRef, where('code', '==', cleanedCode));
   const snap = await getDocs(q);
@@ -1119,26 +1010,23 @@ export async function joinClassroomWithCode(
   const classData = classDoc.data() as ClassroomInfo;
   classData.id = classDoc.id;
 
-  // Güvenlik Kontrolü 1: Öğretmen kendi sınıfına veli olarak katılamaz
   if (classData.teacherUid === userUid) {
     throw new Error(
-      'Siz bu sınıfın öğretmenisiniz! Kendi sınıfınıza veli olarak katılamazsınız. Öğrencilerinizi ve velilerinizi sınıfa dahil etmek için lütfen sınıf kodunuzu velilerinizle paylaşınız veya doğrudan öğrenci ekleyiniz.'
+      'Siz bu sınıfın öğretmenisiniz! Kendi sınıfınıza veli olarak katılamazsınız.'
     );
   }
 
-  // Güvenlik Kontrolü 2: Öğretmen veya Yönetici hesabı olan kullanıcı veli/öğrenci rolüne dönüştürülemez
   const userRef = doc(db, 'users', userUid);
   const userSnap = await getDoc(userRef);
   if (userSnap.exists()) {
     const userData = userSnap.data();
     if (userData.role === 'teacher' || userData.userType === 'teacher' || userData.role === 'admin') {
       throw new Error(
-        'Öğretmen veya Yönetici yetkisine sahip bir hesapla veli olarak sınıfa katılamazsınız! Bu hesap öğretmen yetkisine sahiptir. Veli girişi için lütfen ayrı bir veli hesabı ile giriş yapınız.'
+        'Öğretmen veya Yönetici yetkisine sahip bir hesapla veli olarak sınıfa katılamazsınız!'
       );
     }
   }
 
-  // Update parent user profile
   await updateDoc(userRef, {
     role: 'parent',
     userType: 'parent',
@@ -1154,9 +1042,6 @@ export async function joinClassroomWithCode(
   return classData;
 }
 
-/**
- * Teacher or Admin: Add a student directly to a classroom without changing the teacher's profile
- */
 export async function addStudentToClassroom(
   classId: string,
   classCode: string,
@@ -1193,9 +1078,6 @@ export async function addStudentToClassroom(
   return newStudent;
 }
 
-/**
- * Teacher or Parent: Leave / unlink from a classroom
- */
 export async function leaveClassroom(uid: string): Promise<void> {
   const userRef = doc(db, 'users', uid);
   await updateDoc(userRef, {
@@ -1208,9 +1090,6 @@ export async function leaveClassroom(uid: string): Promise<void> {
   });
 }
 
-/**
- * Parent: Update student name
- */
 export async function updateStudentName(uid: string, studentName: string): Promise<void> {
   const userRef = doc(db, 'users', uid);
   await updateDoc(userRef, {
@@ -1219,9 +1098,6 @@ export async function updateStudentName(uid: string, studentName: string): Promi
   });
 }
 
-/**
- * Subscribe to classroom details
- */
 export function subscribeClassroom(
   classId: string,
   onUpdate: (classroom: ClassroomInfo | null) => void
@@ -1242,9 +1118,6 @@ export function subscribeClassroom(
   );
 }
 
-/**
- * Subscribe to all students (parents) who joined this classroom
- */
 export function subscribeClassroomStudents(
   classId: string,
   onUpdate: (students: UserProfile[]) => void,
@@ -1259,12 +1132,10 @@ export function subscribeClassroomStudents(
       const list: UserProfile[] = [];
       snap.forEach((d) => {
         const item = d.data() as UserProfile;
-        // Include if parent / student
         if (item.role === 'parent' || item.userType === 'parent' || item.studentName) {
           list.push(item);
         }
       });
-      // Sort by studentName or displayName
       list.sort((a, b) => (a.studentName || a.displayName || '').localeCompare(b.studentName || b.displayName || 'tr'));
       onUpdate(list);
     },
