@@ -18,6 +18,9 @@ buildscript {
 apply from: "variables.gradle"
 
 allprojects {
+    ext {
+        rgcfaIncludeGoogle = true
+    }
     repositories {
         google()
         mavenCentral()
