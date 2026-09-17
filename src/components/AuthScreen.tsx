@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { auth, signInAsGuest } from '../lib/firebase';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithCredential } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import {
   AlertCircle,
   Loader2,
@@ -67,21 +69,37 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
       setPromptWarning(false);
       localStorage.setItem('pendingUserRole', selectedRole);
 
-      // Doğrudan hatasız ve kararlı popup akışı (mobil webview ve tarayıcı uyumlu)
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const result = await signInWithPopup(auth, provider);
-      
-      if (!result.user) {
-        return;
+      // Native Android/iOS uygulama içindeysek: tarayıcı popup/redirect'i tamamen atla,
+      // telefonun kendi native Google hesap seçicisini kullan (sessionStorage sorunu yaşanmaz).
+      if (Capacitor.isNativePlatform()) {
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        const idToken = result.credential?.idToken;
+        if (!idToken) {
+          throw new Error('Google girişinden kimlik bilgisi alınamadı.');
+        }
+        const credential = GoogleAuthProvider.credential(idToken);
+        const webResult = await signInWithCredential(auth, credential);
+        if (!webResult.user) {
+          return;
+        }
+      } else {
+        // Web tarayıcısı (AI Studio önizleme, masaüstü/mobil Chrome): mevcut popup akışı
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        const result = await signInWithPopup(auth, provider);
+
+        if (!result.user) {
+          return;
+        }
       }
     } catch (err: any) {
       if (
         err?.code === 'auth/popup-closed-by-user' ||
         err?.code === 'auth/cancelled-popup-request' ||
-        err?.message?.includes('popup-closed-by-user')
+        err?.message?.includes('popup-closed-by-user') ||
+        err?.message?.toLowerCase?.().includes('cancel')
       ) {
-        console.info('Google Sign-in popup was dismissed by user.');
+        console.info('Google Sign-in was dismissed by user.');
         return;
       }
       console.error('Google Sign-in failed:', err);
