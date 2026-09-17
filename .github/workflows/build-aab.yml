@@ -35,13 +35,19 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
-      - name: Build AAB with Gradle
+      - name: Build AAB and APK with Gradle
         run: |
           cd android
-          ./gradlew bundleRelease -PversionCode=${{ github.run_number }} --no-daemon -x test
+          ./gradlew bundleRelease assembleRelease -PversionCode=${{ github.run_number }} --no-daemon -x test
 
-      - name: Upload AAB Artifact
+      - name: Upload AAB Artifact (Play Store)
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: app-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
+
+      - name: Upload APK Artifact (Direct Phone Install)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
