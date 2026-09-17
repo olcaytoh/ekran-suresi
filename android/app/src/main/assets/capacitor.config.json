@@ -1,16 +1,14 @@
 {
-	"appId": "com.olcico.ekransuresi",
-	"appName": "Haftalık Ekran Süresi",
-	"webDir": "dist",
-	"server": {
-		"androidScheme": "https"
-	},
-	"plugins": {
-		"FirebaseAuthentication": {
-			"skipNativeAuth": false,
-			"providers": [
-				"google.com"
-			]
-		}
-	}
+  "appId": "com.olcico.ekransuresi",
+  "appName": "Haftalık Ekran Süresi",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": ["google.com"]
+    }
+  }
 }
