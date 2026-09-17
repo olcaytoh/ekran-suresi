@@ -3,15 +3,12 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithCredential,
   signOut,
-  onAuthStateChanged,
   signInAnonymously,
   updateProfile,
   User,
 } from 'firebase/auth';
 import { Capacitor } from '@capacitor/core';
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 import {
   getFirestore,
   doc,
@@ -48,84 +45,30 @@ googleProvider.setCustomParameters({
   prompt: 'select_account',
 });
 
-// Kullanıcının açık talimatı: Hiçbir e-posta adresine doğrudan/otomatik yetki tanınmaz.
-// Yönetici olmak için kurumun Admin Kodunun (ADM-XXXX) girilmesi zorunludur.
 export const ADMIN_EMAILS: string[] = [];
 export const DEFAULT_ADMIN_EMAIL = '';
 
 export function isAdminEmail(_email?: string | null): boolean {
-  // Hiçbir maile doğrudan admin yetkisi verilmez
   return false;
 }
 
 /**
- * Sign in with Google Account (Native Android bottom sheet / popup inside the app)
+ * Sign in with Google Account (Stabil Web Popup Akışı - Mobil WebView ve Tarayıcı Uyumlu)
  */
 export async function signInWithGoogle(): Promise<User | null> {
   try {
-    if (Capacitor.isNativePlatform()) {
-      // Android cihazlarda (Google Play sürümü) dış tarayıcıya gitmeden 
-      // doğrudan uygulama içinde alttan açılan yerel Google hesap seçim penceresi (Credential Manager) kullanılır.
-      let result: any = null;
-
-      try {
-        result = await FirebaseAuthentication.signInWithGoogle({
-          useCredentialManager: true,
-        });
-      } catch (credErr: any) {
-        console.warn('Credential Manager signInWithGoogle failed, attempting legacy GoogleSignIn:', credErr);
-        try {
-          result = await FirebaseAuthentication.signInWithGoogle({
-            useCredentialManager: false,
-          });
-        } catch (legacyErr: any) {
-          console.error('Native Google Auth failed completely:', legacyErr);
-          throw legacyErr;
-        }
-      }
-
-      if (result) {
-        let idToken = result.credential?.idToken;
-        if (!idToken) {
-          try {
-            const tokenRes = await FirebaseAuthentication.getIdToken({ forceRefresh: false });
-            idToken = tokenRes?.token;
-          } catch (tErr) {
-            console.warn('getIdToken fallback failed:', tErr);
-          }
-        }
-        if (!idToken && result.user) {
-          try {
-            const tokenRes2 = await FirebaseAuthentication.getIdToken({ forceRefresh: true });
-            idToken = tokenRes2?.token;
-          } catch (tErr2) {
-            console.warn('getIdToken force refresh failed:', tErr2);
-          }
-        }
-        if (idToken) {
-          const credential = GoogleAuthProvider.credential(idToken);
-          const userCredential = await signInWithCredential(auth, credential);
-          await syncUserProfile(userCredential.user);
-          return userCredential.user;
-        }
-        // If native user exists even without idToken
-        if (result.user) {
-          const fallbackUser = await signInAsGuest(result.user.displayName || result.user.email || 'Google Kullanıcısı');
-          return fallbackUser;
-        }
-        throw new Error('Google oturum açma başarılı ancak kimlik belirteci (idToken) alınamadı.');
-      }
-      return null;
-    }
-
-    // Web platformu için standart popup akışı
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({
       prompt: 'select_account',
     });
+    
+    // Yönlendirme (redirect) hatasını kökten bitiren popup metodu
     const result = await signInWithPopup(auth, provider);
-    await syncUserProfile(result.user);
-    return result.user;
+    if (result && result.user) {
+      await syncUserProfile(result.user);
+      return result.user;
+    }
+    return null;
   } catch (error: any) {
     if (
       error?.code === 'auth/popup-closed-by-user' ||
@@ -143,7 +86,7 @@ export async function signInWithGoogle(): Promise<User | null> {
 }
 
 /**
- * Quick demo/test sign in (useful for testing or when iframe restricts popups)
+ * Quick demo/test sign in
  */
 export async function signInAsGuest(customName?: string): Promise<User> {
   const result = await signInAnonymously(auth);
@@ -160,15 +103,11 @@ export async function signInAsGuest(customName?: string): Promise<User> {
  * Sign out
  */
 export async function signOutUser(): Promise<void> {
-  if (Capacitor.isNativePlatform()) {
-    await FirebaseAuthentication.signOut().catch(() => {});
-  }
   await signOut(auth);
 }
 
 /**
- * Completely forgets account credentials from this device, wiping IndexedDB,
- * localStorage, sessionStorage, and signing out of Firebase Auth to ensure zero residual tokens.
+ * Completely forgets account credentials from this device
  */
 export async function forgetAndClearAllDeviceData(): Promise<void> {
   try {
@@ -178,14 +117,6 @@ export async function forgetAndClearAllDeviceData(): Promise<void> {
     }
   } catch (e) {
     console.warn('Storage clear error:', e);
-  }
-
-  try {
-    if (Capacitor.isNativePlatform()) {
-      await FirebaseAuthentication.signOut().catch(() => {});
-    }
-  } catch (e) {
-    console.warn('Capacitor signOut error:', e);
   }
 
   try {
@@ -207,23 +138,11 @@ export async function forgetAndClearAllDeviceData(): Promise<void> {
           window.indexedDB.deleteDatabase(dbName);
         } catch {}
       }
-
-      if (window.indexedDB.databases) {
-        const allDbs = await window.indexedDB.databases();
-        for (const dbInfo of allDbs) {
-          if (dbInfo.name && (dbInfo.name.includes('firebase') || dbInfo.name.includes('firestore'))) {
-            try {
-              window.indexedDB.deleteDatabase(dbInfo.name);
-            } catch {}
-          }
-        }
-      }
     } catch (e) {
       console.warn('IndexedDB cleanup error:', e);
     }
   }
 
-  // Force clean reload back to root
   if (typeof window !== 'undefined') {
     window.location.href = window.location.origin + window.location.pathname;
   }
@@ -341,9 +260,6 @@ export async function syncUserProfile(
   return userProfile;
 }
 
-/**
- * Listen to a user's profile and current progress
- */
 export function subscribeUserProfile(
   uid: string,
   onUpdate: (profile: UserProfile | null) => void,
@@ -366,9 +282,6 @@ export function subscribeUserProfile(
   );
 }
 
-/**
- * Update the user's weekly stage count (0-14)
- */
 export async function updateStageProgress(
   uid: string,
   newStageCount: number,
@@ -425,16 +338,10 @@ export async function updateStageProgress(
   );
 }
 
-/**
- * Reset week progress back to 0
- */
 export async function resetCurrentWeekProgress(uid: string): Promise<void> {
   await updateStageProgress(uid, 0, 'Hafta sıfırlandı');
 }
 
-/**
- * Subscribe to all week records for a user
- */
 export function subscribeUserWeeks(
   uid: string,
   onUpdate: (weeksMap: Record<string, WeekRecord>) => void,
@@ -457,9 +364,6 @@ export function subscribeUserWeeks(
   );
 }
 
-/**
- * Admin: Subscribe to all users in real-time
- */
 export function subscribeAllUsers(
   onUpdate: (users: UserProfile[]) => void,
   onError?: (err: Error) => void
@@ -663,7 +567,7 @@ export async function joinInstitutionWithCode(
   const snap = await getDocs(q);
 
   if (snap.empty) {
-    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı. Lütfen yöneticinizden aldığınız kodu kontrol edin.`);
+    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
   }
 
   const instDoc = snap.docs[0];
@@ -694,7 +598,7 @@ export async function joinInstitutionAsAdmin(
   const snap = await getDocs(q);
 
   if (snap.empty) {
-    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı. Lütfen diğer yöneticinizden aldığınız Admin Kodunu kontrol edin.`);
+    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
   }
 
   const instDoc = snap.docs[0];
@@ -735,7 +639,7 @@ export async function verifyAdminCodeAndUpgrade(
         if (data?.adminCode && data.adminCode.trim().toUpperCase() === cleanedCode) {
           matchedDoc = snap;
         } else {
-          throw new Error('Girdiğiniz Admin Kodu kurumunuzun admin kodu ile uyuşmuyor! Lütfen doğru Admin Kodunu giriniz.');
+          throw new Error('Girdiğiniz Admin Kodu kurumunuzun admin kodu ile uyuşmuyor!');
         }
       }
     } catch (err: any) {
@@ -751,7 +655,7 @@ export async function verifyAdminCodeAndUpgrade(
     const snap = await getDocs(q);
 
     if (snap.empty) {
-      throw new Error(`"${cleanedCode}" koduna sahip bir kurum yöneticisi kodu bulunamadı. Lütfen geçerli Admin Kodunu kontrol ediniz.`);
+      throw new Error(`"${cleanedCode}" koduna sahip bir kurum yöneticisi kodu bulunamadı.`);
     }
 
     matchedDoc = snap.docs[0];
@@ -1007,7 +911,7 @@ export async function joinClassroomWithCode(
   const snap = await getDocs(q);
 
   if (snap.empty) {
-    throw new Error(`"${cleanedCode}" koduna ait bir sınıf bulunamadı. Lütfen öğretmeninizin verdiği kodu kontrol edin.`);
+    throw new Error(`"${cleanedCode}" koduna ait bir sınıf bulunamadı.`);
   }
 
   const classDoc = snap.docs[0];
@@ -1015,9 +919,7 @@ export async function joinClassroomWithCode(
   classData.id = classDoc.id;
 
   if (classData.teacherUid === userUid) {
-    throw new Error(
-      'Siz bu sınıfın öğretmenisiniz! Kendi sınıfınıza veli olarak katılamazsınız.'
-    );
+    throw new Error('Siz bu sınıfın öğretmenisiniz!');
   }
 
   const userRef = doc(db, 'users', userUid);
@@ -1025,9 +927,7 @@ export async function joinClassroomWithCode(
   if (userSnap.exists()) {
     const userData = userSnap.data();
     if (userData.role === 'teacher' || userData.userType === 'teacher' || userData.role === 'admin') {
-      throw new Error(
-        'Öğretmen veya Yönetici yetkisine sahip bir hesapla veli olarak sınıfa katılamazsınız!'
-      );
+      throw new Error('Öğretmen veya Yönetici yetkisine sahip bir hesapla veli olarak katılamazsınız!');
     }
   }
 
