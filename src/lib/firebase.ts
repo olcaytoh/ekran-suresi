@@ -57,61 +57,61 @@ export function isAdminEmail(_email?: string | null): boolean {
 }
 
 /**
- * Sign in with Google Account (always prompts account selection)
+ * Sign in with Google Account
+ * Native (Android/iOS) ortamında WebView fallback'ine DÜŞMEDEN yerel Google Play Hizmetlerini kullanır.
  */
 export async function signInWithGoogle(): Promise<User | null> {
   try {
     if (Capacitor.isNativePlatform()) {
-      let result: any = null;
+      // 1. Native platformda kesinlikle web popup/redirect fallback yapılmaz!
+      const result = await FirebaseAuthentication.signInWithGoogle();
 
-      try {
-        result = await FirebaseAuthentication.signInWithGoogle();
-      } catch (credErr: any) {
-        console.warn('Native GoogleSignIn failed, attempting web popup fallback:', credErr);
+      let idToken = result.credential?.idToken;
+
+      // Token gelmediyse yenilemeyi dene
+      if (!idToken) {
         try {
-          const provider = new GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: 'select_account' });
-          const webRes = await signInWithPopup(auth, provider);
-          await syncUserProfile(webRes.user);
-          return webRes.user;
-        } catch (webErr: any) {
-          console.error('Web popup fallback also failed:', webErr);
-          throw credErr;
+          const tokenRes = await FirebaseAuthentication.getIdToken({ forceRefresh: true });
+          idToken = tokenRes?.token;
+        } catch (tErr) {
+          console.warn('getIdToken force refresh failed:', tErr);
         }
       }
 
-      if (result) {
-        let idToken = result.credential?.idToken;
-        if (!idToken) {
-          try {
-            const tokenRes = await FirebaseAuthentication.getIdToken({ forceRefresh: false });
-            idToken = tokenRes?.token;
-          } catch (tErr) {
-            console.warn('getIdToken fallback failed:', tErr);
-          }
-        }
-        if (!idToken && result.user) {
-          try {
-            const tokenRes2 = await FirebaseAuthentication.getIdToken({ forceRefresh: true });
-            idToken = tokenRes2?.token;
-          } catch (tErr2) {
-            console.warn('getIdToken force refresh failed:', tErr2);
-          }
-        }
-        if (idToken) {
-          const credential = GoogleAuthProvider.credential(idToken);
-          const userCredential = await signInWithCredential(auth, credential);
-          await syncUserProfile(userCredential.user);
-          return userCredential.user;
-        }
-        if (result.user) {
-          const fallbackUser = await signInAsGuest(result.user.displayName || result.user.email || 'Google Kullanıcısı');
-          return fallbackUser;
-        }
-        throw new Error('Google oturum açma başarılı ancak kimlik belirteci (idToken) alınamadı.');
+      if (!idToken) {
+        throw new Error('Google kimlik doğrulama tokenı (idToken) alınamadı. Lütfen Google Play Hizmetlerini kontrol edin.');
       }
+
+      // 2. Alınan idToken ile Firebase Auth oturumunu aç
+      const credential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, credential);
+      await syncUserProfile(userCredential.user);
+      return userCredential.user;
+    }
+
+    // Web Platformu Akışı (Sadece tarayıcıda çalışır)
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account',
+    });
+    const result = await signInWithPopup(auth, provider);
+    await syncUserProfile(result.user);
+    return result.user;
+  } catch (error: any) {
+    if (
+      error?.code === 'auth/popup-closed-by-user' ||
+      error?.code === 'auth/cancelled-popup-request' ||
+      error?.message?.includes('popup-closed-by-user') ||
+      error?.message?.includes('canceled') ||
+      error?.message?.includes('cancelled')
+    ) {
+      console.info('Google girişi kullanıcı tarafından iptal edildi.');
       return null;
     }
+    console.error('Google Sign-in hatası:', error);
+    throw error;
+  }
+}
 
     // Web platform
     const provider = new GoogleAuthProvider();
