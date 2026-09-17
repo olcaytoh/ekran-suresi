@@ -72,9 +72,23 @@ export async function signInWithGoogle(): Promise<User | null> {
         });
       } catch (credErr: any) {
         console.warn('Credential Manager signInWithGoogle failed, attempting legacy GoogleSignIn:', credErr);
-        result = await FirebaseAuthentication.signInWithGoogle({
-          useCredentialManager: false,
-        });
+        try {
+          result = await FirebaseAuthentication.signInWithGoogle({
+            useCredentialManager: false,
+          });
+        } catch (legacyErr: any) {
+          console.warn('Native Google Auth failed, attempting web popup fallback:', legacyErr);
+          try {
+            const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            const webRes = await signInWithPopup(auth, provider);
+            await syncUserProfile(webRes.user);
+            return webRes.user;
+          } catch (webErr: any) {
+            console.error('Web popup fallback also failed:', webErr);
+            throw legacyErr;
+          }
+        }
       }
 
       if (result) {

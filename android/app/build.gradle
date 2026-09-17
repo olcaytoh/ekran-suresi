@@ -50,10 +50,10 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
-    implementation "com.google.android.gms:play-services-auth:20.7.0"
-    implementation "androidx.credentials:credentials:1.3.0"
-    implementation "androidx.credentials:credentials-play-services-auth:1.3.0"
-    implementation "com.google.android.libraries.identity.googleid:googleid:1.1.1"
+    implementation "com.google.android.gms:play-services-auth:$playServicesAuthVersion"
+    implementation "androidx.credentials:credentials:$androidxCredentialsVersion"
+    implementation "androidx.credentials:credentials-play-services-auth:$androidxCredentialsPlayServicesAuthVersion"
+    implementation "com.google.android.libraries.identity.googleid:googleid:$librariesIdentityGoogleidVersion"
     implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-auth'
     testImplementation "junit:junit:$junitVersion"

@@ -95,8 +95,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
         setError(
           'Firebase Authentication ayarlarında "Google" sağlayıcısı henüz aktif edilmemiş veya yeni kullanıcı kaydı (Sign-up) sınırlandırılmış. Firebase Console > Authentication > Sign-in method sekmesinden Google sağlayıcısını etkinleştirin.'
         );
-      } else if (err.code === 'auth/popup-blocked') {
-        setError('Tarayıcınız Google giriş penceresini engelledi. Lütfen açılır pencerelere izin verin veya Test Girişi butonuna dokunun.');
+      } else if (err?.code === 'auth/popup-blocked') {
+        setError('Tarayıcınız Google giriş penceresini engelledi. Lütfen açılır pencerelere izin verin veya aşağıdaki doğrudan giriş butonuna dokunun.');
+      } else if (errMsg?.includes('plugin is not implemented')) {
+        setError('Android Google Giriş bileşeni henüz bu APK paketinde güncellenmemiş görünüyor. Yeni APK derlemesini GitHub Actions üzerinden indirip kurun ya da şu an hemen denemek için aşağıdaki doğrudan giriş butonunu kullanın.');
       } else {
         setError(`${errMsg}`);
       }
