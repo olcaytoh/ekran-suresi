@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { signInWithGoogle, signInAsGuest } from '../lib/firebase';
+import { auth, signInAsGuest } from '../lib/firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import {
   AlertCircle,
   Loader2,
@@ -11,7 +12,6 @@ import {
   Copy,
   AlertTriangle,
   ArrowRight,
-  ExternalLink,
   ShieldAlert,
 } from 'lucide-react';
 
@@ -66,9 +66,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
       setError(null);
       setPromptWarning(false);
       localStorage.setItem('pendingUserRole', selectedRole);
-      const user = await signInWithGoogle();
-      if (!user) {
-        // User closed or dismissed the popup
+
+      // Doğrudan hatasız ve kararlı popup akışı (mobil webview ve tarayıcı uyumlu)
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      
+      if (!result.user) {
         return;
       }
     } catch (err: any) {
@@ -88,17 +92,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
       ) {
         setUnauthorizedDomain(typeof window !== 'undefined' ? window.location.hostname : 'run.app');
         setError(null);
-      } else if (
-        err?.code === 'auth/admin-restricted-operation' ||
-        err?.message?.includes('admin-restricted-operation')
-      ) {
-        setError(
-          'Firebase Authentication ayarlarında "Google" sağlayıcısı henüz aktif edilmemiş veya yeni kullanıcı kaydı (Sign-up) sınırlandırılmış. Firebase Console > Authentication > Sign-in method sekmesinden Google sağlayıcısını etkinleştirin.'
-        );
       } else if (err?.code === 'auth/popup-blocked') {
-        setError('Tarayıcınız Google giriş penceresini engelledi. Lütfen açılır pencerelere izin verin veya aşağıdaki doğrudan giriş butonuna dokunun.');
-      } else if (errMsg?.includes('plugin is not implemented')) {
-        setError('Android Google Giriş bileşeni henüz bu APK paketinde güncellenmemiş görünüyor. Yeni APK derlemesini GitHub Actions üzerinden indirip kurun ya da şu an hemen denemek için aşağıdaki doğrudan giriş butonunu kullanın.');
+        setError('Tarayıcınız Google giriş penceresini engelledi. Lütfen açılır pencerelere izin verin.');
       } else {
         setError(`${errMsg}`);
       }
@@ -130,20 +125,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
     } catch (err: any) {
       console.warn('Firebase guest test login failed, falling back to local demo login:', err);
       if (onDemoLogin) {
-        // Smoothly fall back to demo mode so user is never blocked
         onDemoLogin(role);
         return;
       }
-      if (
-        err?.code === 'auth/admin-restricted-operation' ||
-        err?.message?.includes('admin-restricted-operation')
-      ) {
-        setError(
-          'Firebase Console üzerinde "Anonymous (Anonim)" veya "Google" sağlayıcısı kapalı olduğu için giriş yapılamadı. Lütfen Firebase Console > Authentication > Sign-in method bölümünden giriş yöntemini açın.'
-        );
-      } else {
-        setError(err.message || 'Giriş yapılamadı.');
-      }
+      setError(err.message || 'Giriş yapılamadı.');
     } finally {
       setLoading(false);
     }
@@ -158,19 +143,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
 
   return (
     <div className="h-screen max-h-screen w-full flex flex-col items-center justify-center p-2 bg-[#767694] relative overflow-hidden select-none">
-      {/* Background soft ambient glow */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#6b6b88] via-[#757593] to-[#585872] pointer-events-none" />
 
-      {/* Main Container constrained to exact giris.png aspect ratio & fits viewport */}
       <div className="relative z-10 w-[min(390px,calc(96vh*1536/2752))] sm:w-[min(430px,calc(96vh*1536/2752))] aspect-[1536/2752] flex items-center justify-center">
-        {/* Statik Arka Plan Görseli: Video yüklenene veya çözümlenene kadar asla siyah ekran veya play ikonu görünmez */}
         <img
           src="/giris.png"
           alt="Giriş Ekranı"
           className="absolute inset-0 w-full h-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.35)] rounded-[2rem] pointer-events-none"
         />
 
-        {/* Tam ekran animasyonlu arka plan videosu (giris.png tasarımının animasyonlu hali) */}
         <video
           src="/ekran-video.mp4"
           poster="/giris.png"
@@ -188,9 +169,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           }`}
         />
 
-        {/* 1. ÖĞRETMEN GİRİŞİ BUTONU (Sol Üst Kart Butonu)
-            Exact Coordinates on giris.png:
-            Top: 51.0%, Left: 13.5%, Width: 34.0%, Height: 18.3% */}
         <button
           type="button"
           id="btn-login-teacher"
@@ -221,9 +199,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           <span className="sr-only">Öğretmen Girişi</span>
         </button>
 
-        {/* 2. VELİ GİRİŞİ BUTONU (Sağ Üst Kart Butonu)
-            Exact Coordinates on giris.png:
-            Top: 51.0%, Left: 52.5%, Width: 34.0%, Height: 18.3% */}
         <button
           type="button"
           id="btn-login-parent"
@@ -254,9 +229,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           <span className="sr-only">Veli Girişi</span>
         </button>
 
-        {/* 3. GOOGLE İLE GİRİŞ YAP BUTONU (Alt Hap Buton)
-            Exact Coordinates on giris.png:
-            Top: 71.4%, Left: 13.5%, Width: 73.0%, Height: 7.6% */}
         <button
           type="button"
           id="btn-login-google"
@@ -283,7 +255,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           <span className="sr-only">Google ile giriş yap</span>
         </button>
 
-        {/* 4. Alt Bilgilendirme ve Admin Butonları (Google butonu 79.0%'da biter, 84.0%'da başlar - 5.0% temiz mesafe vardır, ASLA üstüne binmez) */}
         <div
           className="absolute z-20 pointer-events-none flex items-center justify-center text-center px-1"
           style={{
@@ -293,7 +264,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
             height: '7.6%',
           }}
         >
-          {/* 4 Küçük Bilgi & Admin Butonu - buton.png çerçeveleri ile tam hizada */}
           <div className="grid grid-cols-4 gap-1.5 w-full h-full items-center">
             <div className="relative h-full w-full flex items-center justify-center select-none">
               <img
@@ -340,7 +310,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               </div>
             </div>
 
-            {/* ADMİN BUTONU (Aynı stil ve tasarımda) - Rol seçer ve Google butonuyla girişe hazırlar */}
             <button
               type="button"
               id="btn-admin-access"
@@ -377,7 +346,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           </div>
         </div>
 
-        {/* Loading Overlay */}
         {loading && (
           <div className="absolute inset-0 z-40 bg-slate-900/40 backdrop-blur-xs rounded-[2rem] flex flex-col items-center justify-center gap-3 p-4">
             <div className="bg-white/95 rounded-2xl p-5 shadow-2xl flex flex-col items-center gap-2.5 max-w-[260px] text-center border border-slate-100">
@@ -387,7 +355,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           </div>
         )}
 
-        {/* Error / Prompt Notification */}
         {error && (
           <div className="absolute top-4 left-4 right-4 z-50 bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded-2xl shadow-lg flex flex-col gap-2 text-xs animate-in fade-in slide-in-from-top-2">
             <div className="flex items-start gap-2.5">
@@ -402,17 +369,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               </button>
             </div>
 
-            {/* Test Login fallback if error occurred */}
             <div className="pt-1 border-t border-rose-200/80 flex items-center justify-between">
-              {showShaGuide && (
-                <button
-                  type="button"
-                  onClick={() => setShowShaGuide(true)}
-                  className="text-[11px] font-bold text-rose-700 underline cursor-pointer"
-                >
-                  SHA-1 Anahtarını Gör
-                </button>
-              )}
               <button
                 type="button"
                 onClick={handleGuestTestLogin}
@@ -424,90 +381,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           </div>
         )}
 
-        {/* Android Native Google Login SHA-1 Guide Card */}
-        {showShaGuide && (
-          <div className="absolute top-2 left-2 right-2 bottom-2 z-50 bg-white/95 backdrop-blur-md border-2 border-rose-400 p-4 rounded-[1.8rem] shadow-2xl flex flex-col justify-between text-xs animate-in fade-in zoom-in-95 overflow-y-auto">
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center justify-between border-b border-rose-100 pb-2">
-                <div className="flex items-center gap-1.5 font-black text-rose-900 text-xs sm:text-sm">
-                  <ShieldAlert className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                  Google Girişi İçin SHA-1 Anahtarı Gerekli
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowShaGuide(false)}
-                  className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <p className="text-[11px] text-slate-600 leading-snug text-left">
-                Google ile girişin telefonda hatasız çalışması için APK imza anahtarınızın (release-key.jks) SHA-1 parmak izi Firebase Console'a kaydedilmelidir:
-              </p>
-
-              {/* SHA-1 with copy button */}
-              <div className="flex flex-col gap-1 bg-slate-100 border border-slate-300/80 rounded-xl p-2.5 text-left">
-                <span className="text-[10px] font-bold text-slate-500">APK SHA-1 Parmak İzi:</span>
-                <div className="flex items-center gap-1.5">
-                  <code className="text-[9.5px] font-mono text-indigo-900 flex-1 break-all select-all font-bold">
-                    7D:C0:CD:B6:68:C4:F8:90:2A:6D:50:93:1E:F4:FA:80:9F:1F:22:0F
-                  </code>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText('7D:C0:CD:B6:68:C4:F8:90:2A:6D:50:93:1E:F4:FA:80:9F:1F:22:0F');
-                      setShaCopied(true);
-                      setTimeout(() => setShaCopied(false), 2500);
-                    }}
-                    className="flex items-center gap-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-[10.5px] font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer shrink-0"
-                  >
-                    {shaCopied ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-300" />
-                        Kopyalandı
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        Kopyala
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* 3 Step Instructions */}
-              <div className="text-[10.5px] text-slate-700 bg-rose-50/80 p-2.5 rounded-xl border border-rose-200/70 flex flex-col gap-1 text-left">
-                <span className="font-black text-rose-950">Firebase'e nasıl eklenir? (1 dakika)</span>
-                <span className="leading-tight">1. <b>Firebase Console</b> &gt; Proje Ayarları (⚙️) &gt; <b>Genel</b> sekmesini açın.</span>
-                <span className="leading-tight">2. Aşağı kaydırıp <b>com.olcico.ekransuresi</b> uygulamasını bulun.</span>
-                <span className="leading-tight">3. <b>"Parmak izi ekle"</b> butonuna basıp yukarıdaki SHA-1'i yapıştırın ve kaydedin.</span>
-              </div>
-            </div>
-
-            {/* Direct Test Login Button */}
-            <div className="pt-2 border-t border-slate-200 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowShaGuide(false);
-                  if (onDemoLogin) {
-                    onDemoLogin(selectedRole || 'teacher');
-                  } else {
-                    handleGuestTestLogin();
-                  }
-                }}
-                className="w-full py-2.5 px-3 bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-700 hover:to-indigo-700 active:scale-98 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <span>🧪 Beklemeden Test Girişi Yap ({selectedRole === 'admin' ? 'Admin' : selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Unauthorized Domain Guide Card */}
         {unauthorizedDomain && (
           <div className="absolute top-2 left-2 right-2 bottom-2 z-50 bg-white/95 backdrop-blur-md border-2 border-amber-400 p-4 rounded-[1.8rem] shadow-2xl flex flex-col justify-between text-xs animate-in fade-in zoom-in-95">
             <div className="flex flex-col gap-2.5">
@@ -526,10 +399,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               </div>
 
               <p className="text-[11px] text-slate-600 leading-snug text-left">
-                Firebase güvenliği gereği, web tarayıcısından veya önizlemeden Google ile giriş yapabilmek için bu adresin Firebase Console'a eklenmesi gerekir:
+                Firebase güvenliği gereği, bu adresin Firebase Console'a eklenmesi gerekir:
               </p>
 
-              {/* Hostname with copy button */}
               <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-300/80 rounded-xl p-2">
                 <code className="text-[10.5px] font-mono text-indigo-900 flex-1 truncate select-all font-semibold">
                   {unauthorizedDomain}
@@ -552,20 +424,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                   )}
                 </button>
               </div>
-
-              {/* 3 Step Instructions */}
-              <div className="text-[10.5px] text-slate-700 bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/70 flex flex-col gap-1 text-left">
-                <span className="font-black text-amber-950">Firebase'e nasıl eklenir? (30 sn)</span>
-                <span className="leading-tight">1. <b>Firebase Console</b> &gt; Authentication &gt; <b>Settings (Ayarlar)</b> sekmesini açın.</span>
-                <span className="leading-tight">2. <b>Authorized domains (Yetkili etki alanları)</b> bölümünde <b>Add domain</b> butonuna tıklayın.</span>
-                <span className="leading-tight">3. Yukarıdan kopyaladığınız adresi yapıştırıp kaydedin.</span>
-                <span className="text-[9.5px] text-slate-500 font-medium mt-0.5">
-                  *(Not: Android APK uygulamasında bu kısıtlama yoktur, telefonunuzda Google girişi doğrudan çalışır.)*
-                </span>
-              </div>
             </div>
 
-            {/* Direct Demo Login Button */}
             <div className="pt-2 border-t border-slate-200 flex flex-col gap-2">
               <button
                 type="button"
@@ -579,7 +439,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                 }}
                 className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-98 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
               >
-                <span>Önizlemede Hemen Giriş Yap ({selectedRole === 'admin' ? 'Admin' : selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
+                <span>Hemen Giriş Yap ({selectedRole === 'admin' ? 'Admin' : selectedRole === 'parent' ? 'Veli' : 'Öğretmen'})</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -587,7 +447,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
         )}
       </div>
 
-      {/* 5. Dış Hızlı Test Butonları (Kartın tamamen altında, asla telefon ekranındaki grafiklerle ve Google butonuyla çakışmaz) */}
       <div className="relative z-20 mt-2 flex items-center justify-center gap-2 w-[min(380px,calc(90vh*1536/2752))] sm:w-[min(420px,calc(90vh*1536/2752))] px-2">
         <button
           type="button"
