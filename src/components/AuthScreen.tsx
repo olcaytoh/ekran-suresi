@@ -97,28 +97,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
         );
       } else if (err.code === 'auth/popup-blocked') {
         setError('Tarayıcınız Google giriş penceresini engelledi. Lütfen açılır pencerelere izin verin veya Test Girişi butonuna dokunun.');
-      } else if (
-        errMsg.includes('10') ||
-        errMsg.includes('DEVELOPER_ERROR') ||
-        errMsg.includes('12500') ||
-        errMsg.includes('GetCredentialException') ||
-        errMsg.includes('missing initial state') ||
-        errMsg.includes('sessionStorage') ||
-        errMsg.includes('ApiException')
-      ) {
-        setShowShaGuide(true);
-        setError(
-          'Google Kimlik Doğrulama / SHA-1 Parmak İzi Eksik: APK\'yı imzaladığınız release-key.jks anahtarının SHA-1 parmak izi Firebase Console\'a eklenmelidir. Detaylı rehber ve tek dokunuşla kopyalama penceresi açıldı.'
-        );
-      } else if (
-        errMsg.includes('not implemented') ||
-        errMsg.includes('FirebaseAuthentication')
-      ) {
-        setError(
-          'Android Eklenti Bildirimi: Android Studio\'da "Sync Project with Gradle Files" (fil simgesi) yapıp ardından Build > Clean Project ve Rebuild Project ile yeni APK/AAB derlemeniz gerekmektedir. Şimdi uygulamayı test etmek için aşağıdaki "Test Girişi" butonuna dokunabilirsiniz.'
-        );
       } else {
-        setError(errMsg || 'Google ile giriş yapılırken bir sorun oluştu.');
+        setError(`${errMsg}`);
       }
     } finally {
       setLoading(false);

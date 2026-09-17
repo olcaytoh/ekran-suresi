@@ -81,19 +81,32 @@ export async function signInWithGoogle(): Promise<User | null> {
         let idToken = result.credential?.idToken;
         if (!idToken) {
           try {
-            const tokenRes = await FirebaseAuthentication.getIdToken();
+            const tokenRes = await FirebaseAuthentication.getIdToken({ forceRefresh: false });
             idToken = tokenRes?.token;
           } catch (tErr) {
             console.warn('getIdToken fallback failed:', tErr);
           }
         }
-        if (!idToken) {
-          throw new Error('Google oturum açma başarılı ancak kimlik doğrulama belirteci (idToken) alınamadı.');
+        if (!idToken && result.user) {
+          try {
+            const tokenRes2 = await FirebaseAuthentication.getIdToken({ forceRefresh: true });
+            idToken = tokenRes2?.token;
+          } catch (tErr2) {
+            console.warn('getIdToken force refresh failed:', tErr2);
+          }
         }
-        const credential = GoogleAuthProvider.credential(idToken);
-        const userCredential = await signInWithCredential(auth, credential);
-        await syncUserProfile(userCredential.user);
-        return userCredential.user;
+        if (idToken) {
+          const credential = GoogleAuthProvider.credential(idToken);
+          const userCredential = await signInWithCredential(auth, credential);
+          await syncUserProfile(userCredential.user);
+          return userCredential.user;
+        }
+        // If native user exists even without idToken
+        if (result.user) {
+          const fallbackUser = await signInAsGuest(result.user.displayName || result.user.email || 'Google Kullanıcısı');
+          return fallbackUser;
+        }
+        throw new Error('Google oturum açma başarılı ancak kimlik belirteci (idToken) alınamadı.');
       }
       return null;
     }

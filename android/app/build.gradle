@@ -20,7 +20,7 @@ android {
         release {
             storeFile file('release-key.jks')
             storePassword 'ekransuresi123'
-            keyAlias 'releaseKey'
+            keyAlias 'releasekey'
             keyPassword 'ekransuresi123'
         }
     }
