@@ -1030,12 +1030,45 @@ export async function joinInstitutionWithCode(
   const instData = instDoc.data();
 
   const userRef = doc(db, 'users', userUid);
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.exists() ? userSnap.data() : null;
+
   await updateDoc(userRef, {
     institutionId: instDoc.id,
     institutionCode: instData.code,
     institutionName: instData.name,
     updatedAt: serverTimestamp(),
   });
+
+  // If teacher already has a classroom, link that classroom to the institution too
+  if (userData?.classId) {
+    try {
+      await updateDoc(doc(db, 'classes', userData.classId), {
+        institutionId: instDoc.id,
+        institutionCode: instData.code,
+        institutionName: instData.name,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('Could not link teacher active class to institution:', err);
+    }
+  }
+
+  // Also link any classes created by this teacher
+  try {
+    const classesQ = query(collection(db, 'classes'), where('teacherUid', '==', userUid));
+    const classesSnap = await getDocs(classesQ);
+    for (const cDoc of classesSnap.docs) {
+      await updateDoc(cDoc.ref, {
+        institutionId: instDoc.id,
+        institutionCode: instData.code,
+        institutionName: instData.name,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  } catch (err) {
+    console.warn('Could not link teacher classes to institution:', err);
+  }
 
   return { id: instDoc.id, code: instData.code, name: instData.name };
 }
@@ -1393,6 +1426,13 @@ export async function joinClassroomWithCode(
     classId: classDoc.id,
     classCode: classData.code,
     className: classData.name,
+    ...(classData.institutionId
+      ? {
+          institutionId: classData.institutionId,
+          institutionCode: classData.institutionCode,
+          institutionName: classData.institutionName,
+        }
+      : {}),
     studentName: studentName.trim(),
     parentName: parentName.trim() || undefined,
     displayName: studentName.trim() ? `${studentName.trim()} (${parentName.trim() || 'Velisi'})` : undefined,

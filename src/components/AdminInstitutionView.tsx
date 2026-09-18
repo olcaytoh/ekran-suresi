@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, ClassroomInfo } from '../types';
 import { formatMinutes, formatTimeAgo } from '../lib/weekUtils';
 import { getStageCategory } from '../lib/stagesData';
+import {
+  createInstitution,
+  updateInstitutionName,
+  regenerateInstitutionCode,
+} from '../lib/firebase';
 import {
   Building2,
   School,
@@ -18,9 +23,15 @@ import {
   Trash2,
   AlertTriangle,
   UserX,
+  Edit2,
+  RefreshCw,
+  Sparkles,
+  Share2,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface AdminInstitutionViewProps {
+  currentUser?: UserProfile | null;
   institutionName?: string;
   institutionCode?: string;
   institutionAdminCode?: string;
@@ -29,6 +40,8 @@ interface AdminInstitutionViewProps {
   onOpenClassSetup?: () => void;
   onDeleteClassroom?: (classId: string, teacherUid?: string) => Promise<void> | void;
   onDeleteUser?: (userUid: string, classId?: string) => Promise<void> | void;
+  onProfileUpdated?: (updates: Partial<UserProfile>) => void;
+  isDemo?: boolean;
 }
 
 function computeClassStats(students: UserProfile[]) {
@@ -54,6 +67,7 @@ function computeClassStats(students: UserProfile[]) {
 }
 
 export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
+  currentUser,
   institutionName = 'Kurum',
   institutionCode,
   institutionAdminCode,
@@ -62,11 +76,51 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   onOpenClassSetup,
   onDeleteClassroom,
   onDeleteUser,
+  onProfileUpdated,
+  isDemo = false,
 }) => {
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedInstCode, setCopiedInstCode] = useState(false);
   const [copiedAdminCode, setCopiedAdminCode] = useState(false);
+  const [copiedShareText, setCopiedShareText] = useState(false);
+
+  // Institution State on Homepage
+  const [currentInstName, setCurrentInstName] = useState(
+    institutionName || currentUser?.institutionName || 'Cumhuriyet İlkokulu'
+  );
+  const [currentInstCode, setCurrentInstCode] = useState<string | null>(
+    institutionCode || currentUser?.institutionCode || null
+  );
+  const [currentAdminCode, setCurrentAdminCode] = useState<string | null>(
+    institutionAdminCode || currentUser?.institutionAdminCode || null
+  );
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(currentInstName);
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Sync props if updated from parent
+  useEffect(() => {
+    if (institutionCode && institutionCode !== currentInstCode) {
+      setCurrentInstCode(institutionCode);
+    }
+  }, [institutionCode]);
+
+  useEffect(() => {
+    if (institutionAdminCode && institutionAdminCode !== currentAdminCode) {
+      setCurrentAdminCode(institutionAdminCode);
+    }
+  }, [institutionAdminCode]);
+
+  useEffect(() => {
+    if (institutionName && institutionName !== currentInstName) {
+      setCurrentInstName(institutionName);
+      setNameInput(institutionName);
+    }
+  }, [institutionName]);
 
   // Deletion modals state
   const [classToDelete, setClassToDelete] = useState<ClassroomInfo | null>(null);
@@ -103,17 +157,103 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   };
 
   const handleCopyInstCode = () => {
-    if (!institutionCode) return;
-    navigator.clipboard.writeText(institutionCode);
+    if (!currentInstCode) return;
+    navigator.clipboard.writeText(currentInstCode);
     setCopiedInstCode(true);
     setTimeout(() => setCopiedInstCode(false), 2000);
   };
 
   const handleCopyAdminCode = () => {
-    if (!institutionAdminCode) return;
-    navigator.clipboard.writeText(institutionAdminCode);
+    if (!currentAdminCode) return;
+    navigator.clipboard.writeText(currentAdminCode);
     setCopiedAdminCode(true);
     setTimeout(() => setCopiedAdminCode(false), 2000);
+  };
+
+  const handleCopyShareText = () => {
+    if (!currentInstCode) return;
+    const msg = `Sayın Öğretmenlerimiz,\n${currentInstName} Dijital Ekran Süresi Takip Sistemimize katılmak için Kurum Kodumuz: ${currentInstCode}\n\nUygulamada "Sınıfım" bölümünden bu Kurum Kodunu girerek okulumuza bağlanabilir ve sınıfınızı oluşturabilirsiniz.`;
+    navigator.clipboard.writeText(msg);
+    setCopiedShareText(true);
+    setTimeout(() => setCopiedShareText(false), 2500);
+  };
+
+  const handleGenerateOrRegenerateCode = async () => {
+    try {
+      setIsGeneratingCode(true);
+      setFeedback(null);
+
+      const targetName = currentInstName.trim() || 'Cumhuriyet İlkokulu';
+
+      if (isDemo || !currentUser?.uid) {
+        const num = Math.floor(1000 + Math.random() * 9000);
+        const newCode = `KRM-${num}`;
+        const newAdminCode = `ADM-${num}`;
+        setCurrentInstCode(newCode);
+        setCurrentAdminCode(newAdminCode);
+        onProfileUpdated?.({
+          institutionName: targetName,
+          institutionCode: newCode,
+          institutionAdminCode: newAdminCode,
+          role: 'admin',
+          userType: 'teacher',
+        });
+        setFeedback({ type: 'success', text: `Yeni Kurum Kodu oluşturuldu: ${newCode}` });
+        return;
+      }
+
+      if (currentUser.institutionId) {
+        const newCode = await regenerateInstitutionCode(currentUser.institutionId, currentUser.uid);
+        setCurrentInstCode(newCode);
+        onProfileUpdated?.({ institutionCode: newCode });
+        setFeedback({ type: 'success', text: `Kurum Kodunuz güncellendi: ${newCode}` });
+      } else {
+        const inst = await createInstitution(
+          currentUser.uid,
+          currentUser.displayName || 'Yönetici',
+          currentUser.email || '',
+          targetName
+        );
+        setCurrentInstCode(inst.code);
+        setCurrentAdminCode(inst.adminCode);
+        setCurrentInstName(inst.name);
+        onProfileUpdated?.({
+          institutionId: inst.id,
+          institutionCode: inst.code,
+          institutionAdminCode: inst.adminCode,
+          institutionName: inst.name,
+          role: 'admin',
+          userType: 'teacher',
+        });
+        setFeedback({ type: 'success', text: `Kurum oluşturuldu! Kurum Kodu: ${inst.code}` });
+      }
+    } catch (err: any) {
+      console.error('Error generating code on homepage:', err);
+      setFeedback({ type: 'error', text: err.message || 'Kod oluşturulamadı. Lütfen tekrar deneyiniz.' });
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    try {
+      setIsSavingName(true);
+      setFeedback(null);
+      if (currentUser?.institutionId && !isDemo) {
+        await updateInstitutionName(currentUser.institutionId, currentUser.uid, trimmed);
+      }
+      setCurrentInstName(trimmed);
+      onProfileUpdated?.({ institutionName: trimmed });
+      setIsEditingName(false);
+      setFeedback({ type: 'success', text: 'Kurum adı başarıyla kaydedildi.' });
+    } catch (err: any) {
+      console.error('Error updating institution name:', err);
+      setFeedback({ type: 'error', text: err.message || 'Ad güncellenemedi.' });
+    } finally {
+      setIsSavingName(false);
+    }
   };
 
   // Kurum geneli toplam istatistikler
@@ -303,21 +443,223 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   // --------------------------------------------------------------
   return (
     <div className="space-y-4">
-      {/* Kurum Bilgi Çubuğu - Üstte sade ve temiz kurum başlığı (Gereksiz kodlar kaldırıldı) */}
+      {/* 1. Kurum Bilgi Çubuğu ve Ad Düzenleme */}
       <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-xs text-slate-700">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200 flex-shrink-0">
             <Building2 className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <span className="font-extrabold text-slate-900 truncate block text-xs sm:text-sm">
-              {institutionName || 'Kurum / Okul'}
-            </span>
+            {isEditingName ? (
+              <div className="flex items-center gap-1.5 my-0.5">
+                <input
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  className="px-2 py-1 text-xs font-black rounded-lg border border-rose-300 bg-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  placeholder="Okul / Kurum Adı"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveName}
+                  disabled={isSavingName}
+                  className="px-2.5 py-1 text-[11px] font-black rounded-lg bg-rose-600 text-white cursor-pointer hover:bg-rose-700"
+                >
+                  {isSavingName ? '...' : 'Kaydet'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(false)}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 px-1 cursor-pointer"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-slate-900 truncate block text-xs sm:text-sm">
+                  {currentInstName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNameInput(currentInstName);
+                    setIsEditingName(true);
+                  }}
+                  title="Kurum Adını Düzenle"
+                  className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer transition-colors"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
             <span className="text-[10px] font-bold text-rose-700">
-              Yönetici Paneli
+              Yönetici Paneli (Kurum Ana Sayfası)
             </span>
           </div>
         </div>
+      </div>
+
+      {/* 2. ANASAYFADA KURUM KODU OLUŞTURMA & PAYLAŞMA PANELİ */}
+      <div className="bg-white rounded-3xl border-2 border-rose-100 shadow-sm p-4 sm:p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-xs flex-shrink-0">
+              <KeyRound className="w-4 h-4 stroke-[2.5]" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 leading-tight flex items-center gap-1.5">
+                <span>Kurum Kodu &amp; Öğretmen Katılımı</span>
+                {currentInstCode && (
+                  <span className="text-[9.5px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                    Aktif Kod
+                  </span>
+                )}
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Öğretmenler &quot;Sınıfım&quot; sekmesinden bu kodu girerek okulunuza bağlanırlar.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            id="btn-generate-inst-code"
+            onClick={handleGenerateOrRegenerateCode}
+            disabled={isGeneratingCode}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 text-xs font-bold transition-all cursor-pointer active:scale-95"
+            title={currentInstCode ? 'Yeni bir Kurum Kodu üret' : 'Kurum Kodu oluştur'}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingCode ? 'animate-spin text-rose-600' : ''}`} />
+            <span>{currentInstCode ? 'Yeni Kod Üret' : 'Kod Oluştur'}</span>
+          </button>
+        </div>
+
+        {feedback && (
+          <div
+            className={`text-[11px] font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 ${
+              feedback.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-rose-50 text-rose-800 border border-rose-200'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>{feedback.text}</span>
+          </div>
+        )}
+
+        {currentInstCode ? (
+          <div className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Kurum Kodu Kutusu */}
+              <div className="bg-rose-50/90 p-3 rounded-2xl border border-rose-200 flex items-center justify-between gap-2">
+                <div>
+                  <span className="text-[10px] font-bold text-rose-500 uppercase tracking-wider block">
+                    Öğretmen Katılım Kodu
+                  </span>
+                  <span className="text-base sm:text-lg font-mono font-black text-rose-900 tracking-wider">
+                    {currentInstCode}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  id="btn-copy-inst-code-main"
+                  onClick={handleCopyInstCode}
+                  className="btn-3d-rose px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  title="Kurum Kodunu Kopyala"
+                >
+                  {copiedInstCode ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                      <span>Kopyalandı</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Kopyala</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Admin Yetki Devir Kodu Kutusu */}
+              {currentAdminCode && (
+                <div className="bg-indigo-50/90 p-3 rounded-2xl border border-indigo-200 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block">
+                      Admin Yetki Kodu
+                    </span>
+                    <span className="text-base sm:text-lg font-mono font-black text-indigo-900 tracking-wider">
+                      {currentAdminCode}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    id="btn-copy-admin-code-main"
+                    onClick={handleCopyAdminCode}
+                    className="btn-3d-palette-primary px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    title="Admin Yetki Kodunu Kopyala"
+                  >
+                    {copiedAdminCode ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                        <span>Kopyalandı</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>Kopyala</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Öğretmenler İçin Hızlı Davet Paylaşım Butonu */}
+            <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-slate-50 border border-slate-200/90 flex-wrap">
+              <span className="text-[11px] text-slate-600 font-medium">
+                Öğretmenleriniz &quot;Sınıfım&quot; sekmesine girip bu kodu yazdıklarında sınıfları anında burada listelenir.
+              </span>
+              <button
+                type="button"
+                id="btn-copy-share-invite"
+                onClick={handleCopyShareText}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition-all cursor-pointer active:scale-95 shadow-xs"
+              >
+                {copiedShareText ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                    <span>Mesaj Kopyalandı!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Öğretmen Davet Metnini Kopyala</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-200/70 text-center space-y-2">
+            <p className="text-xs text-slate-600 font-medium">
+              Okulunuza ait henüz bir kurum kodu bulunmuyor. Öğretmenlerinizi sisteminize dahil etmek için hemen bir kurum kodu oluşturun.
+            </p>
+            <button
+              type="button"
+              id="btn-create-inst-code-primary"
+              onClick={handleGenerateOrRegenerateCode}
+              disabled={isGeneratingCode}
+              className="btn-3d-rose px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{isGeneratingCode ? 'Kod Oluşturuluyor...' : 'Kurum Kodu Oluştur ve Başlat'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Kurum Geneli Özet */}
@@ -439,80 +781,6 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           })
         )}
       </div>
-
-      {/* Altta Kurum Kodu ve Kopyalama Kartı (Üstte ayarlar butonu var, burada ayarlar butonu yok, sadece kopyalama butonu) */}
-      {institutionCode && (
-        <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-sm space-y-3">
-          <div className="flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-rose-600 flex-shrink-0" />
-            <div>
-              <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
-                Kurum Kodu (Öğretmen Katılımı)
-              </h4>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Öğretmenler bu kurum kodunu girerek kurumunuza bağlanır ve kendi sınıflarını açarlar.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="flex items-center gap-2 bg-rose-50/90 px-3.5 py-2.5 rounded-2xl border border-rose-200 flex-1 min-w-[220px] justify-between">
-              <span className="text-sm sm:text-base font-mono font-black text-rose-800 tracking-wider">
-                {institutionCode}
-              </span>
-              <button
-                type="button"
-                id="btn-copy-inst-code"
-                onClick={handleCopyInstCode}
-                title="Kurum Kodunu Kopyala"
-                className="btn-3d-rose inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer active:scale-95"
-              >
-                {copiedInstCode ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-                    <span>Kopyalandı!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Kopyala</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {institutionAdminCode && (
-              <div className="flex items-center gap-2 bg-indigo-50/90 px-3.5 py-2.5 rounded-2xl border border-indigo-200 flex-1 min-w-[220px] justify-between">
-                <div>
-                  <span className="text-[10px] font-bold text-indigo-500 block">Admin Yetki Kodu</span>
-                  <span className="text-sm sm:text-base font-mono font-black text-indigo-900 tracking-wider">
-                    {institutionAdminCode}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  id="btn-copy-admin-code"
-                  onClick={handleCopyAdminCode}
-                  title="Admin Kodunu Kopyala"
-                  className="btn-3d-palette-primary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer active:scale-95"
-                >
-                  {copiedAdminCode ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-                      <span>Kopyalandı!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Kopyala</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* SINIF SİLME ONAY MODALI */}
       {classToDelete && (

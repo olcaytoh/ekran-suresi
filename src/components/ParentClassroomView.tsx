@@ -6,6 +6,8 @@ import {
   forgetAndClearAllDeviceData,
   setUserRole,
   verifyAdminCodeAndUpgrade,
+  joinInstitutionWithCode,
+  joinClassroomWithCode,
 } from '../lib/firebase';
 import {
   School,
@@ -20,6 +22,11 @@ import {
   Building2,
   UserX,
   AlertTriangle,
+  Copy,
+  CheckCircle2,
+  ArrowRight,
+  RefreshCw,
+  PlusCircle,
 } from 'lucide-react';
 
 interface ParentClassroomViewProps {
@@ -29,8 +36,10 @@ interface ParentClassroomViewProps {
   onSwitchToTeacher?: () => void;
   onSwitchRole?: (role: 'admin' | 'teacher') => void;
   onUpgradeToAdminWithCode?: (code: string) => Promise<void>;
+  onProfileUpdated?: (updates: Partial<UserProfile>) => void;
   isTeacher?: boolean;
   isSuperAdmin?: boolean;
+  isDemo?: boolean;
   onSignOut?: () => void;
   onForgetAccount?: () => void;
 }
@@ -42,8 +51,10 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
   onSwitchToTeacher,
   onSwitchRole,
   onUpgradeToAdminWithCode,
+  onProfileUpdated,
   isTeacher = false,
   isSuperAdmin = false,
+  isDemo = false,
   onSignOut,
   onForgetAccount,
 }) => {
@@ -60,6 +71,169 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
   const [adminCodeError, setAdminCodeError] = useState<string | null>(null);
   const [adminCodeSuccess, setAdminCodeSuccess] = useState<string | null>(null);
   const [isVerifyingAdminCode, setIsVerifyingAdminCode] = useState(false);
+
+  // TEACHER: Kurum Kodu ile Kuruma Bağlanma
+  const [teacherInstCodeInput, setTeacherInstCodeInput] = useState('');
+  const [isJoiningInst, setIsJoiningInst] = useState(false);
+  const [showChangeInst, setShowChangeInst] = useState(!userProfile?.institutionId);
+  const [teacherInstFeedback, setTeacherInstFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [copiedTeacherClassCode, setCopiedTeacherClassCode] = useState(false);
+
+  const handleTeacherJoinInstitution = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const raw = teacherInstCodeInput.trim().toUpperCase();
+    if (!raw) {
+      setTeacherInstFeedback({ type: 'error', text: 'Lütfen geçerli bir Kurum Kodu giriniz (Örn: KRM-1071).' });
+      return;
+    }
+
+    if (!raw.startsWith('KRM-') && raw.length === 6 && !raw.includes('-')) {
+      setTeacherInstFeedback({
+        type: 'error',
+        text: 'Girdiğiniz kod bir Sınıf Koduna benziyor. Kurum kodları "KRM-XXXX" biçimindedir. Okul yöneticinizden aldığınız Kurum Kodunu giriniz.',
+      });
+      return;
+    }
+
+    try {
+      setIsJoiningInst(true);
+      setTeacherInstFeedback(null);
+
+      if (isDemo || !userProfile?.uid) {
+        onProfileUpdated?.({
+          institutionId: 'inst_demo',
+          institutionCode: raw,
+          institutionName: 'Cumhuriyet İlkokulu',
+        });
+        setTeacherInstFeedback({
+          type: 'success',
+          text: `Cumhuriyet İlkokulu (${raw}) kurumuna başarıyla bağlandınız!`,
+        });
+        setShowChangeInst(false);
+        setTeacherInstCodeInput('');
+        return;
+      }
+
+      const inst = await joinInstitutionWithCode(userProfile.uid, raw);
+      onProfileUpdated?.({
+        institutionId: inst.id,
+        institutionCode: inst.code,
+        institutionName: inst.name,
+      });
+      setTeacherInstFeedback({
+        type: 'success',
+        text: `"${inst.name}" (${inst.code}) kurumuna başarıyla bağlandınız! Sınıfınız artık yöneticinin kurum listesinde görünecektir.`,
+      });
+      setShowChangeInst(false);
+      setTeacherInstCodeInput('');
+    } catch (err: any) {
+      console.error('Error joining institution:', err);
+      setTeacherInstFeedback({
+        type: 'error',
+        text: err.message || 'Kurum bulunamadı. Lütfen kurum kodunu doğru girdiğinizden emin olun.',
+      });
+    } finally {
+      setIsJoiningInst(false);
+    }
+  };
+
+  const handleCopyTeacherClassCode = () => {
+    const code = userProfile?.classCode || classroom?.code;
+    if (!code) return;
+    const msg = `Sayın Velilerimiz,\n${userProfile?.className || classroom?.name || 'Sınıfımız'} Dijital Ekran Süresi Takip Sistemimize katılmak için Sınıf Kodumuz: ${code}\n\nUygulamada "Sınıfım" bölümünden bu 6 haneli Sınıf Kodunu ve öğrencinizin adını girerek sınıfımıza bağlanabilirsiniz.`;
+    navigator.clipboard.writeText(msg);
+    setCopiedTeacherClassCode(true);
+    setTimeout(() => setCopiedTeacherClassCode(false), 2500);
+  };
+
+  // PARENT: Sınıf Kodu ile Sınıfa Bağlanma
+  const [parentClassCodeInput, setParentClassCodeInput] = useState('');
+  const [parentStudentNameInput, setParentStudentNameInput] = useState(
+    userProfile?.studentName || userProfile?.displayName || ''
+  );
+  const [parentNameInput, setParentNameInput] = useState(userProfile?.parentName || '');
+  const [isJoiningClass, setIsJoiningClass] = useState(false);
+  const [showChangeClass, setShowChangeClass] = useState(!userProfile?.classId && !classroom?.id);
+  const [parentClassFeedback, setParentClassFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleParentJoinClass = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const rawCode = parentClassCodeInput.trim().toUpperCase();
+    const trimmedStudent = parentStudentNameInput.trim();
+    const trimmedParent = parentNameInput.trim();
+
+    if (!rawCode) {
+      setParentClassFeedback({ type: 'error', text: 'Lütfen öğretmeninizden aldığınız 6 haneli Sınıf Kodunu giriniz.' });
+      return;
+    }
+
+    if (rawCode.startsWith('KRM-')) {
+      setParentClassFeedback({
+        type: 'error',
+        text: 'Girdiğiniz kod bir Kurum Kodudur. Veliler öğretmenlerinden aldıkları 6 haneli Sınıf Kodunu (Örn: ABC123) girmelidir.',
+      });
+      return;
+    }
+
+    if (!trimmedStudent) {
+      setParentClassFeedback({ type: 'error', text: 'Lütfen öğrencinin adını ve soyadını giriniz.' });
+      return;
+    }
+
+    try {
+      setIsJoiningClass(true);
+      setParentClassFeedback(null);
+
+      if (isDemo || !userProfile?.uid) {
+        onProfileUpdated?.({
+          classId: 'class_demo_' + rawCode,
+          classCode: rawCode,
+          className: '1-A Sınıfı',
+          studentName: trimmedStudent,
+          parentName: trimmedParent || undefined,
+          displayName: trimmedStudent + (trimmedParent ? ` (${trimmedParent})` : ''),
+          role: 'parent',
+          userType: 'parent',
+        });
+        setParentClassFeedback({
+          type: 'success',
+          text: `"${rawCode}" kodlu sınıfa başarıyla bağlandınız!`,
+        });
+        setShowChangeClass(false);
+        setParentClassCodeInput('');
+        return;
+      }
+
+      const joinedClass = await joinClassroomWithCode(userProfile.uid, rawCode, trimmedStudent, trimmedParent);
+      onProfileUpdated?.({
+        classId: joinedClass.id,
+        classCode: joinedClass.code,
+        className: joinedClass.name,
+        studentName: trimmedStudent,
+        parentName: trimmedParent || undefined,
+        displayName: trimmedStudent + (trimmedParent ? ` (${trimmedParent})` : ''),
+        institutionId: joinedClass.institutionId,
+        institutionCode: joinedClass.institutionCode,
+        institutionName: joinedClass.institutionName,
+        role: 'parent',
+        userType: 'parent',
+      });
+      setParentClassFeedback({
+        type: 'success',
+        text: `"${joinedClass.name}" sınıfına başarıyla bağlandınız!`,
+      });
+      setShowChangeClass(false);
+      setParentClassCodeInput('');
+    } catch (err: any) {
+      console.error('Error joining classroom:', err);
+      setParentClassFeedback({
+        type: 'error',
+        text: err.message || 'Sınıf bulunamadı. Lütfen sınıf kodunu doğru girdiğinizden emin olun.',
+      });
+    } finally {
+      setIsJoiningClass(false);
+    }
+  };
 
   const handleSaveName = async () => {
     if (!userProfile?.uid || !nameVal.trim()) return;
@@ -296,51 +470,403 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
         </div>
       </div>
 
-      {/* 3. Student Name Editing Card (Only for Parent / Student) */}
-      {!isTeacher && !isSuperAdmin && (
-        <div className="bg-white rounded-3xl p-3 sm:p-4 border border-slate-200/90 shadow-2xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-black text-slate-700 flex items-center gap-1">
-              <User className="w-3.5 h-3.5 text-slate-500" />
-              Öğrenci Adı ve Soyadı
-            </span>
+      {/* ============================================================== */}
+      {/* ÖĞRETMEN: KURUMA BAĞLANMA (KURUM KODU GİR) & SINIF KODU PAYLAŞIMI */}
+      {/* ============================================================== */}
+      {isTeacher && !isSuperAdmin && (
+        <div className="space-y-3">
+          {/* 1. Kuruma Bağlanma Kartı */}
+          <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-rose-100 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-tight flex items-center gap-1.5">
+                    <span>Kuruma Bağlan</span>
+                    {userProfile?.institutionName && (
+                      <span className="text-[9.5px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                        Kuruma Bağlı
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Okul yöneticinizden aldığınız Kurum Kodu ile kurumunuza bağlanın.
+                  </p>
+                </div>
+              </div>
 
-            {!isEditingName && (
-              <button
-                type="button"
-                onClick={() => setIsEditingName(true)}
-                className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 cursor-pointer"
-              >
-                <Edit2 className="w-3 h-3" />
-                <span>Düzenle</span>
-              </button>
+              {userProfile?.institutionId && (
+                <button
+                  type="button"
+                  onClick={() => setShowChangeInst(!showChangeInst)}
+                  className="text-[11px] font-bold text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                >
+                  {showChangeInst ? 'Kapat' : 'Kodu Değiştir'}
+                </button>
+              )}
+            </div>
+
+            {/* Mevcut Kurum Bilgisi (Varsa) */}
+            {userProfile?.institutionName && !showChangeInst && (
+              <div className="p-3 rounded-2xl bg-rose-50/70 border border-rose-200 flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <span className="text-[10px] font-bold text-rose-500 block uppercase tracking-wider">
+                    Bağlı Olduğunuz Okul / Kurum
+                  </span>
+                  <span className="text-sm font-black text-slate-900">
+                    {userProfile.institutionName}
+                  </span>
+                  {userProfile.institutionCode && (
+                    <span className="text-xs font-mono font-bold text-rose-800 ml-2 bg-rose-100/80 px-2 py-0.5 rounded-md">
+                      {userProfile.institutionCode}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowChangeInst(true)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-black bg-white hover:bg-rose-100 text-rose-700 border border-rose-200 cursor-pointer active:scale-95 transition-all shadow-2xs"
+                >
+                  Farklı Kuruma Bağlan
+                </button>
+              </div>
+            )}
+
+            {/* Kurum Kodu Giriş Formu */}
+            {(!userProfile?.institutionId || showChangeInst) && (
+              <form onSubmit={handleTeacherJoinInstitution} className="space-y-2.5 pt-1">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      id="input-teacher-institution-code"
+                      value={teacherInstCodeInput}
+                      onChange={(e) => setTeacherInstCodeInput(e.target.value.toUpperCase())}
+                      placeholder="Örn: KRM-1071"
+                      className="w-full px-3.5 py-2.5 text-xs font-mono font-black tracking-wider uppercase rounded-2xl border border-rose-200 bg-rose-50/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-900"
+                    />
+                    <KeyRound className="w-4 h-4 text-rose-400 absolute right-3 top-3 pointer-events-none" />
+                  </div>
+                  <button
+                    type="submit"
+                    id="btn-teacher-join-inst"
+                    disabled={isJoiningInst || !teacherInstCodeInput.trim()}
+                    className="btn-3d-rose px-4 py-2.5 rounded-2xl text-xs font-black inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {isJoiningInst ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Bağlanıyor...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Kuruma Bağlan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {teacherInstFeedback && (
+                  <div
+                    className={`text-[11px] font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 ${
+                      teacherInstFeedback.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : 'bg-rose-50 text-rose-800 border border-rose-200'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{teacherInstFeedback.text}</span>
+                  </div>
+                )}
+              </form>
             )}
           </div>
 
-          {isEditingName ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={nameVal}
-                onChange={(e) => setNameVal(e.target.value)}
-                placeholder="Öğrenci adı girin"
-                className="flex-1 px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
-              />
+          {/* 2. Sınıf Kodu & Velileri Davet Etme Kartı */}
+          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center flex-shrink-0">
+                  <School className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                    Sınıf Kodunuz &amp; Veli Katılımı
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Velileriniz bu kodu &quot;Sınıfım&quot; sekmesinden girerek sınıfınıza katılırlar.
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={handleSaveName}
-                disabled={savingName || !nameVal.trim()}
-                className="btn-3d-cyan px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer"
+                onClick={onOpenClassSetup}
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 underline cursor-pointer"
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>Kaydet</span>
+                {userProfile?.classCode || classroom?.code ? 'Sınıfı Düzenle' : 'Sınıf Aç'}
               </button>
             </div>
-          ) : (
-            <div className="text-sm font-black text-slate-900 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
-              {userProfile?.studentName || userProfile?.displayName || 'Öğrenci Adı Belirtilmedi'}
+
+            {(userProfile?.classCode || classroom?.code) ? (
+              <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200 flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block">
+                    {userProfile?.className || classroom?.name || 'Sınıfınız'}
+                  </span>
+                  <span className="text-base sm:text-lg font-mono font-black text-indigo-900 tracking-wider">
+                    {userProfile?.classCode || classroom?.code}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  id="btn-copy-teacher-class-code"
+                  onClick={handleCopyTeacherClassCode}
+                  className="btn-3d-palette-primary px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  title="Veliler için sınıf davetini kopyala"
+                >
+                  {copiedTeacherClassCode ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                      <span>Davet Kopyalandı!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Veliler İçin Kodu Kopyala</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-2">
+                <p className="text-xs text-slate-600 font-medium">
+                  Henüz bir sınıfınız tanımlı değil. Hemen bir sınıf oluşturup velilerinizle paylaşabileceğiniz sınıf kodunu alın.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenClassSetup}
+                  className="btn-3d-palette-primary px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Sınıfımı Oluştur</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* VELİ / ÖĞRENCİ: SINIF KODU İLE SINIF VE KURUMA BAĞLANMA */}
+      {/* ============================================================== */}
+      {!isTeacher && !isSuperAdmin && (
+        <div className="space-y-3">
+          {/* 1. Sınıfa Bağlanma Kartı (Sınıf Kodu Gir) */}
+          <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-emerald-100 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
+                  <KeyRound className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-tight flex items-center gap-1.5">
+                    <span>Sınıfa Bağlan (Sınıf Kodu)</span>
+                    {(userProfile?.className || classroom?.name) && (
+                      <span className="text-[9.5px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                        Sınıfa Bağlı
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Öğretmeninizden aldığınız 6 haneli Sınıf Kodu ile sınıfınıza bağlanın.
+                  </p>
+                </div>
+              </div>
+
+              {(userProfile?.classId || classroom?.id) && (
+                <button
+                  type="button"
+                  onClick={() => setShowChangeClass(!showChangeClass)}
+                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 underline cursor-pointer"
+                >
+                  {showChangeClass ? 'Kapat' : 'Sınıfı Değiştir'}
+                </button>
+              )}
             </div>
-          )}
+
+            {/* Mevcut Bağlı Sınıf Özeti (Varsa) */}
+            {(userProfile?.classId || classroom?.id) && !showChangeClass && (
+              <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-600 block uppercase tracking-wider">
+                    Bağlı Olduğunuz Sınıf
+                  </span>
+                  <span className="text-sm font-black text-slate-900">
+                    {userProfile?.className || classroom?.name || 'Sınıf'}
+                  </span>
+                  {(userProfile?.classCode || classroom?.code) && (
+                    <span className="text-xs font-mono font-bold text-emerald-800 ml-2 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                      {userProfile?.classCode || classroom?.code}
+                    </span>
+                  )}
+                  {(userProfile?.institutionName || classroom?.institutionName) && (
+                    <div className="text-[11px] text-slate-600 font-bold mt-0.5 flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-rose-500" />
+                      <span>{userProfile?.institutionName || classroom?.institutionName}</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowChangeClass(true)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-black bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200 cursor-pointer active:scale-95 transition-all shadow-2xs"
+                >
+                  Farklı Sınıfa Bağlan
+                </button>
+              </div>
+            )}
+
+            {/* Sınıf Kodu ve Öğrenci Bilgisi Giriş Formu */}
+            {(!userProfile?.classId && !classroom?.id || showChangeClass) && (
+              <form onSubmit={handleParentJoinClass} className="space-y-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">
+                      Sınıf Kodu (6 Hane) *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        id="input-parent-class-code"
+                        value={parentClassCodeInput}
+                        onChange={(e) => setParentClassCodeInput(e.target.value.toUpperCase())}
+                        placeholder="Örn: ABC123"
+                        maxLength={8}
+                        className="w-full px-3 py-2 text-xs font-mono font-black tracking-wider uppercase rounded-xl border border-emerald-200 bg-emerald-50/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900"
+                      />
+                      <KeyRound className="w-3.5 h-3.5 text-emerald-500 absolute right-3 top-2.5 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">
+                      Öğrenci Adı ve Soyadı *
+                    </label>
+                    <input
+                      type="text"
+                      id="input-parent-student-name"
+                      value={parentStudentNameInput}
+                      onChange={(e) => setParentStudentNameInput(e.target.value)}
+                      placeholder="Örn: Ali Yılmaz"
+                      className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">
+                      Veli Adı (Opsiyonel)
+                    </label>
+                    <input
+                      type="text"
+                      id="input-parent-parent-name"
+                      value={parentNameInput}
+                      onChange={(e) => setParentNameInput(e.target.value)}
+                      placeholder="Örn: Ayşe Yılmaz"
+                      className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                  <p className="text-[11px] text-slate-500">
+                    Sınıf kodunu girdiğinizde okulunuza ve öğretmeninize otomatik bağlanırsınız.
+                  </p>
+                  <button
+                    type="submit"
+                    id="btn-parent-join-class"
+                    disabled={isJoiningClass || !parentClassCodeInput.trim() || !parentStudentNameInput.trim()}
+                    className="btn-3d-palette-primary px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {isJoiningClass ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Sınıfa Bağlanılıyor...</span>
+                      </>
+                    ) : (
+                      <>
+                        <School className="w-3.5 h-3.5" />
+                        <span>Sınıfa Bağlan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {parentClassFeedback && (
+                  <div
+                    className={`text-[11px] font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 ${
+                      parentClassFeedback.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : 'bg-rose-50 text-rose-800 border border-rose-200'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{parentClassFeedback.text}</span>
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
+
+          {/* 2. Öğrenci Adı ve Soyadı Kartı (Öğrenci profil bilgisi güncelleme) */}
+          <div className="bg-white rounded-3xl p-3.5 sm:p-4 border border-slate-200/90 shadow-2xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-black text-slate-700 flex items-center gap-1">
+                <User className="w-3.5 h-3.5 text-slate-500" />
+                Öğrenci Adı ve Soyadı
+              </span>
+
+              {!isEditingName && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(true)}
+                  className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit2 className="w-3 h-3" />
+                  <span>Düzenle</span>
+                </button>
+              )}
+            </div>
+
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={nameVal}
+                  onChange={(e) => setNameVal(e.target.value)}
+                  placeholder="Öğrenci adı girin"
+                  className="flex-1 px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveName}
+                  disabled={savingName || !nameVal.trim()}
+                  className="btn-3d-cyan px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Kaydet</span>
+                </button>
+              </div>
+            ) : (
+              <div className="text-sm font-black text-slate-900 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+                {userProfile?.studentName || userProfile?.displayName || 'Öğrenci Adı Belirtilmedi'}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

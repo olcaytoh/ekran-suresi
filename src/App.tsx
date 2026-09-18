@@ -740,6 +740,22 @@ export default function App() {
   );
   const classAverageMinutes = studentList.length > 0 ? Math.round(totalClassMinutes / studentList.length) : 0;
 
+  const handleProfileUpdated = (updates: Partial<UserProfile>) => {
+    if (activeLocalProfile) {
+      const updated = { ...activeLocalProfile, ...updates };
+      setActiveLocalProfile(updated);
+      setActiveAppProfile(updated, true);
+    }
+    if (demoProfile) {
+      setDemoProfile((prev) => (prev ? { ...prev, ...updates } : null));
+    }
+    if (userProfile) {
+      setUserProfile((prev) => (prev ? { ...prev, ...updates } : null));
+    }
+  };
+
+  const isCurrentDemo = !authUser && !activeLocalProfile && !!demoProfile;
+
   return (
     <div className="h-screen max-h-screen w-full flex flex-col justify-between overflow-hidden bg-slate-100 select-none">
       {/* 1. Slim Top Navigation Header */}
@@ -763,6 +779,7 @@ export default function App() {
             {parentTab === 'home' && (
               isSuperAdmin ? (
                 <AdminInstitutionView
+                  currentUser={effectiveProfile}
                   institutionName={effectiveProfile?.institutionName}
                   institutionCode={effectiveProfile?.institutionCode}
                   institutionAdminCode={effectiveProfile?.institutionAdminCode}
@@ -771,6 +788,8 @@ export default function App() {
                   onOpenClassSetup={() => setShowClassSetup(true)}
                   onDeleteClassroom={handleAdminDeleteClassroom}
                   onDeleteUser={handleAdminDeleteUser}
+                  onProfileUpdated={handleProfileUpdated}
+                  isDemo={isCurrentDemo}
                 />
               ) : (
                 <TeacherHomeView
@@ -820,6 +839,8 @@ export default function App() {
                 onOpenClassSetup={() => setShowClassSetup(true)}
                 isTeacher={isTeacher}
                 isSuperAdmin={isSuperAdmin}
+                isDemo={isCurrentDemo}
+                onProfileUpdated={handleProfileUpdated}
                 onSignOut={handleSignOut}
                 onForgetAccount={handleForgetAccount}
                 onSwitchRole={handleSwitchRole}
@@ -874,6 +895,8 @@ export default function App() {
                   onOpenClassSetup={() => setShowClassSetup(true)}
                   isTeacher={false}
                   isSuperAdmin={false}
+                  isDemo={isCurrentDemo}
+                  onProfileUpdated={handleProfileUpdated}
                   onSignOut={handleSignOut}
                   onForgetAccount={handleForgetAccount}
                   onSwitchRole={handleSwitchRole}
