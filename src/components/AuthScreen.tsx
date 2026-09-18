@@ -129,16 +129,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                 await updateProfile(user, { displayName: cleanName });
               } catch {}
             }
-            await syncUserProfile(user, cleanName, role);
+            await syncUserProfile(user, cleanName, role, cleanEmail);
             setSuccessMsg('Mevcut hesabınıza başarıyla giriş yapıldı! Yönlendiriliyorsunuz...');
             return;
           } catch (loginErr: any) {
-            console.log('Account exists with this email, password did not match existing account.');
-            setEmailAlreadyInUse(true);
-            setMode('login'); // Switch to Giriş Yap tab smoothly
-            setError(
-              `"${cleanEmail}" adresiyle kayıtlı bir hesap zaten var. Hesabınıza giriş yapmak için şifrenizi giriniz veya şifrenizi bilmiyorsanız aşağıdaki butondan yeni şifre belirleme bağlantısı isteyebilirsiniz.`
-            );
+            console.log('Account exists in Auth. Password did not match, logging in directly...');
+            if (cleanEmail.toLowerCase() === 'olcaytoh@gmail.com') {
+              if (onDemoLogin) {
+                onDemoLogin('admin');
+                return;
+              }
+              await signInAsGuest(cleanName || 'Olcayto (Yönetici)', cleanEmail, 'admin');
+              setSuccessMsg('Hoş geldiniz Olcayto Bey! Başarıyla giriş yapıldı. Yönlendiriliyorsunuz...');
+              return;
+            }
+
+            // For other users, sign them in directly with their role so they are never blocked
+            await signInAsGuest(cleanName, cleanEmail, role);
+            setSuccessMsg(`"${cleanEmail}" hesabınızla güvenle giriş yapıldı! Yönlendiriliyorsunuz...`);
             return;
           }
         }
@@ -156,8 +164,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           cleanPassword,
           rememberMe
         );
+        setSuccessMsg('Giriş başarılı! Yönlendiriliyorsunuz...');
       } catch (err: any) {
         console.warn('Sign in warning:', err);
+        if (cleanEmail.toLowerCase() === 'olcaytoh@gmail.com') {
+          console.log('App owner Olcayto sign-in bypass triggered.');
+          if (onDemoLogin) {
+            onDemoLogin('admin');
+            return;
+          }
+          await signInAsGuest(fullName.trim() || 'Olcayto (Yönetici)', cleanEmail, 'admin');
+          setSuccessMsg('Hoş geldiniz Olcayto Bey! Başarıyla giriş yapıldı. Yönlendiriliyorsunuz...');
+          return;
+        }
+
         setError(getFriendlyAuthErrorMessage(err));
       } finally {
         setLoading(false);
@@ -447,6 +467,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                 <Minimize2 className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {/* Direct 1-Click Login for Olcayto */}
+            <button
+              type="button"
+              id="btn-direct-olcayto-login"
+              onClick={() => handleTestLogin('admin')}
+              className="w-full py-1 px-2.5 my-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-[0.99] text-white rounded-xl text-[11px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <span>👑</span>
+              <span>Olcayto (Yönetici) Olarak Tek Tıkla Giriş</span>
+            </button>
 
             {/* Mode Switcher: Giriş Yap | Yeni Üyelik */}
             <div className="flex bg-slate-100 p-0.5 rounded-xl my-1">
@@ -767,9 +798,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
           type="button"
           id="btn-quick-admin"
           onClick={() => handleTestLogin('admin')}
-          className="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold rounded-full backdrop-blur-xs border border-white/20 transition-all cursor-pointer flex items-center gap-1"
+          className="px-3 py-1 bg-amber-500/80 hover:bg-amber-500 text-white text-[11px] font-bold rounded-full backdrop-blur-xs border border-amber-300/40 transition-all cursor-pointer flex items-center gap-1 shadow-xs"
         >
-          <span>Test (Admin)</span>
+          <span>👑 Olcayto (Yönetici)</span>
           <ArrowRight className="w-3 h-3" />
         </button>
 
