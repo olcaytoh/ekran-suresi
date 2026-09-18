@@ -20,6 +20,9 @@ import {
   adminDeleteUser,
   setUserRole,
   verifyAdminCodeAndUpgrade,
+  getActiveAppProfile,
+  setActiveAppProfile,
+  clearActiveAppProfile,
 } from './lib/firebase';
 import { UserProfile, ClassroomInfo } from './types';
 import { getCurrentWeekInfo } from './lib/weekUtils';
@@ -40,6 +43,9 @@ import { Loader2 } from 'lucide-react';
 export default function App() {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [activeLocalProfile, setActiveLocalProfile] = useState<UserProfile | null>(() => {
+    return getActiveAppProfile();
+  });
   const [demoProfile, setDemoProfile] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('demoUserProfile');
@@ -63,6 +69,15 @@ export default function App() {
   const [showClassSetup, setShowClassSetup] = useState(false);
 
   const weekInfo = getCurrentWeekInfo();
+
+  // Listen to custom local profile changes
+  useEffect(() => {
+    const handleAuthChange = (e: any) => {
+      setActiveLocalProfile(e.detail || null);
+    };
+    window.addEventListener('app_auth_change', handleAuthChange);
+    return () => window.removeEventListener('app_auth_change', handleAuthChange);
+  }, []);
 
   const handleDemoLogin = (role: 'teacher' | 'parent' | 'admin') => {
     let profile: UserProfile;
@@ -183,6 +198,8 @@ export default function App() {
 
   const handleSignOut = async () => {
     setDemoProfile(null);
+    setActiveLocalProfile(null);
+    clearActiveAppProfile();
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('demoUserProfile');
     }
@@ -193,19 +210,23 @@ export default function App() {
     try {
       setDemoProfile(null);
       setUserProfile(null);
+      setActiveLocalProfile(null);
       setAuthUser(null);
       setAllUsers([]);
       setClassroom(null);
       setInstitutionClassrooms([]);
       setClassStudentsMap({});
       setParentTab('home');
+      clearActiveAppProfile();
       await forgetAndClearAllDeviceData();
     } catch (err) {
       console.error('Failed to forget account:', err);
       setDemoProfile(null);
       setUserProfile(null);
+      setActiveLocalProfile(null);
       setAuthUser(null);
       setParentTab('home');
+      clearActiveAppProfile();
       await forgetAndClearAllDeviceData().catch(() => {});
     }
   };
@@ -315,7 +336,27 @@ export default function App() {
     return () => unsubscribe();
   }, [authUser]);
 
-  const effectiveProfile = authUser ? userProfile : demoProfile;
+  // Listen to active local profile updates from Firestore
+  useEffect(() => {
+    if (!activeLocalProfile?.uid || authUser) return;
+    const unsubscribe = subscribeUserProfile(
+      activeLocalProfile.uid,
+      (profile) => {
+        if (profile) {
+          setActiveLocalProfile(profile);
+          setActiveAppProfile(profile, true);
+        }
+      },
+      (err: any) => {
+        if (err?.code !== 'permission-denied') {
+          console.error('Active profile subscription error:', err);
+        }
+      }
+    );
+    return () => unsubscribe();
+  }, [activeLocalProfile?.uid, authUser]);
+
+  const effectiveProfile = authUser ? userProfile : (activeLocalProfile || demoProfile);
   const isSuperAdmin = effectiveProfile?.role === 'admin';
   const isTeacher = effectiveProfile?.role === 'teacher';
   const isStaffOrAdmin = isSuperAdmin || isTeacher;
@@ -326,7 +367,7 @@ export default function App() {
       setClassroom(null);
       return;
     }
-    if (authUser) {
+    if (authUser || activeLocalProfile) {
       const unsubscribeClass = subscribeClassroom(effectiveProfile.classId, (classData) => {
         setClassroom(classData);
       });
@@ -346,14 +387,14 @@ export default function App() {
         setClassroom(null);
       }
     }
-  }, [effectiveProfile?.classId, effectiveProfile?.role, authUser, demoProfile]);
+  }, [effectiveProfile?.classId, effectiveProfile?.role, authUser, activeLocalProfile, demoProfile]);
 
   // Listen to students/users list:
   useEffect(() => {
-    if (authUser) {
-      if (isTeacher && userProfile?.classId) {
+    if (authUser || activeLocalProfile) {
+      if (isTeacher && effectiveProfile?.classId) {
         const unsubscribeStudents = subscribeClassroomStudents(
-          userProfile.classId,
+          effectiveProfile.classId,
           (students) => {
             setAllUsers(students);
           },
@@ -428,7 +469,7 @@ export default function App() {
       setInstitutionClassrooms([]);
       return;
     }
-    if (authUser && effectiveProfile?.institutionId) {
+    if ((authUser || activeLocalProfile) && effectiveProfile?.institutionId) {
       const unsubscribeClassrooms = subscribeInstitutionClassrooms(
         effectiveProfile.institutionId,
         (list) => setInstitutionClassrooms(list)
@@ -456,7 +497,7 @@ export default function App() {
         },
       ]);
     }
-  }, [authUser, demoProfile, isSuperAdmin, effectiveProfile?.institutionId]);
+  }, [authUser, activeLocalProfile, demoProfile, isSuperAdmin, effectiveProfile?.institutionId]);
 
   // Admin: Listen to each institution classroom's student roster
   useEffect(() => {
@@ -464,7 +505,7 @@ export default function App() {
       setClassStudentsMap({});
       return;
     }
-    if (authUser && institutionClassrooms.length > 0) {
+    if ((authUser || activeLocalProfile) && institutionClassrooms.length > 0) {
       const unsubs = institutionClassrooms.map((c) =>
         subscribeClassroomStudents(c.id, (students) => {
           setClassStudentsMap((prev) => ({ ...prev, [c.id]: students }));
@@ -634,6 +675,16 @@ export default function App() {
       setIsUpdatingStage(true);
       if (authUser) {
         await updateStageProgress(authUser.uid, newStage);
+      } else if (activeLocalProfile) {
+        await updateStageProgress(activeLocalProfile.uid, newStage);
+        const clampedStage = Math.max(0, Math.min(14, newStage));
+        const updated: UserProfile = {
+          ...activeLocalProfile,
+          currentWeekStage: clampedStage,
+          currentWeekMinutes: clampedStage * 30,
+        };
+        setActiveLocalProfile(updated);
+        setActiveAppProfile(updated, true);
       } else if (demoProfile) {
         const clampedStage = Math.max(0, Math.min(14, newStage));
         const updated: UserProfile = {
@@ -654,7 +705,7 @@ export default function App() {
   };
 
   // Loading spinner
-  if (authLoading && !demoProfile) {
+  if (authLoading && !demoProfile && !activeLocalProfile) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 border border-indigo-200">
@@ -668,15 +719,20 @@ export default function App() {
   }
 
   // If not logged in, show AuthScreen
-  if (!authUser && !demoProfile) {
-    return <AuthScreen onDemoLogin={handleDemoLogin} />;
+  if (!effectiveProfile) {
+    return (
+      <AuthScreen
+        onDemoLogin={handleDemoLogin}
+        onLoginSuccess={(profile) => setActiveLocalProfile(profile)}
+      />
+    );
   }
 
   const currentStage = effectiveProfile?.currentWeekStage ?? 0;
 
   // Calculate class average minutes for teacher / admin
   const studentList = effectiveStudents.filter(
-    (u) => u.role !== 'admin' && (u.userType !== 'teacher' || u.uid !== (authUser?.uid || demoProfile?.uid))
+    (u) => u.role !== 'admin' && (u.userType !== 'teacher' || u.uid !== effectiveProfile?.uid)
   );
   const totalClassMinutes = studentList.reduce(
     (sum, s) => sum + (s.currentWeekMinutes ?? (s.currentWeekStage || 0) * 30),
@@ -845,7 +901,7 @@ export default function App() {
             currentUser={effectiveProfile}
             onCompleted={() => setShowClassSetup(false)}
             onCancel={() => setShowClassSetup(false)}
-            isDemo={!authUser && !!demoProfile}
+            isDemo={!authUser && !activeLocalProfile && !!demoProfile}
             onDemoProfileUpdate={handleDemoProfileUpdate}
           />
         ) : (
@@ -854,7 +910,7 @@ export default function App() {
             onCompleted={() => setShowClassSetup(false)}
             onCancel={() => setShowClassSetup(false)}
             canCancel={Boolean(effectiveProfile.classId || effectiveProfile.role)}
-            isDemo={!authUser && !!demoProfile}
+            isDemo={!authUser && !activeLocalProfile && !!demoProfile}
             onDemoProfileUpdate={handleDemoProfileUpdate}
             onAddStudent={(newStudent) => {
               setAllUsers((prev) => [newStudent, ...prev.filter((u) => u.uid !== newStudent.uid)]);

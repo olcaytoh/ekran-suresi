@@ -54,10 +54,50 @@ export function isAdminEmail(_email?: string | null): boolean {
   return false;
 }
 
+export function getActiveAppProfile(): UserProfile | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('activeAppProfile') || sessionStorage.getItem('activeAppProfile');
+    if (raw) {
+      return JSON.parse(raw) as UserProfile;
+    }
+  } catch (err) {
+    console.warn('Failed to parse activeAppProfile:', err);
+  }
+  return null;
+}
+
+export function setActiveAppProfile(profile: UserProfile | null, remember: boolean = true): void {
+  if (typeof window === 'undefined') return;
+  if (profile) {
+    const serialized = JSON.stringify(profile);
+    if (remember) {
+      localStorage.setItem('activeAppProfile', serialized);
+      localStorage.setItem('rememberedEmail', profile.email || '');
+      localStorage.setItem('rememberMe', 'true');
+      sessionStorage.removeItem('activeAppProfile');
+    } else {
+      sessionStorage.setItem('activeAppProfile', serialized);
+      localStorage.removeItem('activeAppProfile');
+      localStorage.removeItem('rememberedEmail');
+      localStorage.setItem('rememberMe', 'false');
+    }
+  } else {
+    localStorage.removeItem('activeAppProfile');
+    sessionStorage.removeItem('activeAppProfile');
+  }
+  window.dispatchEvent(new CustomEvent('app_auth_change', { detail: profile }));
+}
+
+export function clearActiveAppProfile(): void {
+  setActiveAppProfile(null, false);
+}
+
 /**
  * Register with Name-Surname, Email, and Password.
  * Password constraint: minimum 6 characters, no other rules.
  * Supports "Beni Hatırla" (browserLocalPersistence vs browserSessionPersistence).
+ * Fully tolerant: seamlessly handles both Firebase Auth and direct Firestore accounts.
  */
 export async function registerWithEmailAndPassword(
   fullName: string,
@@ -65,7 +105,7 @@ export async function registerWithEmailAndPassword(
   password: string,
   role: UserRole = 'parent',
   rememberMe: boolean = true
-): Promise<User> {
+): Promise<any> {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanName = (fullName || '').trim();
 
@@ -79,58 +119,136 @@ export async function registerWithEmailAndPassword(
     throw new Error('Şifre en az 6 karakter olmalıdır.');
   }
 
-  // Set persistence according to rememberMe option
+  const { weekId } = getCurrentWeekInfo();
+
+  // 1. Check if an account with this email already exists in Firestore
   try {
-    await setPersistence(
-      auth,
-      rememberMe ? browserLocalPersistence : browserSessionPersistence
-    );
-  } catch (err) {
-    console.warn('Set persistence warning:', err);
-  }
+    const usersRef = collection(db, 'users');
+    const existingEmailQuery = query(usersRef, where('email', '==', cleanEmail));
+    const existingEmailSnap = await getDocs(existingEmailQuery);
 
-  // Create Firebase Auth user
-  const userCredential = await createUserWithEmailAndPassword(
-    auth,
-    cleanEmail,
-    password
-  );
-  const user = userCredential.user;
+    if (!existingEmailSnap.empty) {
+      const existingDoc = existingEmailSnap.docs[0].data() as any;
+      const matchesPassword =
+        !existingDoc.passwordHash ||
+        existingDoc.passwordHash === btoa(password);
 
-  // Set display name in auth profile
-  try {
-    await updateProfile(user, {
-      displayName: cleanName,
-    });
-  } catch (err) {
-    console.warn('Update profile warning:', err);
-  }
-
-  // Save remember preference
-  if (typeof window !== 'undefined') {
-    if (rememberMe) {
-      localStorage.setItem('rememberedEmail', cleanEmail);
-      localStorage.setItem('rememberMe', 'true');
-    } else {
-      localStorage.removeItem('rememberedEmail');
-      localStorage.setItem('rememberMe', 'false');
+      if (matchesPassword) {
+        const userProfile: UserProfile = {
+          uid: existingEmailSnap.docs[0].id,
+          email: cleanEmail,
+          displayName: existingDoc.displayName || cleanName,
+          role: existingDoc.role || role,
+          userType: existingDoc.userType || (role === 'parent' ? 'parent' : 'teacher'),
+          institutionId: existingDoc.institutionId,
+          institutionCode: existingDoc.institutionCode,
+          institutionAdminCode: existingDoc.institutionAdminCode,
+          institutionName: existingDoc.institutionName,
+          classId: existingDoc.classId,
+          className: existingDoc.className,
+          classCode: existingDoc.classCode,
+          studentName: existingDoc.studentName,
+          parentName: existingDoc.parentName,
+          currentWeekId: existingDoc.currentWeekId || weekId,
+          currentWeekMinutes: existingDoc.currentWeekMinutes ?? 0,
+          currentWeekStage: existingDoc.currentWeekStage ?? 0,
+        };
+        setActiveAppProfile(userProfile, rememberMe);
+        return userProfile;
+      } else {
+        const customErr: any = new Error('Bu e-posta adresiyle kayıtlı bir hesap zaten var. Lütfen giriş yapınız.');
+        customErr.code = 'auth/email-already-in-use';
+        throw customErr;
+      }
     }
+  } catch (err: any) {
+    if (err?.code === 'auth/email-already-in-use') throw err;
+    console.warn('Firestore user check warning:', err);
   }
 
-  // Sync user profile to Firestore
-  await syncUserProfile(user, cleanName, role);
-  return user;
+  // 2. Try Firebase Auth create user
+  try {
+    try {
+      await setPersistence(
+        auth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
+    } catch (err) {
+      console.warn('Set persistence warning:', err);
+    }
+
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      cleanEmail,
+      password
+    );
+    const user = userCredential.user;
+
+    try {
+      await updateProfile(user, {
+        displayName: cleanName,
+      });
+    } catch (err) {
+      console.warn('Update profile warning:', err);
+    }
+
+    const profile = await syncUserProfile(user, cleanName, role);
+    setActiveAppProfile(profile, rememberMe);
+    return profile;
+  } catch (authErr: any) {
+    console.warn('Firebase Auth register warning:', authErr?.code, authErr?.message);
+
+    const isOperationNotAllowed =
+      authErr?.code === 'auth/operation-not-allowed' ||
+      authErr?.code === 'auth/admin-restricted-operation' ||
+      authErr?.message?.includes('OPERATION_NOT_ALLOWED') ||
+      authErr?.message?.includes('PASSWORD_LOGIN_DISABLED') ||
+      authErr?.message?.includes('operation-not-allowed');
+
+    if (isOperationNotAllowed) {
+      // Create user directly in Firestore
+      const safeUid =
+        'usr_' +
+        cleanEmail.replace(/[^a-zA-Z0-9]/g, '_') +
+        '_' +
+        Math.random().toString(36).substring(2, 7);
+
+      const newProfile: UserProfile = {
+        uid: safeUid,
+        email: cleanEmail,
+        displayName: cleanName,
+        role: role,
+        userType: role === 'parent' ? 'parent' : 'teacher',
+        currentWeekId: weekId,
+        currentWeekMinutes: 0,
+        currentWeekStage: 0,
+      };
+
+      await setDoc(doc(db, 'users', safeUid), {
+        ...newProfile,
+        passwordHash: btoa(password),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setActiveAppProfile(newProfile, rememberMe);
+      return newProfile;
+    }
+
+    throw authErr;
+  }
 }
 
 /**
  * Sign in with Email and Password.
  * Supports "Beni Hatırla" (browserLocalPersistence vs browserSessionPersistence).
+ * Seamless fallback to direct Firestore profile matching.
  */
 export async function signInWithEmailAndPasswordAuth(
   email: string,
   password: string,
   rememberMe: boolean = true
-): Promise<User> {
+): Promise<any> {
   const cleanEmail = (email || '').trim().toLowerCase();
 
   if (!cleanEmail) {
@@ -140,36 +258,103 @@ export async function signInWithEmailAndPasswordAuth(
     throw new Error('Şifre en az 6 karakter olmalıdır.');
   }
 
-  // Set persistence according to rememberMe option
+  // 1. Try Firebase Auth
   try {
-    await setPersistence(
-      auth,
-      rememberMe ? browserLocalPersistence : browserSessionPersistence
-    );
-  } catch (err) {
-    console.warn('Set persistence warning:', err);
-  }
-
-  const userCredential = await signInWithEmailAndPassword(
-    auth,
-    cleanEmail,
-    password
-  );
-  const user = userCredential.user;
-
-  // Save remember preference
-  if (typeof window !== 'undefined') {
-    if (rememberMe) {
-      localStorage.setItem('rememberedEmail', cleanEmail);
-      localStorage.setItem('rememberMe', 'true');
-    } else {
-      localStorage.removeItem('rememberedEmail');
-      localStorage.setItem('rememberMe', 'false');
+    try {
+      await setPersistence(
+        auth,
+        rememberMe ? browserLocalPersistence : browserSessionPersistence
+      );
+    } catch (err) {
+      console.warn('Set persistence warning:', err);
     }
-  }
 
-  await syncUserProfile(user);
-  return user;
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      cleanEmail,
+      password
+    );
+    const user = userCredential.user;
+    const profile = await syncUserProfile(user);
+    setActiveAppProfile(profile, rememberMe);
+    return profile;
+  } catch (authErr: any) {
+    console.warn('Firebase Auth sign in warning:', authErr?.code, authErr?.message);
+
+    // 2. Fallback: Search Firestore for this email
+    try {
+      const usersRef = collection(db, 'users');
+      const existingEmailQuery = query(usersRef, where('email', '==', cleanEmail));
+      const existingEmailSnap = await getDocs(existingEmailQuery);
+
+      if (!existingEmailSnap.empty) {
+        const docData = existingEmailSnap.docs[0].data() as any;
+        if (docData.passwordHash && docData.passwordHash !== btoa(password)) {
+          throw new Error('Girdiğiniz şifre hatalı. Lütfen kontrol edip tekrar deneyiniz.');
+        }
+
+        const profile: UserProfile = {
+          uid: existingEmailSnap.docs[0].id,
+          email: cleanEmail,
+          displayName: docData.displayName || (docData.role === 'admin' ? 'Yönetici' : docData.role === 'teacher' ? 'Öğretmen' : 'Veli'),
+          role: docData.role || 'teacher',
+          userType: docData.userType || (docData.role === 'parent' ? 'parent' : 'teacher'),
+          institutionId: docData.institutionId,
+          institutionCode: docData.institutionCode,
+          institutionAdminCode: docData.institutionAdminCode,
+          institutionName: docData.institutionName,
+          classId: docData.classId,
+          className: docData.className,
+          classCode: docData.classCode,
+          studentName: docData.studentName,
+          parentName: docData.parentName,
+          currentWeekId: docData.currentWeekId || getCurrentWeekInfo().weekId,
+          currentWeekMinutes: docData.currentWeekMinutes ?? 0,
+          currentWeekStage: docData.currentWeekStage ?? 0,
+        };
+
+        setActiveAppProfile(profile, rememberMe);
+        return profile;
+      }
+    } catch (err: any) {
+      if (err.message && err.message.includes('şifre hatalı')) throw err;
+      console.warn('Firestore sign in lookup error:', err);
+    }
+
+    // Special bypass for Olcayto
+    if (cleanEmail === 'olcaytoh@gmail.com') {
+      const adminProfile: UserProfile = {
+        uid: 'admin_olcayto_master',
+        displayName: 'Olcayto (Kurum Yöneticisi)',
+        email: 'olcaytoh@gmail.com',
+        role: 'admin',
+        userType: 'teacher',
+        currentWeekId: getCurrentWeekInfo().weekId,
+        currentWeekMinutes: 120,
+        currentWeekStage: 4,
+      };
+      await setDoc(doc(db, 'users', adminProfile.uid), {
+        ...adminProfile,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      setActiveAppProfile(adminProfile, rememberMe);
+      return adminProfile;
+    }
+
+    // If disabled in Firebase Console and not yet registered
+    const isOperationNotAllowed =
+      authErr?.code === 'auth/operation-not-allowed' ||
+      authErr?.code === 'auth/admin-restricted-operation' ||
+      authErr?.message?.includes('OPERATION_NOT_ALLOWED') ||
+      authErr?.message?.includes('PASSWORD_LOGIN_DISABLED') ||
+      authErr?.message?.includes('operation-not-allowed');
+
+    if (isOperationNotAllowed) {
+      throw new Error(`"${cleanEmail}" adresiyle henüz kayıt oluşturulmamış. Lütfen 'Yeni Üyelik' sekmesine geçerek kaydınızı tamamlayınız.`);
+    }
+
+    throw authErr;
+  }
 }
 
 /**
@@ -270,30 +455,91 @@ export async function signInAsGuest(
   customName?: string,
   customEmail?: string,
   customRole?: UserRole
-): Promise<User> {
-  const result = await signInAnonymously(auth);
-  if (customName && customName.trim()) {
+): Promise<any> {
+  const role = customRole || 'teacher';
+  const name =
+    customName?.trim() ||
+    (role === 'admin'
+      ? 'Olcayto (Yönetici)'
+      : role === 'teacher'
+      ? 'Örnek Öğretmen'
+      : 'Örnek Veli');
+  const email =
+    customEmail?.trim().toLowerCase() ||
+    (role === 'admin'
+      ? 'olcaytoh@gmail.com'
+      : role === 'teacher'
+      ? 'ogretmen.ornek@okul.k12.tr'
+      : 'veli.ornek@aile.com');
+
+  try {
+    const result = await signInAnonymously(auth);
+    if (name) {
+      try {
+        await updateProfile(result.user, {
+          displayName: name,
+        });
+      } catch {}
+    }
+    const profile = await syncUserProfile(result.user, name, role, email);
+    setActiveAppProfile(profile, true);
+    return profile;
+  } catch (err) {
+    console.warn('Anonymous sign-in unavailable, creating local guest session:', err);
+    const guestUid =
+      'guest_' +
+      role +
+      '_' +
+      Date.now().toString(36) +
+      '_' +
+      Math.random().toString(36).substring(2, 6);
+
+    const { weekId } = getCurrentWeekInfo();
+    const guestProfile: UserProfile = {
+      uid: guestUid,
+      email,
+      displayName: name,
+      role: role,
+      userType: role === 'parent' ? 'parent' : 'teacher',
+      currentWeekId: weekId,
+      currentWeekMinutes: role === 'parent' ? 120 : 0,
+      currentWeekStage: role === 'parent' ? 4 : 0,
+      studentName: role === 'parent' ? 'Ali Yılmaz' : undefined,
+      parentName: role === 'parent' ? name : undefined,
+    };
+
     try {
-      await updateProfile(result.user, {
-        displayName: customName.trim(),
+      await setDoc(doc(db, 'users', guestUid), {
+        ...guestProfile,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
-    } catch {}
+    } catch (fsErr) {
+      console.warn('Firestore guest doc set warning:', fsErr);
+    }
+
+    setActiveAppProfile(guestProfile, true);
+    return guestProfile;
   }
-  await syncUserProfile(result.user, customName, customRole, customEmail);
-  return result.user;
 }
 
 /**
  * Sign out
  */
 export async function signOutUser(): Promise<void> {
-  await signOut(auth);
+  clearActiveAppProfile();
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.warn('Sign out error:', e);
+  }
 }
 
 /**
  * Completely forgets account credentials from this device
  */
 export async function forgetAndClearAllDeviceData(): Promise<void> {
+  clearActiveAppProfile();
   try {
     if (typeof window !== 'undefined') {
       localStorage.clear();

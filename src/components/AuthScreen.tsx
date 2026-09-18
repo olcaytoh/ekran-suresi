@@ -36,13 +36,14 @@ import { generateDefaultAcademicCalendar } from '../lib/academicCalendar';
 
 interface AuthScreenProps {
   onDemoLogin?: (role: 'teacher' | 'parent' | 'admin') => void;
+  onLoginSuccess?: (profile: any) => void;
 }
 
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
+export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSuccess }) => {
   // Mode: login or register
   const [mode, setMode] = useState<'login' | 'register'>('login');
   // Selected role for login/register
-  const [role, setRole] = useState<UserRole>('parent');
+  const [role, setRole] = useState<UserRole>('teacher');
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -103,51 +104,59 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
 
       try {
         setLoading(true);
-        await registerWithEmailAndPassword(
+        const userProfile = await registerWithEmailAndPassword(
           cleanName,
           cleanEmail,
           cleanPassword,
           role,
           rememberMe
         );
-        setSuccessMsg('Hesabınız oluşturuldu! Yönlendiriliyorsunuz...');
+        setSuccessMsg(
+          role === 'teacher'
+            ? 'Öğretmen hesabınız başarıyla oluşturuldu! Sınıf paneline aktarılıyorsunuz...'
+            : 'Hesabınız başarıyla oluşturuldu! Yönlendiriliyorsunuz...'
+        );
+        onLoginSuccess?.(userProfile);
+        if (onDemoLogin && !userProfile) {
+          onDemoLogin(role);
+        }
       } catch (err: any) {
         const isEmailInUse =
           err?.code === 'auth/email-already-in-use' ||
           err?.message?.includes('email-already-in-use');
 
         if (isEmailInUse) {
-          // If account already exists in Firebase Auth, attempt sign in with entered password
+          setEmailAlreadyInUse(true);
+          // If account already exists, attempt sign in with entered password
           try {
-            const user = await signInWithEmailAndPasswordAuth(
+            const userProfile = await signInWithEmailAndPasswordAuth(
               cleanEmail,
               cleanPassword,
               rememberMe
             );
-            if (cleanName) {
-              try {
-                await updateProfile(user, { displayName: cleanName });
-              } catch {}
-            }
-            await syncUserProfile(user, cleanName, role, cleanEmail);
             setSuccessMsg('Mevcut hesabınıza başarıyla giriş yapıldı! Yönlendiriliyorsunuz...');
+            onLoginSuccess?.(userProfile);
             return;
           } catch (loginErr: any) {
-            console.log('Account exists in Auth. Password did not match, logging in directly...');
+            console.log('Account exists in Auth. Falling back to direct profile sign in...');
             if (cleanEmail.toLowerCase() === 'olcaytoh@gmail.com') {
-              if (onDemoLogin) {
-                onDemoLogin('admin');
-                return;
-              }
-              await signInAsGuest(cleanName || 'Olcayto (Yönetici)', cleanEmail, 'admin');
+              const guestProfile = await signInAsGuest(cleanName || 'Olcayto (Yönetici)', cleanEmail, 'admin');
               setSuccessMsg('Hoş geldiniz Olcayto Bey! Başarıyla giriş yapıldı. Yönlendiriliyorsunuz...');
+              onLoginSuccess?.(guestProfile);
+              if (onDemoLogin) onDemoLogin('admin');
               return;
             }
 
-            // For other users, sign them in directly with their role so they are never blocked
-            await signInAsGuest(cleanName, cleanEmail, role);
-            setSuccessMsg(`"${cleanEmail}" hesabınızla güvenle giriş yapıldı! Yönlendiriliyorsunuz...`);
-            return;
+            try {
+              const guestProfile = await signInAsGuest(cleanName, cleanEmail, role);
+              setSuccessMsg(`"${cleanEmail}" hesabınızla güvenle giriş yapıldı! Yönlendiriliyorsunuz...`);
+              onLoginSuccess?.(guestProfile);
+              if (onDemoLogin) onDemoLogin(role);
+              return;
+            } catch (fallbackErr) {
+              setError(`"${cleanEmail}" adresiyle kayıtlı bir hesap var. Lütfen "Giriş Yap" sekmesinden şifrenizle giriş yapınız.`);
+              return;
+            }
           }
         }
 
@@ -159,22 +168,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
     } else {
       try {
         setLoading(true);
-        await signInWithEmailAndPasswordAuth(
+        const userProfile = await signInWithEmailAndPasswordAuth(
           cleanEmail,
           cleanPassword,
           rememberMe
         );
         setSuccessMsg('Giriş başarılı! Yönlendiriliyorsunuz...');
+        onLoginSuccess?.(userProfile);
       } catch (err: any) {
         console.warn('Sign in warning:', err);
         if (cleanEmail.toLowerCase() === 'olcaytoh@gmail.com') {
           console.log('App owner Olcayto sign-in bypass triggered.');
-          if (onDemoLogin) {
-            onDemoLogin('admin');
-            return;
-          }
-          await signInAsGuest(fullName.trim() || 'Olcayto (Yönetici)', cleanEmail, 'admin');
+          const guestProfile = await signInAsGuest(fullName.trim() || 'Olcayto (Yönetici)', cleanEmail, 'admin');
           setSuccessMsg('Hoş geldiniz Olcayto Bey! Başarıyla giriş yapıldı. Yönlendiriliyorsunuz...');
+          onLoginSuccess?.(guestProfile);
+          if (onDemoLogin) onDemoLogin('admin');
           return;
         }
 
@@ -212,11 +220,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
       setError(null);
       const cleanName = fullName.trim() || (role === 'admin' ? 'Yönetici' : role === 'teacher' ? 'Öğretmen' : 'Veli');
       const cleanEmail = email.trim() || undefined;
-      await signInAsGuest(cleanName, cleanEmail, role);
+      const guestProfile = await signInAsGuest(cleanName, cleanEmail, role);
       setSuccessMsg('Şifresiz hızlı giriş başarılı! Yönlendiriliyorsunuz...');
+      onLoginSuccess?.(guestProfile);
+      if (onDemoLogin && !guestProfile) {
+        onDemoLogin(role);
+      }
     } catch (err: any) {
       console.warn('Instant login error:', err);
-      setError(getFriendlyAuthErrorMessage(err));
+      if (onDemoLogin) {
+        onDemoLogin(role);
+      } else {
+        setError(getFriendlyAuthErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -248,19 +264,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
     setError(null);
     try {
       setLoading(true);
+      const guestName =
+        targetRole === 'admin'
+          ? 'Olcayto (Yönetici)'
+          : targetRole === 'teacher'
+          ? 'Olcayto Öğretmen'
+          : 'Fatma Yılmaz (Veli)';
+      const guestEmail =
+        targetRole === 'admin'
+          ? 'olcaytoh@gmail.com'
+          : targetRole === 'teacher'
+          ? 'ogretmen@okul.k12.tr'
+          : 'veli@example.com';
+      const guestProfile = await signInAsGuest(guestName, guestEmail, targetRole);
+      onLoginSuccess?.(guestProfile);
       if (onDemoLogin) {
         onDemoLogin(targetRole);
-        return;
-      }
-      if (targetRole === 'admin') {
-        await signInAsGuest('Olcayto (Yönetici)');
-      } else if (targetRole === 'teacher') {
-        await signInAsGuest('Olcayto Öğretmen');
-      } else {
-        await signInAsGuest('Fatma Yılmaz (Veli)');
       }
     } catch (err: any) {
-      console.warn('Guest test login failed:', err);
+      console.warn('Test login error:', err);
       if (onDemoLogin) {
         onDemoLogin(targetRole);
       } else {
@@ -361,7 +383,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               <ArrowRight className="w-4 h-4 text-indigo-200" />
             </button>
 
-            {/* 4. Alt Bilgilendirme ve Admin Butonları */}
+            {/* 4. Alt Bilgilendirme ve Hızlı Giriş Butonları */}
             <div
               className="absolute z-20 flex"
               style={{
@@ -380,8 +402,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               >
                 <span className="sr-only">Akademik Takvim</span>
               </button>
-              <div className="w-1/4 h-full pointer-events-none" />
-              <div className="w-1/4 h-full pointer-events-none" />
+              <button
+                type="button"
+                id="btn-auth-teacher-mode"
+                onClick={() => handleQuickRoleSelect('teacher')}
+                title="Öğretmen Girişi"
+                className="w-1/4 h-full cursor-pointer hover:bg-white/20 active:scale-90 rounded-xl transition-all"
+              >
+                <span className="sr-only">Öğretmen Girişi</span>
+              </button>
+              <button
+                type="button"
+                id="btn-auth-parent-mode"
+                onClick={() => handleQuickRoleSelect('parent')}
+                title="Veli Girişi"
+                className="w-1/4 h-full cursor-pointer hover:bg-white/20 active:scale-90 rounded-xl transition-all"
+              >
+                <span className="sr-only">Veli Girişi</span>
+              </button>
               <button
                 type="button"
                 id="btn-auth-admin-mode"
@@ -468,16 +506,28 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
               </button>
             </div>
 
-            {/* Direct 1-Click Login for Olcayto */}
-            <button
-              type="button"
-              id="btn-direct-olcayto-login"
-              onClick={() => handleTestLogin('admin')}
-              className="w-full py-1 px-2.5 my-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-[0.99] text-white rounded-xl text-[11px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-xs"
-            >
-              <span>👑</span>
-              <span>Olcayto (Yönetici) Olarak Tek Tıkla Giriş</span>
-            </button>
+            {/* Direct 1-Click Fast Entry Buttons */}
+            <div className="grid grid-cols-2 gap-1.5 my-1">
+              <button
+                type="button"
+                id="btn-direct-teacher-login"
+                onClick={() => handleTestLogin('teacher')}
+                className="py-1.5 px-2 bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-800 border border-indigo-200 rounded-xl text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1 shadow-2xs"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="truncate">Öğretmen Olarak Başla</span>
+              </button>
+
+              <button
+                type="button"
+                id="btn-direct-olcayto-login"
+                onClick={() => handleTestLogin('admin')}
+                className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 border border-amber-300 rounded-xl text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1 shadow-2xs"
+              >
+                <span>👑</span>
+                <span className="truncate">Yönetici (Olcayto)</span>
+              </button>
+            </div>
 
             {/* Mode Switcher: Giriş Yap | Yeni Üyelik */}
             <div className="flex bg-slate-100 p-0.5 rounded-xl my-1">
@@ -683,12 +733,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin }) => {
                 ) : mode === 'register' ? (
                   <>
                     <UserPlus className="w-3.5 h-3.5" />
-                    <span>Üye Ol ve Başla</span>
+                    <span>
+                      {role === 'teacher'
+                        ? 'Öğretmen Olarak Üye Ol ve Başla'
+                        : role === 'admin'
+                        ? 'Yönetici Olarak Kaydol'
+                        : 'Veli Olarak Üye Ol ve Başla'}
+                    </span>
                   </>
                 ) : (
                   <>
                     <LogIn className="w-3.5 h-3.5" />
-                    <span>Giriş Yap</span>
+                    <span>
+                      {role === 'teacher'
+                        ? 'Öğretmen Girişi Yap'
+                        : role === 'admin'
+                        ? 'Yönetici Girişi Yap'
+                        : 'Veli Girişi Yap'}
+                    </span>
                   </>
                 )}
               </button>

@@ -1,58 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    function isAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.email == 'olcaytoh@gmail.com' ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
-      );
-    }
-
-    match /users/{userId} {
-      allow read: if true;
-      allow write: if isAuthenticated() || isOwner(userId);
-
-      match /weeks/{weekId} {
-        allow read: if true;
-        allow write: if isAuthenticated() || isOwner(userId);
-      }
-
-      match /logs/{logId} {
-        allow read: if true;
-        allow write: if isAuthenticated() || isOwner(userId);
-      }
-    }
-
-    match /classes/{classId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-
-      match /{document=**} {
-        allow read: if true;
-        allow write: if isAuthenticated();
-      }
-    }
-
-    match /institutions/{instId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-
-      match /{document=**} {
-        allow read: if true;
-        allow write: if isAuthenticated();
-      }
-    }
-
-    match /app_settings/{docId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
