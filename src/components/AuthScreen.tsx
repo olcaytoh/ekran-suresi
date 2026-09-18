@@ -506,29 +506,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               </button>
             </div>
 
-            {/* Direct 1-Click Fast Entry Buttons */}
-            <div className="grid grid-cols-2 gap-1.5 my-1">
-              <button
-                type="button"
-                id="btn-direct-teacher-login"
-                onClick={() => handleTestLogin('teacher')}
-                className="py-1.5 px-2 bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-800 border border-indigo-200 rounded-xl text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1 shadow-2xs"
-              >
-                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span className="truncate">Öğretmen Olarak Başla</span>
-              </button>
-
-              <button
-                type="button"
-                id="btn-direct-olcayto-login"
-                onClick={() => handleTestLogin('admin')}
-                className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 border border-amber-300 rounded-xl text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1 shadow-2xs"
-              >
-                <span>👑</span>
-                <span className="truncate">Yönetici (Olcayto)</span>
-              </button>
-            </div>
-
             {/* Mode Switcher: Giriş Yap | Yeni Üyelik */}
             <div className="flex bg-slate-100 p-0.5 rounded-xl my-1">
               <button
