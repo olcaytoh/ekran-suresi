@@ -1,11 +1,18 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut,
   signInAnonymously,
   updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
+  deleteUser,
   User,
 } from 'firebase/auth';
 import { Capacitor } from '@capacitor/core';
@@ -40,11 +47,6 @@ export const db: Firestore = firebaseConfig.firestoreDatabaseId
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({
-  prompt: 'select_account',
-});
-
 export const ADMIN_EMAILS: string[] = [];
 export const DEFAULT_ADMIN_EMAIL = '';
 
@@ -53,7 +55,136 @@ export function isAdminEmail(_email?: string | null): boolean {
 }
 
 /**
- * Sign in with Google Account (Stabil Web Popup Akışı - Mobil WebView ve Tarayıcı Uyumlu)
+ * Register with Name-Surname, Email, and Password.
+ * Password constraint: minimum 6 characters, no other rules.
+ * Supports "Beni Hatırla" (browserLocalPersistence vs browserSessionPersistence).
+ */
+export async function registerWithEmailAndPassword(
+  fullName: string,
+  email: string,
+  password: string,
+  role: UserRole = 'parent',
+  rememberMe: boolean = true
+): Promise<User> {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanName = (fullName || '').trim();
+
+  if (!cleanName) {
+    throw new Error('Lütfen adınızı ve soyadınızı giriniz.');
+  }
+  if (!cleanEmail) {
+    throw new Error('Lütfen geçerli bir e-posta adresi giriniz.');
+  }
+  if (!password || password.length < 6) {
+    throw new Error('Şifre en az 6 karakter olmalıdır.');
+  }
+
+  // Set persistence according to rememberMe option
+  try {
+    await setPersistence(
+      auth,
+      rememberMe ? browserLocalPersistence : browserSessionPersistence
+    );
+  } catch (err) {
+    console.warn('Set persistence warning:', err);
+  }
+
+  // Create Firebase Auth user
+  const userCredential = await createUserWithEmailAndPassword(
+    auth,
+    cleanEmail,
+    password
+  );
+  const user = userCredential.user;
+
+  // Set display name in auth profile
+  try {
+    await updateProfile(user, {
+      displayName: cleanName,
+    });
+  } catch (err) {
+    console.warn('Update profile warning:', err);
+  }
+
+  // Save remember preference
+  if (typeof window !== 'undefined') {
+    if (rememberMe) {
+      localStorage.setItem('rememberedEmail', cleanEmail);
+      localStorage.setItem('rememberMe', 'true');
+    } else {
+      localStorage.removeItem('rememberedEmail');
+      localStorage.setItem('rememberMe', 'false');
+    }
+  }
+
+  // Sync user profile to Firestore
+  await syncUserProfile(user, cleanName, role);
+  return user;
+}
+
+/**
+ * Sign in with Email and Password.
+ * Supports "Beni Hatırla" (browserLocalPersistence vs browserSessionPersistence).
+ */
+export async function signInWithEmailAndPasswordAuth(
+  email: string,
+  password: string,
+  rememberMe: boolean = true
+): Promise<User> {
+  const cleanEmail = (email || '').trim().toLowerCase();
+
+  if (!cleanEmail) {
+    throw new Error('Lütfen e-posta adresinizi giriniz.');
+  }
+  if (!password || password.length < 6) {
+    throw new Error('Şifre en az 6 karakter olmalıdır.');
+  }
+
+  // Set persistence according to rememberMe option
+  try {
+    await setPersistence(
+      auth,
+      rememberMe ? browserLocalPersistence : browserSessionPersistence
+    );
+  } catch (err) {
+    console.warn('Set persistence warning:', err);
+  }
+
+  const userCredential = await signInWithEmailAndPassword(
+    auth,
+    cleanEmail,
+    password
+  );
+  const user = userCredential.user;
+
+  // Save remember preference
+  if (typeof window !== 'undefined') {
+    if (rememberMe) {
+      localStorage.setItem('rememberedEmail', cleanEmail);
+      localStorage.setItem('rememberMe', 'true');
+    } else {
+      localStorage.removeItem('rememberedEmail');
+      localStorage.setItem('rememberMe', 'false');
+    }
+  }
+
+  await syncUserProfile(user);
+  return user;
+}
+
+/**
+ * Send password reset email
+ */
+export async function resetPasswordEmail(email: string): Promise<void> {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail) {
+    throw new Error('Lütfen e-posta adresinizi giriniz.');
+  }
+  await sendPasswordResetEmail(auth, cleanEmail);
+}
+
+/**
+ * Optional Google Sign-In helper (useful if user account was created with Google)
  */
 export async function signInWithGoogle(): Promise<User | null> {
   try {
@@ -61,8 +192,6 @@ export async function signInWithGoogle(): Promise<User | null> {
     provider.setCustomParameters({
       prompt: 'select_account',
     });
-    
-    // Yönlendirme (redirect) hatasını kökten bitiren popup metodu
     const result = await signInWithPopup(auth, provider);
     if (result && result.user) {
       await syncUserProfile(result.user);
@@ -77,25 +206,80 @@ export async function signInWithGoogle(): Promise<User | null> {
       error?.message?.includes('canceled') ||
       error?.message?.includes('cancelled')
     ) {
-      console.info('Google Sign-in was dismissed or closed by user.');
       return null;
     }
-    console.error('Google Sign-in error:', error);
+    console.error('Google sign in error:', error);
     throw error;
   }
 }
 
 /**
+ * Friendly error message parser for Firebase Auth
+ */
+export function getFriendlyAuthErrorMessage(error: any): string {
+  const code = (error?.code || '').toLowerCase();
+  const rawMsg = error?.message || String(error || '');
+  const msg = rawMsg.toLowerCase();
+
+  if (code.includes('email-already-in-use') || msg.includes('email-already-in-use')) {
+    return 'Bu e-posta adresiyle kayıtlı bir hesap zaten var. Hesabınıza giriş yapmak için şifrenizi girebilir veya aşağıdaki butonla yeni şifre bağlantısı isteyebilirsiniz.';
+  }
+  if (
+    code.includes('invalid-credential') ||
+    code.includes('wrong-password') ||
+    code.includes('user-not-found') ||
+    msg.includes('invalid-credential') ||
+    msg.includes('wrong-password') ||
+    msg.includes('user-not-found')
+  ) {
+    return 'E-posta veya şifre hatalı. Şifrenizi bilmiyorsanız veya daha önce Google ile açtıysanız aşağıdaki "Şifremi Sıfırla" butonuyla yeni şifre belirleyebilirsiniz.';
+  }
+  if (code.includes('invalid-email') || msg.includes('invalid-email')) {
+    return 'Lütfen geçerli bir e-posta adresi giriniz.';
+  }
+  if (code.includes('weak-password') || msg.includes('weak-password')) {
+    return 'Şifre en az 6 karakter olmalıdır.';
+  }
+  if (code.includes('too-many-requests') || msg.includes('too-many-requests')) {
+    return 'Çok fazla başarısız deneme yapıldı. Lütfen biraz bekleyip tekrar deneyiniz veya şifrenizi sıfırlayınız.';
+  }
+  if (code.includes('network-request-failed') || msg.includes('network-request-failed')) {
+    return 'İnternet bağlantınızı kontrol edip tekrar deneyiniz.';
+  }
+  if (code.includes('popup-closed-by-user') || msg.includes('popup-closed-by-user')) {
+    return 'Giriş penceresi kapatıldı.';
+  }
+  if (code.includes('unauthorized-domain') || msg.includes('unauthorized-domain')) {
+    return 'Google oturumu bu web adresi için yapılandırılmamış. Lütfen e-posta & şifre ile veya şifresiz test girişi ile devam ediniz.';
+  }
+  if (code.includes('user-disabled') || msg.includes('user-disabled')) {
+    return 'Bu hesap devre dışı bırakılmış. Lütfen yöneticiyle iletişime geçiniz.';
+  }
+
+  if (msg.includes('auth/') || msg.includes('firebase')) {
+    return 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz veya şifre sıfırlama bağlantısı isteyiniz.';
+  }
+
+  return error?.message || 'İşlem gerçekleştirilemedi. Lütfen tekrar deneyiniz.';
+}
+
+/**
  * Quick demo/test sign in
  */
-export async function signInAsGuest(customName?: string): Promise<User> {
+export async function signInAsGuest(
+  customName?: string,
+  customEmail?: string,
+  customRole?: UserRole
+): Promise<User> {
   const result = await signInAnonymously(auth);
   if (customName && customName.trim()) {
-    await updateProfile(result.user, {
-      displayName: customName.trim(),
-    });
+    try {
+      await updateProfile(result.user, {
+        displayName: customName.trim(),
+      });
+    } catch {}
   }
-  await syncUserProfile(result.user, customName);
+  await syncUserProfile(result.user, customName, customRole, customEmail);
   return result.user;
 }
 
@@ -149,12 +333,38 @@ export async function forgetAndClearAllDeviceData(): Promise<void> {
 }
 
 /**
+ * Permanently deletes the current user's account from Firebase Auth and Firestore
+ */
+export async function deleteCurrentUserAccount(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Aktif bir oturum bulunamadı.');
+  }
+
+  const uid = user.uid;
+  try {
+    await deleteDoc(doc(db, 'users', uid));
+  } catch (e) {
+    console.warn('Delete user doc warning:', e);
+  }
+
+  // Delete from Firebase Authentication
+  await deleteUser(user);
+
+  if (typeof window !== 'undefined') {
+    localStorage.clear();
+    sessionStorage.clear();
+  }
+}
+
+/**
  * Ensure user document exists in Firestore and sync role
  */
 export async function syncUserProfile(
   user: User,
   customName?: string,
-  roleOverride?: UserRole
+  roleOverride?: UserRole,
+  emailOverride?: string
 ): Promise<UserProfile> {
   const userRef = doc(db, 'users', user.uid);
   const snap = await getDoc(userRef);
@@ -190,7 +400,7 @@ export async function syncUserProfile(
 
     userProfile = {
       uid: user.uid,
-      email: user.email || data.email || 'misafir@ekran.takip',
+      email: emailOverride || user.email || data.email || 'misafir@ekran.takip',
       displayName: data.displayName || user.displayName || customName || (role === 'admin' ? 'Yönetici' : role === 'teacher' ? 'Öğretmen' : 'Veli'),
       photoURL: user.photoURL || data.photoURL || undefined,
       role: role,
@@ -238,7 +448,7 @@ export async function syncUserProfile(
 
     userProfile = {
       uid: user.uid,
-      email: user.email || 'misafir@ekran.takip',
+      email: emailOverride || user.email || 'misafir@ekran.takip',
       displayName: user.displayName || customName || (role === 'admin' ? 'Yönetici' : role === 'teacher' ? 'Öğretmen' : 'Veli'),
       photoURL: user.photoURL || undefined,
       role: role,

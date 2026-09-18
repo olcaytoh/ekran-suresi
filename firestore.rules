@@ -33,11 +33,21 @@ service cloud.firestore {
     match /classes/{classId} {
       allow read: if true;
       allow write: if isAuthenticated();
+
+      match /{document=**} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
     }
 
     match /institutions/{instId} {
       allow read: if true;
       allow write: if isAuthenticated();
+
+      match /{document=**} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
     }
 
     match /app_settings/{docId} {
