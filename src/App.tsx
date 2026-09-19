@@ -38,6 +38,7 @@ import { BottomDock, ParentTabType } from './components/BottomDock';
 import { AuthScreen } from './components/AuthScreen';
 import { ClassroomSetupModal } from './components/ClassroomSetupModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
+import { ParentGuideModal } from './components/ParentGuideModal';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -67,6 +68,7 @@ export default function App() {
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
   const [parentTab, setParentTab] = useState<ParentTabType>('home');
   const [showClassSetup, setShowClassSetup] = useState(false);
+  const [showParentGuide, setShowParentGuide] = useState(false);
 
   const weekInfo = getCurrentWeekInfo();
 
@@ -132,6 +134,7 @@ export default function App() {
         currentWeekStage: 4,
         currentWeekMinutes: 120,
       };
+      setShowParentGuide(true);
     }
     setDemoProfile(profile);
     if (typeof window !== 'undefined') {
@@ -286,8 +289,13 @@ export default function App() {
           // Default tab is always 'home'
           setParentTab('home');
 
+          // Veli mail girişi yapınca, uygulamanın amacını anlatan bilgilendirme popup'ı göster
+          if (profile.role === 'parent' || profile.userType === 'parent') {
+            setShowParentGuide(true);
+          }
+
           // If user doesn't have classId and hasn't chosen role yet, prompt setup
-          if (!profile.classId && !profile.className) {
+          if (!profile.classId && !profile.className && profile.role !== 'parent') {
             setShowClassSetup(true);
           }
         } catch (err: any) {
@@ -723,7 +731,12 @@ export default function App() {
     return (
       <AuthScreen
         onDemoLogin={handleDemoLogin}
-        onLoginSuccess={(profile) => setActiveLocalProfile(profile)}
+        onLoginSuccess={(profile) => {
+          setActiveLocalProfile(profile);
+          if (profile?.role === 'parent' || profile?.userType === 'parent') {
+            setShowParentGuide(true);
+          }
+        }}
       />
     );
   }
@@ -769,6 +782,7 @@ export default function App() {
         onOpenClassSetup={() => setShowClassSetup(true)}
         onSignOut={handleSignOut}
         onSwitchRole={handleSwitchRole}
+        onOpenParentGuide={() => setShowParentGuide(true)}
       />
 
       {/* 2. Main Body: Smooth scrollable container with modern scrollbar */}
@@ -867,6 +881,7 @@ export default function App() {
                   onUpdateStage={handleUpdateStage}
                   isUpdating={isUpdatingStage}
                   onNavigateToStages={() => setParentTab('stages')}
+                  onOpenParentGuide={() => setShowParentGuide(true)}
                 />
               )}
 
@@ -941,6 +956,13 @@ export default function App() {
           />
         )
       )}
+
+      {/* Veli Bilgilendirme Modal (Uygulamanın nasıl ve ne amaçla kullanıldığını anlatan rehber popup) */}
+      <ParentGuideModal
+        isOpen={showParentGuide}
+        onClose={() => setShowParentGuide(false)}
+        studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
+      />
     </div>
   );
 }

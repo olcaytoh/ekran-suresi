@@ -1,10 +1,12 @@
 import React from 'react';
+import { HelpCircle } from 'lucide-react';
 
 interface ParentHomeViewProps {
   currentStage: number; // 0 to 14
   onUpdateStage: (newStage: number) => Promise<void>;
   isUpdating: boolean;
   onNavigateToStages?: () => void;
+  onOpenParentGuide?: () => void;
 }
 
 export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
@@ -12,6 +14,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
   onUpdateStage,
   isUpdating,
   onNavigateToStages,
+  onOpenParentGuide,
 }) => {
   const handleTriggerHaptic = () => {
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -159,8 +162,8 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
         </div>
       </div>
 
-      {/* 30 dk Ekle Butonu (30.png) - %40 küçültülmüş */}
-      <div className="w-full flex items-center justify-center pt-0.5 pb-1 flex-shrink-0">
+      {/* 30 dk Ekle Butonu (30.png) - %40 küçültülmüş & Rehber Butonu */}
+      <div className="w-full flex items-center justify-center gap-2 pt-0.5 pb-1 flex-shrink-0">
         <button
           type="button"
           id="btn-add-thirty-min-main"
@@ -177,6 +180,19 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
             referrerPolicy="no-referrer"
           />
         </button>
+
+        {onOpenParentGuide && (
+          <button
+            type="button"
+            id="btn-parent-guide-inline"
+            onClick={onOpenParentGuide}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold bg-white/90 hover:bg-white text-emerald-800 border border-emerald-200/90 shadow-xs transition-all cursor-pointer active:scale-95"
+            title="Uygulama Bilgi Rehberi (Nasıl ve Ne Amaçla Kullanılır?)"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Rehber</span>
+          </button>
+        )}
       </div>
     </div>
   );
