@@ -328,14 +328,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       />
 
       {/* 3. Form & Buttons Layer: Positioned over the video's gray board without white frame */}
-      <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-end px-3.5 sm:px-6 pt-16 pb-4 sm:pb-8">
+      <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-end px-9 sm:px-11 pt-16 pb-3 sm:pb-6">
         {/* Spacer to keep the cute mascot visible in the upper section */}
-        <div className="flex-1 w-full max-w-sm sm:max-w-md min-h-[46vh] pointer-events-none" />
+        <div className="w-full max-w-sm sm:max-w-md h-[43vh] sm:h-[44vh] pointer-events-none shrink-0" />
 
         {/* Buttons and Form aligned right over the gray board */}
         <div
           id="auth-form-card"
-          className="w-full max-w-sm sm:max-w-md flex flex-col gap-2 animate-in fade-in duration-300 pointer-events-auto"
+          className="w-full max-w-sm sm:max-w-md flex flex-col gap-1.5 animate-in fade-in duration-300 pointer-events-auto"
         >
           {/* Role Badges (Öğretmen, Veli, Yönetici) */}
           <div className="grid grid-cols-3 gap-1.5">
@@ -465,7 +465,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
           )}
 
           {/* Form Fields */}
-          <form onSubmit={handleSubmit} className="space-y-1.5">
+          <form onSubmit={handleSubmit} className="space-y-1">
             {/* Ad Soyad (Only in register mode) */}
             {mode === 'register' && (
               <div className="relative">
@@ -560,7 +560,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               type="submit"
               id="btn-submit-auth"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 active:scale-[0.99] text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 mt-1 disabled:opacity-60"
+              className="w-full py-2 px-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 active:scale-[0.99] text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 mt-1 disabled:opacity-60"
             >
               {loading ? (
                 <>

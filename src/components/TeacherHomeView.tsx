@@ -49,7 +49,6 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   const [filterCategory, setFilterCategory] = useState<'all' | 'critical' | 'warning' | 'moderate' | 'safe'>('all');
   const [sortBy, setSortBy] = useState<'minutes-desc' | 'minutes-asc' | 'name' | 'updated-desc'>('minutes-desc');
   const [isSeeding, setIsSeeding] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [calendarConfig, setCalendarConfig] = useState<AcademicCalendarConfig>(
     generateDefaultAcademicCalendar()
@@ -120,13 +119,6 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
 
   const hasCritical = criticalStudents.length > 0;
   const currentMascot = hasCritical ? '/k.png' : '/yesil.png';
-
-  const handleCopyCode = () => {
-    if (!classCode) return;
-    navigator.clipboard.writeText(classCode);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
-  };
 
   const handleSeedDemoStudents = async () => {
     try {

@@ -6,6 +6,8 @@ import {
   createInstitution,
   updateInstitutionName,
   regenerateInstitutionCode,
+  regenerateInstitutionAdminCode,
+  ensureInstitutionAdminCode,
   adminSendPasswordResetEmail,
   setUserRole,
 } from '../lib/firebase';
@@ -122,6 +124,8 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [nameInput, setNameInput] = useState(currentInstName);
   const [isSavingName, setIsSavingName] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [isGeneratingAdminCode, setIsGeneratingAdminCode] = useState(false);
+  const [codeChangeConfirmModal, setCodeChangeConfirmModal] = useState<'institution' | 'admin' | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Sync props if updated from parent
@@ -143,6 +147,22 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       setNameInput(institutionName);
     }
   }, [institutionName]);
+
+  // Ensure institution admin code is loaded if admin has an institution but no code yet
+  useEffect(() => {
+    if (!currentAdminCode && currentUser?.uid && currentUser?.institutionId && !isDemo) {
+      ensureInstitutionAdminCode(currentUser.institutionId, currentUser.uid)
+        .then((code) => {
+          if (code) {
+            setCurrentAdminCode(code);
+            onProfileUpdated?.({ institutionAdminCode: code });
+          }
+        })
+        .catch((err) => {
+          console.warn('Could not ensure institution admin code:', err);
+        });
+    }
+  }, [currentUser?.uid, currentUser?.institutionId, currentAdminCode, isDemo]);
 
   // Modals state
   const [classToDelete, setClassToDelete] = useState<ClassroomInfo | null>(null);
@@ -287,7 +307,16 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     }
   };
 
-  const handleGenerateOrRegenerateCode = async () => {
+  // Kurum Kodu: Yeni kod üret butonuna tıklandığında (kod varsa önce onay sor)
+  const handleClickGenerateInstCode = () => {
+    if (currentInstCode) {
+      setCodeChangeConfirmModal('institution');
+    } else {
+      executeGenerateInstCode();
+    }
+  };
+
+  const executeGenerateInstCode = async () => {
     try {
       setIsGeneratingCode(true);
       setFeedback(null);
@@ -325,6 +354,41 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       setFeedback({ type: 'error', text: 'Kurum kodu oluşturulamadı.' });
     } finally {
       setIsGeneratingCode(false);
+      setCodeChangeConfirmModal(null);
+    }
+  };
+
+  // Admin Yetki Kodu: Yeni kod üret butonuna tıklandığında (kod varsa önce onay sor)
+  const handleClickGenerateAdminCode = () => {
+    if (currentAdminCode) {
+      setCodeChangeConfirmModal('admin');
+    } else {
+      executeGenerateAdminCode();
+    }
+  };
+
+  const executeGenerateAdminCode = async () => {
+    try {
+      setIsGeneratingAdminCode(true);
+      setFeedback(null);
+      if (currentUser?.uid) {
+        const instId = currentUser.institutionId || currentUser.uid;
+        const newAdminCode = await regenerateInstitutionAdminCode(instId, currentUser.uid);
+        setCurrentAdminCode(newAdminCode);
+        onProfileUpdated?.({ institutionAdminCode: newAdminCode });
+        setFeedback({ type: 'success', text: `Yeni admin yetki kodunuz oluşturuldu: ${newAdminCode}` });
+      } else {
+        const mockAdminCode = 'ADM-' + Math.floor(100000 + Math.random() * 900000);
+        setCurrentAdminCode(mockAdminCode);
+        setFeedback({ type: 'success', text: `Demo admin yetki kodu oluşturuldu: ${mockAdminCode}` });
+      }
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err) {
+      console.error('Error generating admin code:', err);
+      setFeedback({ type: 'error', text: 'Admin yetki kodu oluşturulamadı.' });
+    } finally {
+      setIsGeneratingAdminCode(false);
+      setCodeChangeConfirmModal(null);
     }
   };
 

@@ -1,15 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { UserProfile } from '../types';
 import { signOutUser } from '../lib/firebase';
 import {
   Users,
   LogOut,
   GraduationCap,
-  KeyRound,
   Settings,
   School,
-  Copy,
-  Check,
   ShieldAlert,
   HeartHandshake,
   User,
@@ -38,7 +35,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSwitchRole,
   onOpenParentGuide,
 }) => {
-  const [copied, setCopied] = useState(false);
   const isSuperAdmin = currentUser?.role === 'admin';
   const isTeacher = currentUser?.role === 'teacher';
   const isStudentOnly = !isSuperAdmin && !isTeacher && (currentUser?.role === 'student' || currentUser?.userType === 'student');
@@ -47,13 +43,6 @@ export const Header: React.FC<HeaderProps> = ({
   const stage = currentUser?.currentWeekStage ?? 0;
   const isRed = stage >= 14;
   const mascotImg = stage >= 13 ? '/keu.png' : stage >= 8 ? '/kedu.png' : '/kedd.png';
-
-  const handleCopyCode = () => {
-    if (!currentUser?.classCode) return;
-    navigator.clipboard.writeText(currentUser.classCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <header className="flex-shrink-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs">
@@ -155,29 +144,8 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Sağ Taraf: Aksiyonlar & Bilgiler */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Öğretmen için: Tek satırda şık sınıf kodu ve üye sayısı (Admin için gösterilmez) */}
-          {isTeacher && !isSuperAdmin && currentUser?.classCode && (
-            <button
-              type="button"
-              onClick={handleCopyCode}
-              title="Sınıf kodunu kopyalamak için tıklayın"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-black bg-slate-900 text-white border border-slate-700 hover:bg-slate-800 hover:border-slate-600 transition-all shadow-2xs cursor-pointer active:scale-95"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-              <span className="font-mono">{currentUser.classCode}</span>
-              <span className="text-[10px] font-bold text-slate-300 pl-0.5 border-l border-slate-600">
-                {memberCount} üye
-              </span>
-              {copied ? (
-                <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-              ) : (
-                <Copy className="w-3 h-3 text-slate-300 flex-shrink-0" />
-              )}
-            </button>
-          )}
-
-          {/* Veli/Öğrenci için: Sınıf üye sayısı (mobilde gizli, masaüstünde görünür) */}
-          {!isTeacher && !isSuperAdmin && memberCount > 0 && (
+          {/* Sınıf üye sayısı (mobilde gizli, masaüstünde görünür) */}
+          {!isSuperAdmin && memberCount > 0 && (
             <span className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
               <Users className="w-3 h-3 text-slate-500" />
               <span>{memberCount} Öğrenci</span>

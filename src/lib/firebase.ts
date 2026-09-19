@@ -1058,6 +1058,23 @@ export async function regenerateInstitutionCode(
   return code;
 }
 
+export async function regenerateInstitutionAdminCode(
+  institutionId: string,
+  adminUid: string
+): Promise<string> {
+  let adminCode = generateAdminCode();
+  let tries = 0;
+  while ((await isCodeTaken('adminCode', adminCode)) && tries < 5) {
+    adminCode = generateAdminCode();
+    tries += 1;
+  }
+  const instRef = doc(db, 'institutions', institutionId);
+  await updateDoc(instRef, { adminCode, updatedAt: serverTimestamp() });
+  const adminRef = doc(db, 'users', adminUid);
+  await updateDoc(adminRef, { institutionAdminCode: adminCode, updatedAt: serverTimestamp() });
+  return adminCode;
+}
+
 export async function joinInstitutionWithCode(
   userUid: string,
   rawCode: string
