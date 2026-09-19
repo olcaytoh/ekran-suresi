@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   registerWithEmailAndPassword,
   signInWithEmailAndPasswordAuth,
@@ -53,6 +53,51 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [showForm, setShowForm] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Guarantee autoplay without black screen or play overlay
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.defaultMuted = true;
+      video.muted = true;
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.setAttribute('x5-playsinline', '');
+
+      const startPlayback = () => {
+        if (video) {
+          video.muted = true;
+          const playPromise = video.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
+              // Browser may defer playback until first touch
+            });
+          }
+        }
+      };
+
+      startPlayback();
+
+      // One-time touch/click fallback for mobile browsers
+      const handleUserInteraction = () => {
+        startPlayback();
+        window.removeEventListener('touchstart', handleUserInteraction);
+        window.removeEventListener('touchend', handleUserInteraction);
+        window.removeEventListener('click', handleUserInteraction);
+      };
+
+      window.addEventListener('touchstart', handleUserInteraction, { once: true, passive: true });
+      window.addEventListener('touchend', handleUserInteraction, { once: true, passive: true });
+      window.addEventListener('click', handleUserInteraction, { once: true });
+
+      return () => {
+        window.removeEventListener('touchstart', handleUserInteraction);
+        window.removeEventListener('touchend', handleUserInteraction);
+        window.removeEventListener('click', handleUserInteraction);
+      };
+    }
+  }, []);
 
   // Load remembered credentials on mount (do not prefill email box so it starts empty)
   useEffect(() => {
@@ -257,30 +302,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
   };
 
   return (
-    <div className="fixed inset-0 w-full h-full min-h-screen overflow-y-auto overflow-x-hidden select-none bg-[#767694] m-0 p-0">
-      {/* 1. Fullscreen Fallback Background Poster */}
-      <img
-        src="/giris.png"
-        alt="Giriş Ekranı"
-        className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
-      />
-
-      {/* 2. Fullscreen Video (tam ekran, üstte altta yanda boşluk yok) */}
+    <div className="fixed inset-0 w-full h-full min-h-screen overflow-y-auto overflow-x-hidden select-none bg-gradient-to-b from-[#64a6d4] via-[#5c98c8] to-[#eedcd0] m-0 p-0">
+      {/* Fullscreen Video (ekrana ilk ekran-video.mp4 gelir, siyah play ekranı kesinlikle gelmez) */}
       <video
+        ref={videoRef}
         src="/ekran-video.mp4"
-        poster="/giris.png"
         autoPlay
         loop
         muted
         playsInline
         // @ts-ignore
         webkit-playsinline="true"
+        // @ts-ignore
+        x5-playsinline="true"
         preload="auto"
+        controls={false}
+        disablePictureInPicture
+        // @ts-ignore
+        disableRemotePlayback
         onLoadedData={() => setVideoReady(true)}
         onCanPlay={() => setVideoReady(true)}
-        className={`fixed inset-0 w-full h-full object-cover z-0 pointer-events-none transition-opacity duration-300 ${
-          videoReady ? 'opacity-100' : 'opacity-0'
-        }`}
+        className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
       />
 
       {/* 3. Form & Buttons Layer: Positioned over the video's gray board without white frame */}

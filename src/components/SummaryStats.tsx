@@ -44,8 +44,8 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({
   const isOrange = currentStage >= 9 && currentStage <= 13;
   const isRed = currentStage >= 14;
 
-  // Mascot image: yesil.png by default, kirmizi.png when red
-  const currentImage = isRed ? '/kirmizi.png' : '/yesil.png';
+  // Mascot image: yesil.png by default, k.png when red
+  const currentImage = isRed ? '/k.png' : '/yesil.png';
 
   return (
     <div className="space-y-5">

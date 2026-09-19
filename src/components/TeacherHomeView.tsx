@@ -119,7 +119,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   const avgFormatted = formatMinutes(avgMinutes);
 
   const hasCritical = criticalStudents.length > 0;
-  const currentMascot = hasCritical ? '/kirmizi.png' : '/yesil.png';
+  const currentMascot = hasCritical ? '/k.png' : '/yesil.png';
 
   const handleCopyCode = () => {
     if (!classCode) return;

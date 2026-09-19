@@ -104,7 +104,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const hasCritical = criticalStudents.length > 0;
   // Mascot image: green by default, red when critical threshold is triggered
-  const currentMascot = hasCritical ? '/kirmizi.png' : '/yesil.png';
+  const currentMascot = hasCritical ? '/k.png' : '/yesil.png';
 
   // Filter & Search
   const filteredStudents = studentList.filter((user) => {
