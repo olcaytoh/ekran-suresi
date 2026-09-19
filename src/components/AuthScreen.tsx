@@ -307,6 +307,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       <video
         ref={videoRef}
         src="/ekran-video.mp4"
+        poster="/ekran-poster.jpg"
         autoPlay
         loop
         muted
@@ -323,6 +324,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
         onLoadedData={() => setVideoReady(true)}
         onCanPlay={() => setVideoReady(true)}
         className="fixed inset-0 w-full h-full object-cover z-0 pointer-events-none"
+        style={{ backgroundColor: 'transparent' }}
       />
 
       {/* 3. Form & Buttons Layer: Positioned over the video's gray board without white frame */}

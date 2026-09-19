@@ -739,16 +739,21 @@ export default function App() {
     }
   };
 
-  // Loading spinner
+  // Loading screen with app icon
   if (authLoading && !demoProfile && !activeLocalProfile) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 border border-indigo-200">
-          <Loader2 className="w-6 h-6 animate-spin" />
+        <img
+          src="/icon-512.png"
+          alt="Haftalık Ekran Süresi"
+          className="w-24 h-24 object-contain mb-4 drop-shadow-sm animate-pulse"
+        />
+        <div className="flex items-center gap-2 text-slate-600">
+          <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+          <p className="text-sm font-semibold text-slate-700">
+            Uygulama yükleniyor...
+          </p>
         </div>
-        <p className="text-sm font-semibold text-slate-700">
-          Uygulama yükleniyor...
-        </p>
       </div>
     );
   }

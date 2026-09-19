@@ -45,6 +45,30 @@ h1, h2, h3, h4, h5, h6, .font-heading, .font-display {
   background: #64748b;
 }
 
+/* Siyah play ekranı ve tarayıcı varsayılan video kontrollerini tamamen kaldır */
+video {
+  background: transparent !important;
+  background-color: transparent !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+video::-webkit-media-controls,
+video::-webkit-media-controls-enclosure,
+video::-webkit-media-controls-panel,
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+video::-moz-media-controls {
+  display: none !important;
+}
+
 /* 3D Tactile Buttons & Pills Matching the 5-Color Blue Palette:
    #03045E (Deep Navy) | #0077B6 (Ocean Blue) | #00B4D8 (Pacific Cyan) | #90E0EF (Sky Cyan) | #CAF0F8 (Ice Blue)
 */

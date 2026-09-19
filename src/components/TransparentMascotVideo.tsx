@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface TransparentMascotVideoProps {
   /** Yeşil ekran (chroma key) zeminli mp4 dosyasının yolu */
@@ -36,11 +36,20 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
+  const [hasDrawnFrame, setHasDrawnFrame] = useState(false);
+  const hasDrawnRef = useRef(false);
 
   useEffect(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
+
+    // Mobil ve WebKit autoplay kısıtlamalarını aşmak için muted ve inline zorla
+    video.defaultMuted = true;
+    video.muted = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.setAttribute('x5-playsinline', '');
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
@@ -83,6 +92,11 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
         }
 
         ctx.putImageData(frame, 0, 0);
+
+        if (!hasDrawnRef.current) {
+          hasDrawnRef.current = true;
+          setHasDrawnFrame(true);
+        }
       }
 
       rafIdRef.current = requestAnimationFrame(drawFrame);
@@ -95,22 +109,43 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
     };
 
     const handleCanPlay = () => {
-      if (autoPlay) {
-        video.play().catch(() => {
-          // Autoplay may be restricted by browser policies
-        });
+      if (autoPlay && video) {
+        video.muted = true;
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // Autoplay deferred until user interaction
+          });
+        }
       }
       startLoop();
     };
 
     video.addEventListener('loadeddata', handleCanPlay);
+    video.addEventListener('canplay', handleCanPlay);
+
     if (video.readyState >= 2) {
       handleCanPlay();
     }
 
+    const handleFirstInteraction = () => {
+      if (video) {
+        video.muted = true;
+        video.play().catch(() => {});
+      }
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('click', handleFirstInteraction);
+    };
+
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true, passive: true });
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+
     return () => {
       cancelled = true;
       video.removeEventListener('loadeddata', handleCanPlay);
+      video.removeEventListener('canplay', handleCanPlay);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('click', handleFirstInteraction);
       if (rafIdRef.current != null) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
@@ -128,12 +163,25 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
         loop={loop}
         muted={muted}
         playsInline
+        // @ts-ignore
+        webkit-playsinline="true"
+        // @ts-ignore
+        x5-playsinline="true"
+        controls={false}
+        disablePictureInPicture
+        // @ts-ignore
+        disableRemotePlayback
         preload="auto"
-        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+        className="fixed -top-[9999px] -left-[9999px] w-px h-px opacity-0 pointer-events-none -z-50"
+        style={{ background: 'transparent' }}
       />
       <canvas
         ref={canvasRef}
-        className="max-w-full max-h-full w-auto h-full object-contain pointer-events-none select-none"
+        className={`max-w-full max-h-full w-auto h-full object-contain pointer-events-none select-none transition-opacity duration-200 ${
+          hasDrawnFrame ? 'opacity-100' : 'opacity-0'
+        }`}
       />
     </div>
   );
