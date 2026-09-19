@@ -198,6 +198,55 @@ export async function registerWithEmailAndPassword(
   } catch (authErr: any) {
     console.warn('Firebase Auth register warning:', authErr?.code, authErr?.message);
 
+    const isEmailAlreadyInUse =
+      authErr?.code === 'auth/email-already-in-use' ||
+      authErr?.message?.includes('email-already-in-use');
+
+    // If email was already registered in Firebase Auth, but reset/deleted in Firestore by admin:
+    if (isEmailAlreadyInUse) {
+      try {
+        const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        if (cred.user) {
+          try {
+            await updateProfile(cred.user, { displayName: cleanName });
+          } catch (e) {
+            console.warn('Update profile error:', e);
+          }
+          const profile = await syncUserProfile(cred.user, cleanName, role);
+          setActiveAppProfile(profile, rememberMe);
+          return profile;
+        }
+      } catch (loginErr) {
+        // Password differed from old registration (e.g. mistaken registration reset by admin)
+        const safeUid =
+          'usr_' +
+          cleanEmail.replace(/[^a-zA-Z0-9]/g, '_') +
+          '_' +
+          Math.random().toString(36).substring(2, 7);
+
+        const newProfile: UserProfile = {
+          uid: safeUid,
+          email: cleanEmail,
+          displayName: cleanName,
+          role: role,
+          userType: role === 'parent' ? 'parent' : 'teacher',
+          currentWeekId: weekId,
+          currentWeekMinutes: 0,
+          currentWeekStage: 0,
+        };
+
+        await setDoc(doc(db, 'users', safeUid), {
+          ...newProfile,
+          passwordHash: btoa(password),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        setActiveAppProfile(newProfile, rememberMe);
+        return newProfile;
+      }
+    }
+
     const isOperationNotAllowed =
       authErr?.code === 'auth/operation-not-allowed' ||
       authErr?.code === 'auth/admin-restricted-operation' ||
@@ -832,7 +881,7 @@ export function subscribeAllUsers(
     (snap) => {
       const users: UserProfile[] = [];
       snap.forEach((doc) => {
-        users.push(doc.data() as UserProfile);
+        users.push({ uid: doc.id, ...doc.data() } as UserProfile);
       });
       onUpdate(users);
     },
@@ -841,7 +890,7 @@ export function subscribeAllUsers(
       onSnapshot(usersRef, (snap) => {
         const users: UserProfile[] = [];
         snap.forEach((doc) => {
-          users.push(doc.data() as UserProfile);
+          users.push({ uid: doc.id, ...doc.data() } as UserProfile);
         });
         onUpdate(users);
       }, onError);
@@ -1283,8 +1332,47 @@ export async function createClassroom(
 
 export async function adminDeleteUser(userUid: string): Promise<void> {
   if (!userUid) return;
+
+  try {
+    // 1. Delete all weeks subcollection documents for this user
+    const weeksRef = collection(db, 'users', userUid, 'weeks');
+    const weeksSnap = await getDocs(weeksRef);
+    const deleteWeeks = weeksSnap.docs.map((d) => deleteDoc(d.ref));
+    await Promise.all(deleteWeeks);
+  } catch (err) {
+    console.warn('Error deleting user weeks subcollection:', err);
+  }
+
+  try {
+    // 2. If user had created any classrooms as teacher, update or clear teacher info
+    const classesQ = query(collection(db, 'classes'), where('teacherUid', '==', userUid));
+    const classesSnap = await getDocs(classesQ);
+    const updateClasses = classesSnap.docs.map((d) =>
+      deleteDoc(d.ref) // Delete empty class owned by deleted teacher
+    );
+    await Promise.all(updateClasses);
+  } catch (err) {
+    console.warn('Error clearing classes for deleted user:', err);
+  }
+
+  // 3. Delete user document from Firestore
   const userRef = doc(db, 'users', userUid);
   await deleteDoc(userRef);
+}
+
+export async function adminSendPasswordResetEmail(email: string): Promise<void> {
+  if (!email) throw new Error('E-posta adresi belirtilmemiş.');
+  await sendPasswordResetEmail(auth, email.trim());
+}
+
+export async function adminResetUserProgress(userUid: string): Promise<void> {
+  if (!userUid) return;
+  const userRef = doc(db, 'users', userUid);
+  await updateDoc(userRef, {
+    currentWeekStage: 0,
+    currentWeekMinutes: 0,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function adminDeleteClassroom(classId: string, teacherUid?: string): Promise<void> {

@@ -269,7 +269,7 @@ export default function App() {
         });
       }
 
-      if (authUser) {
+      if (authUser || activeLocalProfile) {
         await adminDeleteUser(userUid);
       }
     } catch (err) {
@@ -432,6 +432,7 @@ export default function App() {
           uid: 'student_1',
           displayName: 'Ali Yılmaz',
           studentName: 'Ali Yılmaz',
+          parentName: 'Mehmet Yılmaz',
           email: 'veli.ali@example.com',
           role: 'parent',
           userType: 'parent',
@@ -445,6 +446,7 @@ export default function App() {
           uid: 'student_2',
           displayName: 'Zeynep Kaya',
           studentName: 'Zeynep Kaya',
+          parentName: 'Ayşe Kaya',
           email: 'veli.zeynep@example.com',
           role: 'parent',
           userType: 'parent',
@@ -458,6 +460,7 @@ export default function App() {
           uid: 'student_3',
           displayName: 'Can Demir',
           studentName: 'Can Demir',
+          parentName: 'Fatma Demir',
           email: 'veli.can@example.com',
           role: 'parent',
           userType: 'parent',
@@ -465,6 +468,30 @@ export default function App() {
           className: '5-A Sınıfı',
           currentWeekStage: 12,
           currentWeekMinutes: 360,
+          currentWeekId: weekInfo.weekId,
+        },
+        {
+          uid: 'demo_teacher_1',
+          displayName: 'Olcayto Öğretmen',
+          email: 'olcaytoh@gmail.com',
+          role: 'teacher',
+          userType: 'teacher',
+          classId: 'demo-class-5a',
+          className: '5-A Sınıfı',
+          currentWeekStage: 0,
+          currentWeekMinutes: 0,
+          currentWeekId: weekInfo.weekId,
+        },
+        {
+          uid: 'mistaken_user_1',
+          displayName: 'Hatalı Üye (Yanlış Mail)',
+          studentName: 'Yanlış Öğrenci',
+          parentName: 'Hatalı Veli',
+          email: 'yanlislikla.acilan@ornekmail.com',
+          role: 'parent',
+          userType: 'parent',
+          currentWeekStage: 2,
+          currentWeekMinutes: 60,
           currentWeekId: weekInfo.weekId,
         },
       ]);
@@ -799,6 +826,7 @@ export default function App() {
                   institutionAdminCode={effectiveProfile?.institutionAdminCode}
                   classrooms={institutionClassrooms}
                   studentsByClass={classStudentsMap}
+                  allUsers={allUsers}
                   onOpenClassSetup={() => setShowClassSetup(true)}
                   onDeleteClassroom={handleAdminDeleteClassroom}
                   onDeleteUser={handleAdminDeleteUser}
