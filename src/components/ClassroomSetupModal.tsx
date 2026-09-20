@@ -57,19 +57,19 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
 }) => {
   const isAdminUser = currentUser.role === 'admin';
   const isTeacherUser = currentUser.role === 'teacher';
-  const isEstablishedUser = Boolean(canCancel && (isTeacherUser || isAdminUser));
+  const isParentUser = currentUser.role === 'parent' || (!isAdminUser && !isTeacherUser);
+  const isEstablishedUser = Boolean(canCancel && (isTeacherUser || isAdminUser || isParentUser));
 
-  // Initial role determination
+  // Initial role determination: Veli hesapları ASLA admin veya öğretmen olarak başlatılmaz
   const initialRole: 'admin' | 'teacher' | 'parent' = isAdminUser
     ? 'admin'
     : isTeacherUser
     ? 'teacher'
     : 'parent';
 
-  const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'parent'>(initialRole);
-
-  // TEACHER: View mode (Sınıf Bilgileri vs. Öğrenci Ekleme)
-  const [teacherViewMode, setTeacherViewMode] = useState<'class_settings' | 'add_student'>('class_settings');
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'teacher' | 'parent'>(
+    isParentUser ? 'parent' : initialRole
+  );
 
   // ADMIN: Kurum Alanları
   const [adminSubMode, setAdminSubMode] = useState<'create' | 'join'>('create');
@@ -85,11 +85,6 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
   const [isInstitutionConnected, setIsInstitutionConnected] = useState(Boolean(currentUser.institutionId));
   const [className, setClassName] = useState(currentUser.className || '4-A Sınıfı');
   const [studentTargetCount, setStudentTargetCount] = useState<number>(25);
-
-  // ÖĞRETMEN: Doğrudan Öğrenci Ekleme Alanları
-  const [newStudentName, setNewStudentName] = useState('');
-  const [newParentName, setNewParentName] = useState('');
-  const [addingStudent, setAddingStudent] = useState(false);
   const [copiedClassCode, setCopiedClassCode] = useState(false);
 
   // VELİ: Sınıf Kodu ile Katılma
@@ -289,6 +284,15 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       setLoading(true);
       setError(null);
 
+      const institutionPayload =
+        isInstitutionConnected && teacherInstitutionCode.trim()
+          ? {
+              ...(connectedInstitutionId ? { id: connectedInstitutionId } : {}),
+              code: teacherInstitutionCode.trim().toUpperCase(),
+              name: connectedInstitutionName || '',
+            }
+          : undefined;
+
       // Sınıf zaten varsa güncelle
       if (currentUser.classId) {
         if (isDemo) {
@@ -308,13 +312,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
           currentUser.uid,
           className.trim(),
           studentTargetCount,
-          isInstitutionConnected
-            ? {
-                id: connectedInstitutionId,
-                code: teacherInstitutionCode.trim().toUpperCase(),
-                name: connectedInstitutionName,
-              }
-            : undefined
+          institutionPayload
         );
         setSuccessMsg(`Sınıf bilgileriniz başarıyla güncellendi!`);
         setTimeout(() => onCompleted(), 1200);
@@ -343,13 +341,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
         currentUser.email,
         className.trim(),
         studentTargetCount,
-        isInstitutionConnected
-          ? {
-              id: connectedInstitutionId,
-              code: teacherInstitutionCode.trim().toUpperCase(),
-              name: connectedInstitutionName,
-            }
-          : undefined
+        institutionPayload
       );
       setSuccessMsg(`Sınıfınız başarıyla oluşturuldu! Sınıf Kodunuz: ${classroom.code}`);
       setTimeout(() => onCompleted(), 1200);
@@ -361,64 +353,6 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
     }
   };
 
-  // --- ÖĞRETMEN: Sınıfa Doğrudan Öğrenci Ekleme (Öğretmen Hesabını Asla Etkilemez) ---
-  const handleTeacherAddStudentDirectly = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStudentName.trim()) {
-      setError('Lütfen eklenecek öğrencinin adını ve soyadını girin.');
-      return;
-    }
-
-    const currentClassId = currentUser.classId || 'demo-class-5a';
-    const currentClassCode = currentUser.classCode || activeClassCode || 'SINIF-5A';
-    const currentClassName = currentUser.className || className || '4-A Sınıfı';
-
-    try {
-      setAddingStudent(true);
-      setError(null);
-
-      if (isDemo) {
-        await new Promise((r) => setTimeout(r, 400));
-        const demoStudent: UserProfile = {
-          uid: `student_demo_${Date.now()}`,
-          studentName: newStudentName.trim(),
-          parentName: newParentName.trim() || undefined,
-          displayName: `${newStudentName.trim()}${newParentName.trim() ? ` (${newParentName.trim()})` : ''}`,
-          role: 'parent',
-          userType: 'parent',
-          classId: currentClassId,
-          classCode: currentClassCode,
-          className: currentClassName,
-          currentWeekStage: 0,
-          currentWeekMinutes: 0,
-          currentWeekId: 'demo-week',
-        };
-        onAddStudent?.(demoStudent);
-        setSuccessMsg(`"${newStudentName.trim()}" başarıyla sınıfınıza eklendi! Sınıf listenizde görünecektir.`);
-        setNewStudentName('');
-        setNewParentName('');
-        return;
-      }
-
-      const newStudent = await addStudentToClassroom(
-        currentClassId,
-        currentClassCode,
-        currentClassName,
-        newStudentName.trim(),
-        newParentName.trim()
-      );
-      onAddStudent?.(newStudent);
-      setSuccessMsg(`"${newStudentName.trim()}" başarıyla sınıfınıza eklendi! Sınıf listenizde görünecektir.`);
-      setNewStudentName('');
-      setNewParentName('');
-    } catch (err: any) {
-      console.error('Add student error:', err);
-      setError(err.message || 'Öğrenci eklenirken bir hata oluştu.');
-    } finally {
-      setAddingStudent(false);
-    }
-  };
-
   // --- VELİ: Sınıf Kodu ile Katılma (Yalnızca yeni veli hesapları için) ---
   const handleParentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -426,7 +360,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
     // Güvenlik Kilidi: Öğretmen veya Admin hesabı olan biri bu akışla kendini veliye dönüştüremez
     if (isTeacherUser || isAdminUser) {
       setError(
-        'Öğretmen veya Yönetici hesabı ile veli olarak sınıfa katılamazsınız! Hesabınız öğretmen yetkisine sahiptir. Sınıfınıza öğrenci eklemek için lütfen "Öğrenci & Veli Ekle" sekmesini kullanınız.'
+        'Öğretmen veya Yönetici hesabı ile veli olarak sınıfa katılamazsınız! Hesabınız öğretmen yetkisine sahiptir.'
       );
       return;
     }
@@ -496,6 +430,8 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
               ? 'Öğretmen & Sınıf Ayarları'
               : isEstablishedUser && isAdminUser
               ? 'Kurum Yönetimi & Ayarlar'
+              : isParentUser
+              ? 'Sınıfı Değiştir & Öğrenci Bilgileri'
               : selectedRole === 'admin'
               ? 'Kurum Yönetimi & Kurum Kodu'
               : selectedRole === 'teacher'
@@ -505,9 +441,11 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
           
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             {isEstablishedUser && isTeacherUser
-              ? 'Sınıf bilgilerinizi güncelleyin, kurum kodunuzu kontrol edin veya sınıfınıza yeni öğrenci ekleyin.'
+              ? 'Sınıf bilgilerinizi ve bağlı olduğunuz kurum kodunu buradan güncelleyebilirsiniz.'
               : isEstablishedUser && isAdminUser
               ? 'Kurum adını düzenleyin ve öğretmenleriniz için kurum kodunu görüntüleyin.'
+              : isParentUser
+              ? 'Öğretmeninizden aldığınız 6 haneli yeni sınıf kodunu girerek sınıfınızı değiştirebilirsiniz.'
               : selectedRole === 'admin'
               ? 'Yeni kurum oluşturun ya da bir Admin Kodu ile mevcut kuruma yönetici olarak katılın.'
               : selectedRole === 'teacher'
@@ -516,7 +454,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
           </p>
         </div>
 
-        {/* 1. DURUM: KULLANICI ZATEN AKTİF BİR ÖĞRETMEN (Rol değiştirme yerine Öğretmen Alt Sekmeleri Sunulur) */}
+        {/* 1. DURUM: KULLANICI ZATEN AKTİF BİR ÖĞRETMEN (Sınıf & Kurum Ayarları) */}
         {isEstablishedUser && isTeacherUser ? (
           <div className="space-y-4">
             {/* Öğretmen Hesap Rozeti & Sınıf Kodu Çubuğu */}
@@ -551,45 +489,6 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
               )}
             </div>
 
-            {/* Öğretmen Alt Sekmeleri: [Sınıf & Kurum Ayarları] - [Öğrenci & Veli Ekle] */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-              <button
-                type="button"
-                id="btn-teacher-tab-settings"
-                onClick={() => {
-                  setTeacherViewMode('class_settings');
-                  setError(null);
-                  setSuccessMsg(null);
-                }}
-                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  teacherViewMode === 'class_settings'
-                    ? 'bg-white text-indigo-900 shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <School className="w-3.5 h-3.5" />
-                Sınıf & Kurum
-              </button>
-
-              <button
-                type="button"
-                id="btn-teacher-tab-add-student"
-                onClick={() => {
-                  setTeacherViewMode('add_student');
-                  setError(null);
-                  setSuccessMsg(null);
-                }}
-                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  teacherViewMode === 'add_student'
-                    ? 'bg-white text-indigo-900 shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                Öğrenci & Veli Ekle
-              </button>
-            </div>
-
             {/* Geri Bildirim Mesajları */}
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2 animate-in fade-in">
@@ -605,197 +504,101 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
               </div>
             )}
 
-            {/* Alt Sekme 1: Sınıf & Kurum Bilgileri Düzenleme */}
-            {teacherViewMode === 'class_settings' ? (
-              <div className="space-y-4">
-                {/* 1. Adım: Kurum Kodu */}
-                <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-200/80 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4 text-indigo-600" />
-                      Bağlı Kurum Kodu
+            {/* Sınıf & Kurum Bilgileri */}
+            <div className="space-y-4">
+              {/* 1. Adım: Kurum Kodu */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-200/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-indigo-600" />
+                    Bağlı Kurum Kodu
+                  </span>
+                  {isInstitutionConnected && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                      Bağlandı
                     </span>
-                    {isInstitutionConnected && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                        Bağlandı
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={teacherInstitutionCode}
-                      onChange={(e) => setTeacherInstitutionCode(e.target.value.toUpperCase())}
-                      placeholder="Örn: KRM-8842"
-                      className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono uppercase tracking-wider font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleTeacherConnectInstitution}
-                      disabled={loading || !teacherInstitutionCode.trim()}
-                      className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1"
-                    >
-                      <span>Kuruma Bağlan</span>
-                    </button>
-                  </div>
-
-                  {connectedInstitutionName ? (
-                    <p className="text-[11px] font-bold text-emerald-700">
-                      Bağlı Kurum: {connectedInstitutionName}
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-slate-500">
-                      Okulunuzun admininden aldığınız Kurum Kodunu girerek okulunuza bağlanabilirsiniz.
-                    </p>
                   )}
                 </div>
 
-                {/* 2. Adım: Sınıf Adı ve Hedef Öğrenci Sayısı */}
-                <form onSubmit={handleTeacherSaveClass} className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Sınıf Adı / Şube:</label>
-                    <input
-                      type="text"
-                      id="input-class-name"
-                      value={className}
-                      onChange={(e) => setClassName(e.target.value)}
-                      placeholder="Örn: 4-A Sınıfı"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Beklenen Öğrenci Sayısı:</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={60}
-                      value={studentTargetCount}
-                      onChange={(e) => setStudentTargetCount(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                    />
-                  </div>
-
-                  <div className="pt-2 flex items-center gap-2">
-                    {canCancel && onCancel && (
-                      <button
-                        type="button"
-                        onClick={onCancel}
-                        className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
-                      >
-                        Kapat
-                      </button>
-                    )}
-                    <button
-                      type="submit"
-                      id="btn-save-class"
-                      disabled={loading}
-                      className="btn-3d-indigo flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black cursor-pointer disabled:opacity-60"
-                    >
-                      <span>{loading ? 'Kaydediliyor...' : 'Sınıf Bilgilerini Güncelle'}</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ) : (
-              /* Alt Sekme 2: Öğrenci & Veli Ekleme (Öğretmen hesabını korur!) */
-              <div className="space-y-4">
-                {/* Veli Davet Kartı (Sınıf Kodu ile) */}
-                <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                      <UserCheck className="w-4 h-4 text-emerald-600" />
-                      1. Yöntem: Sınıf Kodu ile Veli Daveti (Önerilen)
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-emerald-900 leading-relaxed">
-                    Velileriniz kendi telefonlarından uygulamaya giriş yapıp <b>"Veli"</b> seçeneğini seçtikten sonra aşağıdaki sınıf kodunu girerek otomatik olarak sınıfınıza katılırlar:
-                  </p>
-
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-emerald-300">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Sınıf Kodunuz</span>
-                      <span className="text-base font-mono font-black text-emerald-800 tracking-wider">
-                        {activeClassCode}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleCopyClassCode}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs active:scale-95 cursor-pointer"
-                    >
-                      {copiedClassCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedClassCode ? 'Kopyalandı' : 'Kodu Kopyala'}</span>
-                    </button>
-                  </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={teacherInstitutionCode}
+                    onChange={(e) => setTeacherInstitutionCode(e.target.value.toUpperCase())}
+                    placeholder="Örn: KRM-8842"
+                    className="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono uppercase tracking-wider font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTeacherConnectInstitution}
+                    disabled={loading || !teacherInstitutionCode.trim()}
+                    className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1"
+                  >
+                    <span>Kuruma Bağlan</span>
+                  </button>
                 </div>
 
-                {/* Doğrudan Öğrenci Ekleme Formu */}
-                <form onSubmit={handleTeacherAddStudentDirectly} className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-200 space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-indigo-950">
-                      <UserPlus className="w-4 h-4 text-indigo-600" />
-                      2. Yöntem: Sınıfınıza Doğrudan Öğrenci Ekleyin
-                    </div>
-                    <p className="text-[10.5px] text-indigo-900 leading-tight">
-                      Veli henüz uygulamayı kullanmıyorsa, öğrenciyi sınıf listenize siz ekleyebilirsiniz. (Bu işlem öğretmen hesabınızı asla değiştirmez.)
-                    </p>
-                  </div>
+                {connectedInstitutionName ? (
+                  <p className="text-[11px] font-bold text-emerald-700">
+                    Bağlı Kurum: {connectedInstitutionName}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-slate-500">
+                    Okulunuzun admininden aldığınız Kurum Kodunu girerek okulunuza bağlanabilirsiniz.
+                  </p>
+                )}
+              </div>
 
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-800">Öğrencinin Adı Soyadı:</label>
-                      <input
-                        type="text"
-                        value={newStudentName}
-                        onChange={(e) => setNewStudentName(e.target.value)}
-                        placeholder="Örn: Ahmet Yılmaz"
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 font-bold"
-                        required
-                      />
-                    </div>
+              {/* 2. Adım: Sınıf Adı ve Hedef Öğrenci Sayısı */}
+              <form onSubmit={handleTeacherSaveClass} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Sınıf Adı / Şube:</label>
+                  <input
+                    type="text"
+                    id="input-class-name"
+                    value={className}
+                    onChange={(e) => setClassName(e.target.value)}
+                    placeholder="Örn: 4-A Sınıfı"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    required
+                  />
+                </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-800">Veli Adı (İsteğe Bağlı):</label>
-                      <input
-                        type="text"
-                        value={newParentName}
-                        onChange={(e) => setNewParentName(e.target.value)}
-                        placeholder="Örn: Fatma Yılmaz"
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Beklenen Öğrenci Sayısı:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={studentTargetCount}
+                    onChange={(e) => setStudentTargetCount(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
 
-                  <button
-                    type="submit"
-                    id="btn-add-student-to-class"
-                    disabled={addingStudent || !newStudentName.trim()}
-                    className="w-full btn-3d-indigo flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-black cursor-pointer disabled:opacity-60"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span>{addingStudent ? 'Ekleniyor...' : 'Sınıfıma Öğrenci Ekle'}</span>
-                  </button>
-                </form>
-
-                <div className="pt-1 flex items-center gap-2">
+                <div className="pt-2 flex items-center gap-2">
                   {canCancel && onCancel && (
                     <button
                       type="button"
                       onClick={onCancel}
-                      className="btn-3d-white w-full py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
+                      className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
                     >
                       Kapat
                     </button>
                   )}
+                  <button
+                    type="submit"
+                    id="btn-save-class"
+                    disabled={loading}
+                    className="btn-3d-indigo flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black cursor-pointer disabled:opacity-60"
+                  >
+                    <span>{loading ? 'Kaydediliyor...' : 'Sınıf Bilgilerini Güncelle'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
-              </div>
-            )}
+              </form>
+            </div>
           </div>
         ) : isEstablishedUser && isAdminUser ? (
           /* 2. DURUM: KULLANICI ZATEN AKTİF BİR ADMİN */
@@ -886,73 +689,75 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
             </form>
           </div>
         ) : (
-          /* 3. DURUM: İLK KURULUM / YENİ KULLANICI (3'lü Rol Seçim Butonları Açık) */
+          /* 3. DURUM: İLK KURULUM / VELİ HESABI (Veli hesaplarında 3'lü buton ASLA gösterilmez) */
           <div className="space-y-4">
-            {/* 3'lü Rol Seçim Butonları (Admin, Öğretmen, Veli) */}
-            <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-              <button
-                type="button"
-                id="role-select-admin"
-                onClick={() => {
-                  setSelectedRole('admin');
-                  setError(null);
-                  setSuccessMsg(null);
-                }}
-                className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  selectedRole === 'admin'
-                    ? 'bg-white text-rose-900 shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <div className={`p-1.5 rounded-lg ${selectedRole === 'admin' ? 'bg-rose-50 text-rose-600' : 'bg-slate-200 text-slate-500'}`}>
-                  <ShieldAlert className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] font-black">Admin</span>
-                <span className="text-[9px] text-slate-400">Kurum Kodu</span>
-              </button>
+            {/* 3'lü Rol Seçim Butonları (Admin, Öğretmen, Veli) - YALNIZCA YENİ HESAP SEÇİMİNDE, VELİ HESAPLARINDA ASLA GÖSTERİLMEZ */}
+            {!isParentUser && (
+              <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  id="role-select-admin"
+                  onClick={() => {
+                    setSelectedRole('admin');
+                    setError(null);
+                    setSuccessMsg(null);
+                  }}
+                  className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedRole === 'admin'
+                      ? 'bg-white text-rose-900 shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-lg ${selectedRole === 'admin' ? 'bg-rose-50 text-rose-600' : 'bg-slate-200 text-slate-500'}`}>
+                    <ShieldAlert className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-black">Admin</span>
+                  <span className="text-[9px] text-slate-400">Kurum Kodu</span>
+                </button>
 
-              <button
-                type="button"
-                id="role-select-teacher"
-                onClick={() => {
-                  setSelectedRole('teacher');
-                  setError(null);
-                  setSuccessMsg(null);
-                }}
-                className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  selectedRole === 'teacher'
-                    ? 'bg-white text-indigo-900 shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <div className={`p-1.5 rounded-lg ${selectedRole === 'teacher' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>
-                  <GraduationCap className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] font-black">Öğretmen</span>
-                <span className="text-[9px] text-slate-400">Sınıf Oluştur</span>
-              </button>
+                <button
+                  type="button"
+                  id="role-select-teacher"
+                  onClick={() => {
+                    setSelectedRole('teacher');
+                    setError(null);
+                    setSuccessMsg(null);
+                  }}
+                  className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedRole === 'teacher'
+                      ? 'bg-white text-indigo-900 shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-lg ${selectedRole === 'teacher' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-black">Öğretmen</span>
+                  <span className="text-[9px] text-slate-400">Sınıf Oluştur</span>
+                </button>
 
-              <button
-                type="button"
-                id="role-select-parent"
-                onClick={() => {
-                  setSelectedRole('parent');
-                  setError(null);
-                  setSuccessMsg(null);
-                }}
-                className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  selectedRole === 'parent'
-                    ? 'bg-white text-emerald-900 shadow-xs border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <div className={`p-1.5 rounded-lg ${selectedRole === 'parent' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
-                  <Users className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] font-black">Veli</span>
-                <span className="text-[9px] text-slate-400">Sınıfa Katıl</span>
-              </button>
-            </div>
+                <button
+                  type="button"
+                  id="role-select-parent"
+                  onClick={() => {
+                    setSelectedRole('parent');
+                    setError(null);
+                    setSuccessMsg(null);
+                  }}
+                  className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedRole === 'parent'
+                      ? 'bg-white text-emerald-900 shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-lg ${selectedRole === 'parent' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-black">Veli</span>
+                  <span className="text-[9px] text-slate-400">Sınıfa Katıl</span>
+                </button>
+              </div>
+            )}
 
             {/* Geri Bildirim Mesajları */}
             {error && (
@@ -1184,7 +989,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                     disabled={loading}
                     className="btn-3d-emerald flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black cursor-pointer disabled:opacity-60"
                   >
-                    <span>{loading ? 'Bağlanıyor...' : 'Sınıfa Katıl'}</span>
+                    <span>{loading ? 'Bağlanıyor...' : isParentUser ? 'Sınıfı Güncelle' : 'Sınıfa Katıl'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>

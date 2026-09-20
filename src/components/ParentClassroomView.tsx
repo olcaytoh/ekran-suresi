@@ -356,7 +356,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
 
       {/* Yalnızca Öğretmen için Admin Moduna Geçiş (Admin Kodu Doğrulamasıyla - Velilere Kesinlikle Gösterilmez) */}
       {isTeacher && !isSuperAdmin && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-3 sm:p-3.5 border border-amber-200/90 flex items-center justify-between gap-2.5 shadow-2xs">
+        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 rounded-2xl p-3 sm:p-3.5 border border-amber-200/90 flex items-center justify-between gap-2.5 shadow-2xs flex-wrap">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center flex-shrink-0">
               <KeyRound className="w-4 h-4" />
@@ -366,23 +366,41 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                 Kurum Yöneticisi misiniz?
               </div>
               <div className="text-[11px] text-amber-800/90 truncate">
-                Admin kodunu girerek kurum yönetici paneline geçebilirsiniz.
+                {userProfile?.institutionAdminCode
+                  ? 'Yönetici yetkiniz kayıtlıdır. Tek tıkla dönebilir veya admin kodunuzu doğrulayabilirsiniz.'
+                  : 'Admin kodunu girerek kurum yönetici paneline geçebilirsiniz.'}
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setAdminCodeInput('');
-              setAdminCodeError(null);
-              setAdminCodeSuccess(null);
-              setShowAdminCodeModal(true);
-            }}
-            className="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-600 hover:bg-amber-700 active:scale-95 text-white shadow-2xs flex-shrink-0 cursor-pointer transition-all flex items-center gap-1.5"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Admin Moduna Geç</span>
-          </button>
+
+          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            {userProfile?.institutionAdminCode && onSwitchRole && (
+              <button
+                type="button"
+                id="btn-direct-return-admin"
+                onClick={() => onSwitchRole('admin')}
+                className="btn-3d-rose px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+                title="Kayıtlı Admin yetkinizle doğrudan yönetici paneline dönün"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Yönetici Paneline Dön</span>
+              </button>
+            )}
+            <button
+              type="button"
+              id="btn-open-admin-code-modal"
+              onClick={() => {
+                setAdminCodeInput(userProfile?.institutionAdminCode || '');
+                setAdminCodeError(null);
+                setAdminCodeSuccess(null);
+                setShowAdminCodeModal(true);
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-600 hover:bg-amber-700 active:scale-95 text-white shadow-2xs flex-shrink-0 cursor-pointer transition-all flex items-center gap-1.5"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>{userProfile?.institutionAdminCode ? 'Kodu Doğrula / Değiştir' : 'Admin Kodunu Gir'}</span>
+            </button>
+          </div>
         </div>
       )}
 

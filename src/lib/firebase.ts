@@ -47,6 +47,20 @@ export const db: Firestore = firebaseConfig.firestoreDatabaseId
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
+/**
+ * Strips all keys whose values are strictly undefined so Firestore never rejects payloads
+ * with: "Function setDoc/updateDoc() called with invalid data. Unsupported field value: undefined"
+ */
+export function removeUndefined<T extends Record<string, any>>(obj: T): T {
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = value;
+    }
+  }
+  return clean as T;
+}
+
 export const ADMIN_EMAILS: string[] = [];
 export const DEFAULT_ADMIN_EMAIL = '';
 
@@ -802,12 +816,16 @@ export async function updateStageProgress(
   const timestamp = Date.now();
   const dateStr = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-  await updateDoc(userRef, {
-    currentWeekStage: clampedStage,
-    currentWeekMinutes: totalMinutes,
-    currentWeekId: weekId,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    userRef,
+    {
+      currentWeekStage: clampedStage,
+      currentWeekMinutes: totalMinutes,
+      currentWeekId: weekId,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   const weekSnap = await getDoc(weekRef);
   let stageTimestamps = [];
@@ -898,17 +916,37 @@ export function subscribeAllUsers(
   );
 }
 
-export async function setUserRole(targetUid: string, role: UserRole): Promise<void> {
+export async function setUserRole(
+  targetUid: string,
+  role: UserRole,
+  extraFields?: { classId?: string; className?: string; classCode?: string; preserveAdminCode?: boolean }
+): Promise<void> {
   const userRef = doc(db, 'users', targetUid);
   const payload: any = {
     role,
     userType: role === 'admin' || role === 'teacher' ? 'teacher' : 'parent',
     updatedAt: serverTimestamp(),
   };
-  if (role !== 'admin') {
+  if (extraFields?.classId) payload.classId = extraFields.classId;
+  if (extraFields?.className) payload.className = extraFields.className;
+  if (extraFields?.classCode) payload.classCode = extraFields.classCode;
+
+  if (role !== 'admin' && !extraFields?.preserveAdminCode) {
     payload.institutionAdminCode = deleteField();
   }
-  await updateDoc(userRef, payload);
+  await setDoc(userRef, payload, { merge: true });
+}
+
+export async function updateUserProfile(targetUid: string, data: Partial<UserProfile>): Promise<void> {
+  const userRef = doc(db, 'users', targetUid);
+  await setDoc(
+    userRef,
+    removeUndefined({
+      ...data,
+      updatedAt: serverTimestamp(),
+    }),
+    { merge: true }
+  );
 }
 
 function generateClassCode(): string {
@@ -958,11 +996,12 @@ export async function createInstitution(
   }
 
   const instRef = doc(collection(db, 'institutions'));
+  const trimmedName = (institutionName || 'Okulumuz').trim();
   const instData = {
     id: instRef.id,
     code,
     adminCode,
-    name: institutionName.trim(),
+    name: trimmedName,
     adminUid,
     adminName: adminName || 'Admin',
     adminEmail: adminEmail || '',
@@ -970,34 +1009,49 @@ export async function createInstitution(
     updatedAt: serverTimestamp(),
   };
 
-  await setDoc(instRef, instData);
+  await setDoc(instRef, instData, { merge: true });
 
   const adminRef = doc(db, 'users', adminUid);
-  await updateDoc(adminRef, {
-    role: 'admin',
-    userType: 'teacher',
-    institutionId: instRef.id,
-    institutionCode: code,
-    institutionAdminCode: adminCode,
-    institutionName: institutionName.trim(),
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    adminRef,
+    {
+      role: 'admin',
+      userType: 'teacher',
+      institutionId: instRef.id,
+      institutionCode: code,
+      institutionAdminCode: adminCode,
+      institutionName: trimmedName,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
-  return { id: instRef.id, code, adminCode, name: institutionName.trim() };
+  return { id: instRef.id, code, adminCode, name: trimmedName };
 }
 
 export async function ensureInstitutionAdminCode(
   institutionId: string,
   adminUid: string
 ): Promise<string> {
-  const instRef = doc(db, 'institutions', institutionId);
-  const snap = await getDoc(instRef);
-  if (!snap.exists()) {
-    throw new Error('Kurum bulunamadı.');
+  let targetInstRef = institutionId ? doc(db, 'institutions', institutionId) : null;
+  let snap = targetInstRef ? await getDoc(targetInstRef) : null;
+
+  if (!snap || !snap.exists()) {
+    // Kurum adminUid ile kayıtlı mı kontrol et
+    const instCol = collection(db, 'institutions');
+    const q = query(instCol, where('adminUid', '==', adminUid));
+    const querySnap = await getDocs(q);
+    if (!querySnap.empty) {
+      targetInstRef = querySnap.docs[0].ref;
+      snap = querySnap.docs[0];
+    }
   }
-  const data = snap.data();
-  if (data.adminCode) {
-    return data.adminCode as string;
+
+  if (snap && snap.exists()) {
+    const data = snap.data();
+    if (data.adminCode) {
+      return data.adminCode as string;
+    }
   }
 
   let adminCode = generateAdminCode();
@@ -1007,11 +1061,30 @@ export async function ensureInstitutionAdminCode(
     tries += 1;
   }
 
-  await updateDoc(instRef, { adminCode, updatedAt: serverTimestamp() });
-  await updateDoc(doc(db, 'users', adminUid), {
-    institutionAdminCode: adminCode,
-    updatedAt: serverTimestamp(),
-  });
+  if (!targetInstRef) {
+    targetInstRef = doc(collection(db, 'institutions'));
+  }
+
+  await setDoc(
+    targetInstRef,
+    {
+      id: targetInstRef.id,
+      adminCode,
+      adminUid,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  await setDoc(
+    doc(db, 'users', adminUid),
+    {
+      institutionId: targetInstRef.id,
+      institutionAdminCode: adminCode,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   return adminCode;
 }
@@ -1026,19 +1099,30 @@ export async function updateInstitutionName(
     throw new Error('Lütfen geçerli bir kurum / okul adı girin.');
   }
 
-  const instRef = doc(db, 'institutions', institutionId);
-  await updateDoc(instRef, {
-    name: trimmed,
-    updatedAt: serverTimestamp(),
-  });
+  let instRef = institutionId ? doc(db, 'institutions', institutionId) : doc(collection(db, 'institutions'));
+  await setDoc(
+    instRef,
+    {
+      id: instRef.id,
+      name: trimmed,
+      adminUid,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   const adminRef = doc(db, 'users', adminUid);
-  await updateDoc(adminRef, {
-    institutionName: trimmed,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    adminRef,
+    {
+      institutionId: instRef.id,
+      institutionName: trimmed,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
-  return { id: institutionId, name: trimmed };
+  return { id: instRef.id, name: trimmed };
 }
 
 export async function regenerateInstitutionCode(
@@ -1051,10 +1135,48 @@ export async function regenerateInstitutionCode(
     code = generateInstitutionCode();
     tries += 1;
   }
-  const instRef = doc(db, 'institutions', institutionId);
-  await updateDoc(instRef, { code, updatedAt: serverTimestamp() });
+
+  let instRef = institutionId ? doc(db, 'institutions', institutionId) : null;
+  if (instRef) {
+    const snap = await getDoc(instRef);
+    if (!snap.exists()) {
+      instRef = null;
+    }
+  }
+
+  if (!instRef) {
+    const instCol = collection(db, 'institutions');
+    const q = query(instCol, where('adminUid', '==', adminUid));
+    const querySnap = await getDocs(q);
+    if (!querySnap.empty) {
+      instRef = querySnap.docs[0].ref;
+    } else {
+      instRef = doc(collection(db, 'institutions'));
+    }
+  }
+
+  await setDoc(
+    instRef,
+    {
+      id: instRef.id,
+      code,
+      adminUid,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
   const adminRef = doc(db, 'users', adminUid);
-  await updateDoc(adminRef, { institutionCode: code, updatedAt: serverTimestamp() });
+  await setDoc(
+    adminRef,
+    {
+      institutionId: instRef.id,
+      institutionCode: code,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
   return code;
 }
 
@@ -1068,10 +1190,48 @@ export async function regenerateInstitutionAdminCode(
     adminCode = generateAdminCode();
     tries += 1;
   }
-  const instRef = doc(db, 'institutions', institutionId);
-  await updateDoc(instRef, { adminCode, updatedAt: serverTimestamp() });
+
+  let instRef = institutionId ? doc(db, 'institutions', institutionId) : null;
+  if (instRef) {
+    const snap = await getDoc(instRef);
+    if (!snap.exists()) {
+      instRef = null;
+    }
+  }
+
+  if (!instRef) {
+    const instCol = collection(db, 'institutions');
+    const q = query(instCol, where('adminUid', '==', adminUid));
+    const querySnap = await getDocs(q);
+    if (!querySnap.empty) {
+      instRef = querySnap.docs[0].ref;
+    } else {
+      instRef = doc(collection(db, 'institutions'));
+    }
+  }
+
+  await setDoc(
+    instRef,
+    {
+      id: instRef.id,
+      adminCode,
+      adminUid,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
   const adminRef = doc(db, 'users', adminUid);
-  await updateDoc(adminRef, { institutionAdminCode: adminCode, updatedAt: serverTimestamp() });
+  await setDoc(
+    adminRef,
+    {
+      institutionId: instRef.id,
+      institutionAdminCode: adminCode,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
   return adminCode;
 }
 
@@ -1099,22 +1259,30 @@ export async function joinInstitutionWithCode(
   const userSnap = await getDoc(userRef);
   const userData = userSnap.exists() ? userSnap.data() : null;
 
-  await updateDoc(userRef, {
-    institutionId: instDoc.id,
-    institutionCode: instData.code,
-    institutionName: instData.name,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    userRef,
+    {
+      institutionId: instDoc.id,
+      institutionCode: instData.code,
+      institutionName: instData.name,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   // If teacher already has a classroom, link that classroom to the institution too
   if (userData?.classId) {
     try {
-      await updateDoc(doc(db, 'classes', userData.classId), {
-        institutionId: instDoc.id,
-        institutionCode: instData.code,
-        institutionName: instData.name,
-        updatedAt: serverTimestamp(),
-      });
+      await setDoc(
+        doc(db, 'classes', userData.classId),
+        {
+          institutionId: instDoc.id,
+          institutionCode: instData.code,
+          institutionName: instData.name,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
     } catch (err) {
       console.warn('Could not link teacher active class to institution:', err);
     }
@@ -1125,12 +1293,16 @@ export async function joinInstitutionWithCode(
     const classesQ = query(collection(db, 'classes'), where('teacherUid', '==', userUid));
     const classesSnap = await getDocs(classesQ);
     for (const cDoc of classesSnap.docs) {
-      await updateDoc(cDoc.ref, {
-        institutionId: instDoc.id,
-        institutionCode: instData.code,
-        institutionName: instData.name,
-        updatedAt: serverTimestamp(),
-      });
+      await setDoc(
+        cDoc.ref,
+        {
+          institutionId: instDoc.id,
+          institutionCode: instData.code,
+          institutionName: instData.name,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
     }
   } catch (err) {
     console.warn('Could not link teacher classes to institution:', err);
@@ -1160,15 +1332,19 @@ export async function joinInstitutionAsAdmin(
   const instData = instDoc.data();
 
   const userRef = doc(db, 'users', userUid);
-  await updateDoc(userRef, {
-    role: 'admin',
-    userType: 'teacher',
-    institutionId: instDoc.id,
-    institutionCode: instData.code,
-    institutionAdminCode: instData.adminCode,
-    institutionName: instData.name,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    userRef,
+    {
+      role: 'admin',
+      userType: 'teacher',
+      institutionId: instDoc.id,
+      institutionCode: instData.code,
+      institutionAdminCode: instData.adminCode,
+      institutionName: instData.name,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   return { id: instDoc.id, code: instData.code, adminCode: instData.adminCode, name: instData.name };
 }
@@ -1185,6 +1361,7 @@ export async function verifyAdminCodeAndUpgrade(
 
   let matchedDoc: any = null;
 
+  // 1. Doğrudan mevcut kurum üzerinden kontrol
   if (currentInstitutionId) {
     try {
       const directRef = doc(db, 'institutions', currentInstitutionId);
@@ -1193,47 +1370,76 @@ export async function verifyAdminCodeAndUpgrade(
         const data = snap.data();
         if (data?.adminCode && data.adminCode.trim().toUpperCase() === cleanedCode) {
           matchedDoc = snap;
-        } else {
-          throw new Error('Girdiğiniz Admin Kodu kurumunuzun admin kodu ile uyuşmuyor!');
         }
       }
-    } catch (err: any) {
-      if (err.message && err.message.includes('uyuşmuyor')) {
-        throw err;
-      }
+    } catch {
+      // Devam et, koleksiyonu tara
     }
   }
 
+  // 2. Admin koduna göre tüm kurumları tara
   if (!matchedDoc) {
-    const instRef = collection(db, 'institutions');
-    const q = query(instRef, where('adminCode', '==', cleanedCode));
-    const snap = await getDocs(q);
-
-    if (snap.empty) {
-      throw new Error(`"${cleanedCode}" koduna sahip bir kurum yöneticisi kodu bulunamadı.`);
+    try {
+      const instRef = collection(db, 'institutions');
+      const q = query(instRef, where('adminCode', '==', cleanedCode));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        matchedDoc = snap.docs[0];
+      }
+    } catch {
+      // Sessizce devam et
     }
+  }
 
-    matchedDoc = snap.docs[0];
+  // 3. Kullanıcının kendi oluşturduğu bir kurum var mı ve admin kodu eşleşiyor mu?
+  if (!matchedDoc && userUid) {
+    try {
+      const instRef = collection(db, 'institutions');
+      const qAdmin = query(instRef, where('adminUid', '==', userUid));
+      const snapAdmin = await getDocs(qAdmin);
+      if (!snapAdmin.empty) {
+        // Kullanıcının kurumu var, bu kurumun admin kodu ile eşleşiyor mu?
+        for (const docSnap of snapAdmin.docs) {
+          const d = docSnap.data();
+          if (d?.adminCode && d.adminCode.trim().toUpperCase() === cleanedCode) {
+            matchedDoc = docSnap;
+            break;
+          }
+        }
+      }
+    } catch {
+      // Sessizce devam et
+    }
+  }
+
+  // 4. Eğer hiçbir kurumun admin kodu ile eşleşmediyse KESİNLİKLE HATA VER
+  if (!matchedDoc) {
+    throw new Error(
+      `"${cleanedCode}" admin kodu bulunamadı veya geçersiz! Lütfen kurumunuza ait doğru Admin Kodunu (Örn: ADM-XXXX) giriniz.`
+    );
   }
 
   const instData = matchedDoc.data();
-
   const userRef = doc(db, 'users', userUid);
-  await updateDoc(userRef, {
-    role: 'admin',
-    userType: 'teacher',
-    institutionId: matchedDoc.id,
-    institutionCode: instData.code,
-    institutionAdminCode: instData.adminCode,
-    institutionName: instData.name,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    userRef,
+    {
+      role: 'admin',
+      userType: 'teacher',
+      institutionId: matchedDoc.id,
+      institutionCode: instData?.code || 'KRM-1001',
+      institutionAdminCode: instData?.adminCode || cleanedCode,
+      institutionName: instData?.name || 'Okulum / Kurumum',
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 
   return {
     id: matchedDoc.id,
-    code: instData.code,
-    adminCode: instData.adminCode,
-    name: instData.name,
+    code: instData?.code || 'KRM-1001',
+    adminCode: instData?.adminCode || cleanedCode,
+    name: instData?.name || 'Okulum / Kurumum',
   };
 }
 
@@ -1264,13 +1470,13 @@ export async function createClassroom(
       updatedAt: serverTimestamp(),
     };
 
-    if (institution) {
-      updatedData.institutionId = institution.id;
+    if (institution && institution.code) {
+      if (institution.id) updatedData.institutionId = institution.id;
       updatedData.institutionCode = institution.code;
-      updatedData.institutionName = institution.name;
+      if (institution.name) updatedData.institutionName = institution.name;
     }
 
-    await updateDoc(doc(db, 'classes', classId), updatedData);
+    await setDoc(doc(db, 'classes', classId), removeUndefined(updatedData), { merge: true });
 
     if (snapExisting.docs.length > 1) {
       for (let i = 1; i < snapExisting.docs.length; i++) {
@@ -1283,36 +1489,37 @@ export async function createClassroom(
     }
 
     const teacherRef = doc(db, 'users', teacherUid);
-    await updateDoc(teacherRef, {
+    const teacherUpdate: Record<string, any> = {
       role: 'teacher',
       userType: 'teacher',
       classId: classId,
       classCode: existingData.code,
       className: trimmedName,
-      ...(institution ? {
-        institutionId: institution.id,
-        institutionCode: institution.code,
-        institutionName: institution.name,
-      } : {}),
       updatedAt: serverTimestamp(),
-    });
+    };
+    if (institution && institution.code) {
+      if (institution.id) teacherUpdate.institutionId = institution.id;
+      teacherUpdate.institutionCode = institution.code;
+      if (institution.name) teacherUpdate.institutionName = institution.name;
+    }
+    await setDoc(teacherRef, removeUndefined(teacherUpdate), { merge: true });
 
     return {
       ...existingData,
       id: classId,
       name: trimmedName,
       studentTargetCount,
-      ...(institution ? {
-        institutionId: institution.id,
+      ...(institution && institution.code ? {
+        ...(institution.id ? { institutionId: institution.id } : {}),
         institutionCode: institution.code,
-        institutionName: institution.name,
+        ...(institution.name ? { institutionName: institution.name } : {}),
       } : {}),
     };
   }
 
   const classCode = generateClassCode();
   const classRef = doc(collection(db, 'classes'));
-  const classroom: ClassroomInfo = {
+  const classroomData: Record<string, any> = {
     id: classRef.id,
     code: classCode,
     name: trimmedName,
@@ -1320,31 +1527,44 @@ export async function createClassroom(
     teacherName: teacherName || 'Öğretmen',
     teacherEmail: teacherEmail || '',
     studentTargetCount,
-    institutionId: institution?.id,
-    institutionCode: institution?.code,
-    institutionName: institution?.name,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
 
-  await setDoc(classRef, classroom);
+  if (institution && institution.code) {
+    if (institution.id) classroomData.institutionId = institution.id;
+    classroomData.institutionCode = institution.code;
+    if (institution.name) classroomData.institutionName = institution.name;
+  }
+
+  await setDoc(classRef, removeUndefined(classroomData));
 
   const teacherRef = doc(db, 'users', teacherUid);
-  await updateDoc(teacherRef, {
+  const teacherData: Record<string, any> = {
     role: 'teacher',
     userType: 'teacher',
     classId: classRef.id,
     classCode: classCode,
     className: trimmedName,
-    ...(institution ? {
-      institutionId: institution.id,
-      institutionCode: institution.code,
-      institutionName: institution.name,
-    } : {}),
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (institution && institution.code) {
+    if (institution.id) teacherData.institutionId = institution.id;
+    teacherData.institutionCode = institution.code;
+    if (institution.name) teacherData.institutionName = institution.name;
+  }
+  await setDoc(teacherRef, removeUndefined(teacherData), { merge: true });
 
-  return classroom;
+  return {
+    ...classroomData,
+    id: classRef.id,
+    code: classCode,
+    name: trimmedName,
+    teacherUid,
+    teacherName: teacherName || 'Öğretmen',
+    teacherEmail: teacherEmail || '',
+    studentTargetCount,
+  } as ClassroomInfo;
 }
 
 export async function adminDeleteUser(userUid: string): Promise<void> {
@@ -1385,11 +1605,11 @@ export async function adminSendPasswordResetEmail(email: string): Promise<void> 
 export async function adminResetUserProgress(userUid: string): Promise<void> {
   if (!userUid) return;
   const userRef = doc(db, 'users', userUid);
-  await updateDoc(userRef, {
+  await setDoc(userRef, {
     currentWeekStage: 0,
     currentWeekMinutes: 0,
     updatedAt: serverTimestamp(),
-  });
+  }, { merge: true });
 }
 
 export async function adminDeleteClassroom(classId: string, teacherUid?: string): Promise<void> {
@@ -1441,27 +1661,36 @@ export async function updateClassroom(
 ): Promise<void> {
   const trimmedName = className.trim();
   const classRef = doc(db, 'classes', classId);
-  await updateDoc(classRef, {
+  const classUpdate: Record<string, any> = {
     name: trimmedName,
-    ...(studentTargetCount ? { studentTargetCount } : {}),
-    ...(institution ? {
-      institutionId: institution.id,
-      institutionCode: institution.code,
-      institutionName: institution.name,
-    } : {}),
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (studentTargetCount !== undefined) {
+    classUpdate.studentTargetCount = studentTargetCount;
+  }
+  if (institution && institution.code) {
+    if (institution.id) classUpdate.institutionId = institution.id;
+    classUpdate.institutionCode = institution.code;
+    if (institution.name) classUpdate.institutionName = institution.name;
+  }
+  await setDoc(classRef, removeUndefined(classUpdate), { merge: true });
 
-  const teacherRef = doc(db, 'users', teacherUid);
-  await updateDoc(teacherRef, {
-    className: trimmedName,
-    ...(institution ? {
-      institutionId: institution.id,
-      institutionCode: institution.code,
-      institutionName: institution.name,
-    } : {}),
-    updatedAt: serverTimestamp(),
-  });
+  if (teacherUid) {
+    const teacherRef = doc(db, 'users', teacherUid);
+    const teacherUpdate: Record<string, any> = {
+      className: trimmedName,
+      role: 'teacher',
+      userType: 'teacher',
+      classId: classId,
+      updatedAt: serverTimestamp(),
+    };
+    if (institution && institution.code) {
+      if (institution.id) teacherUpdate.institutionId = institution.id;
+      teacherUpdate.institutionCode = institution.code;
+      if (institution.name) teacherUpdate.institutionName = institution.name;
+    }
+    await setDoc(teacherRef, removeUndefined(teacherUpdate), { merge: true });
+  }
 }
 
 export function subscribeInstitutionClassrooms(
@@ -1525,24 +1754,28 @@ export async function joinClassroomWithCode(
     }
   }
 
-  await updateDoc(userRef, {
-    role: 'parent',
-    userType: 'parent',
-    classId: classDoc.id,
-    classCode: classData.code,
-    className: classData.name,
-    ...(classData.institutionId
-      ? {
-          institutionId: classData.institutionId,
-          institutionCode: classData.institutionCode,
-          institutionName: classData.institutionName,
-        }
-      : {}),
-    studentName: studentName.trim(),
-    parentName: parentName.trim() || undefined,
-    displayName: studentName.trim() ? `${studentName.trim()} (${parentName.trim() || 'Velisi'})` : undefined,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    userRef,
+    removeUndefined({
+      role: 'parent',
+      userType: 'parent',
+      classId: classDoc.id,
+      classCode: classData.code,
+      className: classData.name,
+      ...(classData.institutionId
+        ? {
+            institutionId: classData.institutionId,
+            institutionCode: classData.institutionCode,
+            institutionName: classData.institutionName,
+          }
+        : {}),
+      studentName: studentName.trim(),
+      parentName: parentName.trim() || undefined,
+      displayName: studentName.trim() ? `${studentName.trim()} (${parentName.trim() || 'Velisi'})` : undefined,
+      updatedAt: serverTimestamp(),
+    }),
+    { merge: true }
+  );
 
   return classData;
 }
@@ -1562,12 +1795,11 @@ export async function addStudentToClassroom(
 
   const { weekId } = getCurrentWeekInfo();
   const studentRef = doc(collection(db, 'users'));
-  const newStudent: UserProfile = {
+  const newStudent: Record<string, any> = {
     uid: studentRef.id,
     role: 'parent',
     userType: 'parent',
     studentName: trimmedStudent,
-    parentName: trimmedParent || undefined,
     displayName: trimmedStudent + (trimmedParent ? ` (${trimmedParent})` : ''),
     classId,
     classCode,
@@ -1578,29 +1810,40 @@ export async function addStudentToClassroom(
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
+  if (trimmedParent) {
+    newStudent.parentName = trimmedParent;
+  }
 
-  await setDoc(studentRef, newStudent);
-  return newStudent;
+  await setDoc(studentRef, removeUndefined(newStudent));
+  return newStudent as UserProfile;
 }
 
 export async function leaveClassroom(uid: string): Promise<void> {
   const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, {
-    classId: null,
-    classCode: null,
-    className: null,
-    studentName: null,
-    parentName: null,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    userRef,
+    {
+      classId: null,
+      classCode: null,
+      className: null,
+      studentName: null,
+      parentName: null,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 export async function updateStudentName(uid: string, studentName: string): Promise<void> {
   const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, {
-    studentName: studentName.trim(),
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(
+    userRef,
+    {
+      studentName: studentName.trim(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 export function subscribeClassroom(

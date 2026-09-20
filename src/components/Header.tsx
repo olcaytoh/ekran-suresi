@@ -11,6 +11,7 @@ import {
   HeartHandshake,
   User,
   HelpCircle,
+  RefreshCw,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -23,6 +24,7 @@ interface HeaderProps {
   onOpenClassSetup?: () => void;
   onSignOut?: () => void;
   onSwitchRole?: (role: 'admin' | 'teacher') => void;
+  onSelectClass?: () => void;
   onOpenParentGuide?: () => void;
 }
 
@@ -33,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenClassSetup,
   onSignOut,
   onSwitchRole,
+  onSelectClass,
   onOpenParentGuide,
 }) => {
   const isSuperAdmin = currentUser?.role === 'admin';
@@ -79,11 +82,11 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     type="button"
                     onClick={() => onSwitchRole('teacher')}
-                    title="Öğretmen moduna geçiş yap"
+                    title="Öğretmen moduna geç ve sınıf seç"
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
                   >
                     <GraduationCap className="w-3 h-3 text-indigo-600" />
-                    <span>Öğretmen Modu</span>
+                    <span>Öğretmen Moduna Geç</span>
                   </button>
                 )}
               </div>
@@ -100,6 +103,33 @@ export const Header: React.FC<HeaderProps> = ({
                     <School className="w-3 h-3 text-indigo-300" />
                     <span>{currentUser.className}</span>
                   </span>
+                )}
+                {/* Admin yetkisine sahip kullanıcı öğretmen modundaysa sınıf değiştirme ve geri dönme butonları */}
+                {currentUser?.institutionAdminCode && (
+                  <>
+                    {onSelectClass && (
+                      <button
+                        type="button"
+                        onClick={onSelectClass}
+                        title="Farklı bir sınıf seç"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
+                      >
+                        <RefreshCw className="w-3 h-3 text-slate-600" />
+                        <span>Sınıf Değiştir</span>
+                      </button>
+                    )}
+                    {onSwitchRole && (
+                      <button
+                        type="button"
+                        onClick={() => onSwitchRole('admin')}
+                        title="Yönetici (Admin) paneline geri dön"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
+                      >
+                        <ShieldAlert className="w-3 h-3 text-rose-600" />
+                        <span>Yönetici Moduna Dön</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}

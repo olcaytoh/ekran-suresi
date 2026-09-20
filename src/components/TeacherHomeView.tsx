@@ -13,6 +13,8 @@ import {
   Trash2,
   AlertTriangle,
   UserX,
+  Pencil,
+  Check,
 } from 'lucide-react';
 import { seed25ClassroomStudents } from '../lib/demoData';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
@@ -34,6 +36,9 @@ interface TeacherHomeViewProps {
   onOpenClassSetup?: () => void;
   userEmail?: string;
   onDeleteUser?: (userUid: string) => Promise<void> | void;
+  onUpdateUser?: (userUid: string, updates: Partial<UserProfile>) => Promise<void> | void;
+  onSwitchRole?: (role: 'admin' | 'teacher') => void;
+  onUpgradeToAdminWithCode?: (code: string) => Promise<void>;
 }
 
 export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
@@ -44,6 +49,9 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   onOpenClassSetup,
   userEmail,
   onDeleteUser,
+  onUpdateUser,
+  onSwitchRole,
+  onUpgradeToAdminWithCode,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<'all' | 'critical' | 'warning' | 'moderate' | 'safe'>('all');
@@ -68,6 +76,47 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
       console.error('Error deleting student:', err);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Student editing state
+  const [studentToEdit, setStudentToEdit] = useState<UserProfile | null>(null);
+  const [editStudentName, setEditStudentName] = useState('');
+  const [editParentName, setEditParentName] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const handleOpenEditStudent = (user: UserProfile) => {
+    setStudentToEdit(user);
+    setEditStudentName(user.studentName || user.displayName || '');
+    setEditParentName(user.parentName || '');
+    setEditError(null);
+  };
+
+  const handleSaveStudentEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentToEdit) return;
+    const cleanStudentName = editStudentName.trim();
+    const cleanParentName = editParentName.trim();
+    if (!cleanStudentName) {
+      setEditError('Lütfen öğrencinin adını ve soyadını giriniz.');
+      return;
+    }
+
+    try {
+      setIsSavingEdit(true);
+      setEditError(null);
+      await onUpdateUser?.(studentToEdit.uid, {
+        studentName: cleanStudentName,
+        parentName: cleanParentName || undefined,
+        displayName: cleanStudentName,
+      });
+      setStudentToEdit(null);
+    } catch (err: any) {
+      console.error('Error updating student:', err);
+      setEditError(err.message || 'Öğrenci bilgileri güncellenirken bir hata oluştu.');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -183,6 +232,42 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         <div className="absolute top-4 right-0 w-48 h-48 bg-pink-300/30 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-1/3 w-52 h-52 bg-sky-300/25 rounded-full blur-3xl" />
       </div>
+
+      {/* Yönetici Moduna Geri Dönüş Banner'ı (Kullanıcı admin yetkisine sahipse veya öğretmen moduna geçmişse) */}
+      {(teacherProfile?.institutionAdminCode || onSwitchRole) && (
+        <div className="relative z-10 bg-gradient-to-r from-rose-50 via-pink-50 to-indigo-50 rounded-2xl p-2.5 sm:p-3 border border-rose-200 shadow-2xs flex items-center justify-between gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-xs flex-shrink-0">
+              <ShieldAlert className="w-3.5 h-3.5 stroke-[2.5]" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-slate-900 leading-tight flex items-center gap-1.5 flex-wrap">
+                <span>Öğretmen Modundasınız</span>
+                {classroom?.name && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800">
+                    {classroom.name}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-600 truncate">
+                İşiniz bittiğinde tek tıkla kurum yöneticisi hesabınıza dönebilirsiniz.
+              </div>
+            </div>
+          </div>
+          {onSwitchRole && (
+            <button
+              type="button"
+              id="btn-teacher-return-to-admin"
+              onClick={() => onSwitchRole('admin')}
+              className="btn-3d-rose px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 flex-shrink-0"
+              title="Kurum Yönetici (Admin) Paneline Geri Dön"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Yönetici Moduna Dön</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Bağlı Kurum Bilgisi (Varsa zarif ince çubuk) */}
       {instCode && (
@@ -614,7 +699,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Sağ: Süre, Kademe ve Silme Butonu */}
+                  {/* Sağ: Süre, Kademe, Düzenleme ve Silme Butonu */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <div className="text-right">
                       <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
@@ -624,6 +709,18 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                         {timeInfo.longStr} • {stage}. Kademe
                       </div>
                     </div>
+
+                    {onUpdateUser && (
+                      <button
+                        type="button"
+                        id={`btn-teacher-edit-student-${user.uid}`}
+                        onClick={() => handleOpenEditStudent(user)}
+                        title="Öğrenci & Veli Bilgilerini Düzenle"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
 
                     {onDeleteUser && (
                       <button
@@ -651,6 +748,86 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         calendarConfig={calendarConfig}
         userEmail={userEmail}
       />
+
+      {/* ÖĞRENCİ BİLGİLERİNİ DÜZENLEME MODALI */}
+      {studentToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-indigo-200 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200">
+              <Pencil className="w-6 h-6 stroke-[2.5]" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h4 className="text-base font-black text-slate-900">
+                Öğrenci & Veli Düzenle
+              </h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Öğrenci veya veli adında düzeltme yapabilirsiniz.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveStudentEdit} className="space-y-3 pt-1">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Öğrenci Adı Soyadı:</label>
+                <input
+                  type="text"
+                  value={editStudentName}
+                  onChange={(e) => setEditStudentName(e.target.value)}
+                  placeholder="Örn: Ali Yılmaz"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Veli Adı Soyadı:</label>
+                <input
+                  type="text"
+                  value={editParentName}
+                  onChange={(e) => setEditParentName(e.target.value)}
+                  placeholder="Örn: Mehmet Yılmaz"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                />
+              </div>
+
+              {editError && (
+                <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStudentToEdit(null);
+                    setEditError(null);
+                  }}
+                  disabled={isSavingEdit}
+                  className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit || !editStudentName.trim()}
+                  className="btn-3d-indigo py-2.5 px-4 rounded-2xl text-xs font-black text-white cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  {isSavingEdit ? (
+                    <span>Kaydediliyor...</span>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Kaydet</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ÖĞRENCİ HESABI SİLME ONAY MODALI */}
       {studentToDelete && (

@@ -19,6 +19,7 @@ import {
   adminDeleteClassroom,
   adminDeleteUser,
   setUserRole,
+  updateUserProfile,
   verifyAdminCodeAndUpgrade,
   getActiveAppProfile,
   setActiveAppProfile,
@@ -39,7 +40,8 @@ import { AuthScreen } from './components/AuthScreen';
 import { ClassroomSetupModal } from './components/ClassroomSetupModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { ParentGuideModal } from './components/ParentGuideModal';
-import { Loader2 } from 'lucide-react';
+import { AdminCodePromptModal } from './components/AdminCodePromptModal';
+import { Loader2, GraduationCap, School, ChevronRight, X } from 'lucide-react';
 
 export default function App() {
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -69,6 +71,8 @@ export default function App() {
   const [parentTab, setParentTab] = useState<ParentTabType>('home');
   const [showClassSetup, setShowClassSetup] = useState(false);
   const [showParentGuide, setShowParentGuide] = useState(false);
+  const [showTeacherClassPicker, setShowTeacherClassPicker] = useState(false);
+  const [showAdminCodePrompt, setShowAdminCodePrompt] = useState(false);
 
   const weekInfo = getCurrentWeekInfo();
 
@@ -143,36 +147,131 @@ export default function App() {
     setParentTab('home');
   };
 
-  const handleSwitchRole = async (newRole: 'admin' | 'teacher') => {
-    // Admin moduna geçmek için geçerli bir kurum admin kodu girilmiş olmalıdır
-    if (newRole === 'admin' && !effectiveProfile?.institutionAdminCode && !isSuperAdmin) {
-      console.warn('Admin moduna geçmek için kurum admin kodu gereklidir.');
-      return;
+  const handleSelectTeacherClass = async (selectedClass: ClassroomInfo) => {
+    setClassroom(selectedClass);
+    setShowTeacherClassPicker(false);
+    setParentTab('home');
+
+    // Make cached students visible immediately if present in classStudentsMap
+    const cachedStudents = classStudentsMap[selectedClass.id];
+    if (cachedStudents && cachedStudents.length > 0) {
+      setAllUsers(cachedStudents);
     }
+
     if (authUser) {
       try {
-        await setUserRole(authUser.uid, newRole);
+        await setUserRole(authUser.uid, 'teacher', {
+          classId: selectedClass.id,
+          className: selectedClass.name,
+          classCode: selectedClass.code,
+          preserveAdminCode: true,
+        });
+        await updateUserProfile(authUser.uid, {
+          role: 'teacher',
+          userType: 'teacher',
+          classId: selectedClass.id,
+          className: selectedClass.name,
+          classCode: selectedClass.code,
+        });
+        setUserProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                role: 'teacher',
+                userType: 'teacher',
+                classId: selectedClass.id,
+                className: selectedClass.name,
+                classCode: selectedClass.code,
+              }
+            : null
+        );
+      } catch (err) {
+        console.error('Failed to switch to teacher mode with class:', err);
+      }
+    } else if (activeLocalProfile) {
+      const updated: UserProfile = {
+        ...activeLocalProfile,
+        role: 'teacher',
+        userType: 'teacher',
+        classId: selectedClass.id,
+        className: selectedClass.name,
+        classCode: selectedClass.code,
+      };
+      setActiveLocalProfile(updated);
+      setActiveAppProfile(updated, true);
+    } else if (demoProfile) {
+      const updated: UserProfile = {
+        ...demoProfile,
+        role: 'teacher',
+        userType: 'teacher',
+        classId: selectedClass.id,
+        className: selectedClass.name,
+        classCode: selectedClass.code,
+      };
+      setDemoProfile(updated);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('demoUserProfile', JSON.stringify(updated));
+      }
+    }
+  };
+
+  const handleSwitchToTeacherMode = (targetClass?: ClassroomInfo) => {
+    if (targetClass) {
+      handleSelectTeacherClass(targetClass);
+    } else {
+      setShowTeacherClassPicker(true);
+    }
+  };
+
+  const handleSwitchRole = async (newRole: 'admin' | 'teacher') => {
+    // Admin öğretmen moduna geçmek istediğinde ekli sınıflardan seçim yaptır
+    if (newRole === 'teacher' && isSuperAdmin) {
+      setShowTeacherClassPicker(true);
+      return;
+    }
+
+    // ÖĞRETMEN VEYA VELİ MODUNDAN ADMİN MODUNA GEÇİŞ:
+    // KESİNLİKLE ADMİN KODU DOĞRULANMADAN GEÇİLEMEZ!
+    if (newRole === 'admin') {
+      setShowAdminCodePrompt(true);
+      return;
+    }
+
+    if (authUser) {
+      try {
+        await setUserRole(authUser.uid, newRole, { preserveAdminCode: true });
         setUserProfile((prev) =>
           prev
             ? {
                 ...prev,
                 role: newRole,
                 userType: 'teacher',
-                institutionAdminCode: newRole === 'admin' ? prev.institutionAdminCode : undefined,
               }
             : null
         );
       } catch (err) {
         console.error('Failed to switch role:', err);
       }
+    } else if (activeLocalProfile) {
+      const updated: UserProfile = {
+        ...activeLocalProfile,
+        role: newRole,
+      };
+      setActiveLocalProfile(updated);
+      setActiveAppProfile(updated, true);
     } else if (demoProfile) {
-      handleDemoLogin(newRole);
+      setShowTeacherClassPicker(true);
     }
   };
 
   const handleUpgradeToAdminWithCode = async (adminCode: string) => {
     const cleaned = adminCode.trim().toUpperCase();
+    if (!cleaned) {
+      throw new Error('Lütfen geçerli bir Admin Kodu giriniz.');
+    }
+
     if (authUser) {
+      // Doğrudan doğrula - hata fırlatırsa fırlatsın, KESİNLİKLE sessizce admin yapılmasın!
       const instData = await verifyAdminCodeAndUpgrade(
         authUser.uid,
         cleaned,
@@ -191,11 +290,35 @@ export default function App() {
             }
           : null
       );
+      setClassroom(null);
+      setParentTab('home');
+    } else if (activeLocalProfile) {
+      if (
+        activeLocalProfile.institutionAdminCode &&
+        activeLocalProfile.institutionAdminCode.trim().toUpperCase() !== cleaned
+      ) {
+        throw new Error('Girdiğiniz Admin Kodu kayıtlı kurum admin kodunuzla eşleşmiyor!');
+      }
+      const updated: UserProfile = {
+        ...activeLocalProfile,
+        role: 'admin',
+        userType: 'teacher',
+        institutionAdminCode: cleaned,
+      };
+      setActiveLocalProfile(updated);
+      setActiveAppProfile(updated, true);
+      setClassroom(null);
+      setParentTab('home');
     } else if (demoProfile) {
-      if (!cleaned.startsWith('ADM-')) {
-        throw new Error('Geçersiz admin kodu! Kod "ADM-" ile başlamalıdır (Örn: ADM-2090).');
+      const expectedDemo = (demoProfile.institutionAdminCode || 'ADM-2090').trim().toUpperCase();
+      if (cleaned !== expectedDemo && cleaned !== 'ADM-2090') {
+        throw new Error(`Geçersiz Admin Kodu! Bu demo için geçerli Admin Kodu: ${expectedDemo}`);
       }
       handleDemoLogin('admin');
+      setClassroom(null);
+      setParentTab('home');
+    } else {
+      throw new Error('Aktif bir kullanıcı oturumu bulunamadı.');
     }
   };
 
@@ -274,6 +397,29 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to delete user account:', err);
+    }
+  };
+
+  const handleUpdateStudentUser = async (userUid: string, updates: Partial<UserProfile>) => {
+    try {
+      setAllUsers((prev) =>
+        prev.map((u) => (u.uid === userUid ? { ...u, ...updates } : u))
+      );
+
+      setClassStudentsMap((prev) => {
+        const next: Record<string, UserProfile[]> = {};
+        Object.keys(prev).forEach((k) => {
+          next[k] = (prev[k] || []).map((u) => (u.uid === userUid ? { ...u, ...updates } : u));
+        });
+        return next;
+      });
+
+      if (authUser || activeLocalProfile) {
+        await updateUserProfile(userUid, updates);
+      }
+    } catch (err) {
+      console.error('Failed to update student user:', err);
+      throw err;
     }
   };
 
@@ -814,6 +960,7 @@ export default function App() {
         onOpenClassSetup={() => setShowClassSetup(true)}
         onSignOut={handleSignOut}
         onSwitchRole={handleSwitchRole}
+        onSelectClass={() => setShowTeacherClassPicker(true)}
         onOpenParentGuide={() => setShowParentGuide(true)}
       />
 
@@ -836,6 +983,7 @@ export default function App() {
                   onDeleteClassroom={handleAdminDeleteClassroom}
                   onDeleteUser={handleAdminDeleteUser}
                   onProfileUpdated={handleProfileUpdated}
+                  onSwitchToTeacherMode={handleSwitchToTeacherMode}
                   isDemo={isCurrentDemo}
                 />
               ) : (
@@ -847,6 +995,9 @@ export default function App() {
                   onOpenClassSetup={() => setShowClassSetup(true)}
                   userEmail={authUser?.email || effectiveProfile?.email || undefined}
                   onDeleteUser={handleAdminDeleteUser}
+                  onUpdateUser={handleUpdateStudentUser}
+                  onSwitchRole={handleSwitchRole}
+                  onUpgradeToAdminWithCode={handleUpgradeToAdminWithCode}
                 />
               )
             )}
@@ -996,6 +1147,149 @@ export default function App() {
         onClose={() => setShowParentGuide(false)}
         studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
       />
+
+      {/* Kurum Yönetici (Admin) Moduna Dönüşte Admin Kodu Doğrulama Modalı */}
+      <AdminCodePromptModal
+        isOpen={showAdminCodePrompt}
+        onClose={() => setShowAdminCodePrompt(false)}
+        onVerify={handleUpgradeToAdminWithCode}
+        currentAdminCode={effectiveProfile?.institutionAdminCode}
+      />
+
+      {/* MODAL: ÖĞRETMEN MODU İÇİN SINIF SEÇİMİ */}
+      {showTeacherClassPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center border border-indigo-200 flex-shrink-0">
+                  <GraduationCap className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
+                    Öğretmen Modu: Sınıf Seçimi
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Öğretmen hesabıyla görmek istediğiniz sınıfı seçin:
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTeacherClassPicker(false)}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-0">
+              {institutionClassrooms.length === 0 ? (
+                <div className="text-center py-6 px-3 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2.5">
+                  <School className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">
+                    Kurumunuza bağlı henüz kayıtlı bir sınıf bulunmuyor.
+                  </p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
+                    Öğretmenleriniz kurum kodunuzla katılarak sınıf ekleyebilir veya hemen örnek bir sınıfla öğretmen modunu deneyebilirsiniz.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sampleClass: ClassroomInfo = {
+                        id: 'demo-class-' + Date.now(),
+                        code: 'SINIF-ORNEK',
+                        name: 'Örnek Sınıf',
+                        teacherUid: effectiveProfile?.uid || 'teacher-sample',
+                        teacherName: effectiveProfile?.displayName || 'Örnek Öğretmen',
+                        teacherEmail: effectiveProfile?.email || 'ogretmen@okul.com',
+                        institutionId: effectiveProfile?.institutionId || 'inst-1',
+                        studentTargetCount: 25,
+                      };
+                      setInstitutionClassrooms((prev) => [sampleClass, ...prev]);
+                      handleSelectTeacherClass(sampleClass);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 mt-1"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    <span>Örnek Sınıfla Öğretmen Moduna Geç</span>
+                  </button>
+                </div>
+              ) : (
+                institutionClassrooms.map((cls) => {
+                  const classStudents = classStudentsMap[cls.id] || [];
+                  const isCurrent = classroom?.id === cls.id;
+
+                  return (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => handleSelectTeacherClass(cls)}
+                      className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 group cursor-pointer active:scale-[0.98] ${
+                        isCurrent
+                          ? 'bg-indigo-50/90 border-indigo-300 ring-2 ring-indigo-200'
+                          : 'bg-white hover:bg-slate-50 border-slate-200/90 hover:border-indigo-200 shadow-2xs hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center border flex-shrink-0 transition-colors ${
+                            isCurrent
+                              ? 'bg-indigo-600 text-white border-indigo-700'
+                              : 'bg-indigo-50 text-indigo-600 border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white'
+                          }`}
+                        >
+                          <School className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs sm:text-sm font-black text-slate-900 group-hover:text-indigo-900 truncate">
+                              {cls.name}
+                            </span>
+                            {isCurrent && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-600 text-white">
+                                Aktif
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                            <span>Öğretmen: <strong className="text-slate-700 font-semibold">{cls.teacherName || 'Bilinmiyor'}</strong></span>
+                            {cls.code && (
+                              <span className="font-mono text-[10px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200">
+                                {cls.code}
+                              </span>
+                            )}
+                            <span className="text-indigo-600 font-bold">
+                              {classStudents.length} öğrenci
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-[11px] font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                          <span>Seç</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-end flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowTeacherClassPicker(false)}
+                className="btn-3d-white py-2 px-4 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
