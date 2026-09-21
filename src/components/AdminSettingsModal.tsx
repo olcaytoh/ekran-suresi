@@ -39,7 +39,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
   onDemoProfileUpdate,
 }) => {
   const [institutionName, setInstitutionName] = useState(
-    currentUser.institutionName || 'Cumhuriyet İlkokulu'
+    currentUser.institutionName || 'AKÇAKOCA İLKOKULU'
   );
   const [institutionCode, setInstitutionCode] = useState<string | null>(
     currentUser.institutionCode || null

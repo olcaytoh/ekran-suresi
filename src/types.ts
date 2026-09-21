@@ -4,7 +4,7 @@ export interface InstitutionInfo {
   id: string;
   code: string; // e.g. "KRM-8842" or "KRM123" — shared with teachers to join
   adminCode: string; // e.g. "ADM-8842" — shared with other admins to join as co-admin
-  name: string; // e.g. "Cumhuriyet İlkokulu"
+  name: string; // e.g. "AKÇAKOCA İLKOKULU"
   adminUid: string;
   adminName: string;
   adminEmail: string;
@@ -24,7 +24,7 @@ export interface UserProfile {
   institutionId?: string; // Connected institution document ID
   institutionCode?: string; // e.g. "KRM-8842" — Kurum Kodu (for teachers)
   institutionAdminCode?: string; // e.g. "ADM-8842" — Admin Kodu (for co-admins)
-  institutionName?: string; // e.g. "Cumhuriyet İlkokulu"
+  institutionName?: string; // e.g. "AKÇAKOCA İLKOKULU"
   classId?: string; // Connected classroom document ID
   classCode?: string; // 6-character connect code
   className?: string; // Name of classroom (e.g. '4-A Sınıfı')

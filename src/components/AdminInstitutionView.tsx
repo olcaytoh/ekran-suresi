@@ -41,7 +41,9 @@ import {
   Filter,
   UserMinus,
   Info,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { StatsExportModal } from './StatsExportModal';
 
 interface AdminInstitutionViewProps {
   currentUser?: UserProfile | null;
@@ -113,7 +115,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
   // Institution Info
   const [currentInstName, setCurrentInstName] = useState(
-    institutionName || currentUser?.institutionName || 'Cumhuriyet İlkokulu'
+    institutionName || currentUser?.institutionName || 'AKÇAKOCA İLKOKULU'
   );
   const [currentInstCode, setCurrentInstCode] = useState<string | null>(
     institutionCode || currentUser?.institutionCode || null
@@ -129,6 +131,8 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [isGeneratingAdminCode, setIsGeneratingAdminCode] = useState(false);
   const [codeChangeConfirmModal, setCodeChangeConfirmModal] = useState<'institution' | 'admin' | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isStatsExportModalOpen, setIsStatsExportModalOpen] = useState(false);
+  const [exportClassId, setExportClassId] = useState<string | null>(null);
 
   // Sync props if updated from parent
   useEffect(() => {
@@ -535,6 +539,20 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     return computeClassStats(allStudents);
   }, [studentsByClass]);
 
+  const institutionStudents = useMemo(() => {
+    const list: UserProfile[] = [];
+    Object.values(studentsByClass).forEach((clList) => {
+      const studentList = (clList || []) as UserProfile[];
+      list.push(...studentList);
+    });
+    if (list.length === 0 && allUsers.length > 0) {
+      return allUsers.filter(
+        (u) => u.role !== 'admin' && u.userType !== 'teacher' && u.role !== 'teacher'
+      );
+    }
+    return list;
+  }, [studentsByClass, allUsers]);
+
   // --------------------------------------------------------------
   // 1. TEK BİR SINIFIN İÇİNE GİRİLDİĞİNDE GÖSTERİLECEK DETAY GÖRÜNÜMÜ
   // --------------------------------------------------------------
@@ -587,6 +605,20 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              id="btn-admin-export-selected-class"
+              onClick={() => {
+                setExportClassId(selectedClassId);
+                setIsStatsExportModalOpen(true);
+              }}
+              className="btn-3d-emerald px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+              title="Bu sınıfın haftalık istatistik ve ekran süresi raporunu PDF veya Excel olarak indir"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>İstatistik Çıktısı (PDF / Excel)</span>
+            </button>
+
             {selectedClassroom && (
               <button
                 type="button"
@@ -835,6 +867,18 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             </div>
           </div>
         )}
+
+        {/* Sınıf İstatistik Çıktısı Modalı (PDF / Excel) */}
+        <StatsExportModal
+          isOpen={isStatsExportModalOpen}
+          onClose={() => setIsStatsExportModalOpen(false)}
+          students={students}
+          classrooms={classrooms}
+          defaultClassId={exportClassId || selectedClassId}
+          institutionName={currentInstName}
+          defaultClassName={selectedClassroom?.name || 'Sınıf'}
+          isTeacher={false}
+        />
       </div>
     );
   }
@@ -1211,10 +1255,26 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         <div className="space-y-4">
           {/* Kurum Geneli Özet */}
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
-            <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5 mb-3">
-              <BarChart3 className="w-4 h-4 text-violet-500" />
-              <span>Kurum Geneli Özet</span>
-            </h3>
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+                <BarChart3 className="w-4 h-4 text-violet-500" />
+                <span>Kurum Geneli Özet</span>
+              </h3>
+
+              <button
+                type="button"
+                id="btn-admin-export-institution-stats"
+                onClick={() => {
+                  setExportClassId('all');
+                  setIsStatsExportModalOpen(true);
+                }}
+                className="btn-3d-emerald px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+                title="Kurum geneli ve tüm sınıfların haftalık ekran süresi analizini PDF veya Excel olarak indir"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>İstatistik Çıktısı Al (PDF / Excel)</span>
+              </button>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="bg-indigo-50 p-2.5 rounded-2xl border border-indigo-200">
                 <div className="text-[10px] font-bold text-indigo-500">Toplam Sınıf</div>
@@ -1286,6 +1346,20 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          id={`btn-export-class-${classroom.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExportClassId(classroom.id);
+                            setIsStatsExportModalOpen(true);
+                          }}
+                          title="Bu sınıfın haftalık istatistik ve ekran süresi raporunu al"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Rapor</span>
+                        </button>
                         {onSwitchToTeacherMode && (
                           <button
                             type="button"
@@ -1855,6 +1929,18 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Kurum / Sınıf İstatistik Çıktısı Modalı (PDF / Excel) */}
+      <StatsExportModal
+        isOpen={isStatsExportModalOpen}
+        onClose={() => setIsStatsExportModalOpen(false)}
+        students={institutionStudents}
+        classrooms={classrooms}
+        defaultClassId={exportClassId}
+        institutionName={currentInstName}
+        defaultClassName="Tüm Sınıflar"
+        isTeacher={false}
+      />
     </div>
   );
 };

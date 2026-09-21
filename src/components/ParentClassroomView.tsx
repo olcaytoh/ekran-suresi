@@ -103,11 +103,11 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
         onProfileUpdated?.({
           institutionId: 'inst_demo',
           institutionCode: raw,
-          institutionName: 'Cumhuriyet İlkokulu',
+          institutionName: 'AKÇAKOCA İLKOKULU',
         });
         setTeacherInstFeedback({
           type: 'success',
-          text: `Cumhuriyet İlkokulu (${raw}) kurumuna başarıyla bağlandınız!`,
+          text: `AKÇAKOCA İLKOKULU (${raw}) kurumuna başarıyla bağlandınız!`,
         });
         setShowChangeInst(false);
         setTeacherInstCodeInput('');

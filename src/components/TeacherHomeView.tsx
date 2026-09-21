@@ -15,9 +15,11 @@ import {
   UserX,
   Pencil,
   Check,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { seed25ClassroomStudents } from '../lib/demoData';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
+import { StatsExportModal } from './StatsExportModal';
 import { TransparentMascotVideo } from './TransparentMascotVideo';
 import badgeRed from '../buttons/badge_red.png';
 import badgeBlue from '../buttons/badge_blue.png';
@@ -58,6 +60,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   const [sortBy, setSortBy] = useState<'minutes-desc' | 'minutes-asc' | 'name' | 'updated-desc'>('minutes-desc');
   const [isSeeding, setIsSeeding] = useState(false);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [calendarConfig, setCalendarConfig] = useState<AcademicCalendarConfig>(
     generateDefaultAcademicCalendar()
   );
@@ -540,11 +543,22 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
 
       {/* 3. ÖĞRENCİ BİLGİLERİ (Buzlu Cam Kart) */}
       <div className="relative z-10 bg-white/75 backdrop-blur-xl rounded-3xl border border-white/95 p-3.5 sm:p-4 shadow-[0_2px_6px_rgba(0,0,0,0.14),0_8px_18px_rgba(0,0,0,0.09),0_20px_38px_rgba(124,58,237,0.16)] space-y-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
             <Users className="w-4 h-4 text-violet-500" />
             <span>Öğrenci Bilgileri ({sortedStudents.length} / {totalStudents})</span>
           </h3>
+
+          <button
+            type="button"
+            id="btn-teacher-export-stats"
+            onClick={() => setIsExportModalOpen(true)}
+            className="btn-3d-emerald px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+            title="Sınıf istatistiklerini ve tüm öğrencilerin hafta hafta sürelerini PDF veya Excel olarak dışa aktar"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>İstatistik Çıktısı (PDF / Excel)</span>
+          </button>
         </div>
 
         {/* Arama ve Filtre Çubuğu */}
@@ -878,6 +892,19 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Sınıf & Öğrenci İstatistik Çıktısı Modalı (PDF / Excel) */}
+      <StatsExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        students={studentList}
+        classrooms={classroom ? [classroom] : []}
+        defaultClassId={classroom?.id}
+        calendarConfig={calendarConfig}
+        institutionName={instName || 'Okul Kurumu'}
+        defaultClassName={className}
+        isTeacher={true}
+      />
     </div>
   );
 };

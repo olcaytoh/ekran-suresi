@@ -42,6 +42,7 @@ import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { ParentGuideModal } from './components/ParentGuideModal';
 import { AdminCodePromptModal } from './components/AdminCodePromptModal';
 import { Loader2, GraduationCap, School, ChevronRight, X } from 'lucide-react';
+import { DEMO_3_CLASSES, DEMO_INSTITUTION } from './lib/demoData';
 
 export default function App() {
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -88,55 +89,84 @@ export default function App() {
   const handleDemoLogin = (role: 'teacher' | 'parent' | 'admin') => {
     let profile: UserProfile;
     if (role === 'admin') {
+      setClassroom(null);
       profile = {
         uid: 'admin_demo_super',
         displayName: 'Olcayto (Kurum Yöneticisi)',
         email: 'olcaytoh@gmail.com',
         role: 'admin',
         userType: 'teacher',
-        institutionId: 'demo-institution-1',
-        institutionCode: 'KRM-1071',
-        institutionAdminCode: 'ADM-2090',
-        institutionName: 'Cumhuriyet İlkokulu',
+        institutionId: DEMO_INSTITUTION.id,
+        institutionCode: DEMO_INSTITUTION.code,
+        institutionAdminCode: DEMO_INSTITUTION.adminCode,
+        institutionName: DEMO_INSTITUTION.name,
         currentWeekId: weekInfo.weekId,
         currentWeekStage: 4,
         currentWeekMinutes: 120,
       };
     } else if (role === 'teacher') {
+      const defaultClass = DEMO_3_CLASSES[0];
+      setClassroom({
+        id: defaultClass.id,
+        name: defaultClass.name,
+        code: defaultClass.code,
+        teacherId: defaultClass.teacherUid,
+        teacherName: defaultClass.teacherName,
+        teacherEmail: defaultClass.teacherEmail,
+        institutionId: defaultClass.institutionId,
+        institutionCode: defaultClass.institutionCode,
+        institutionName: defaultClass.institutionName,
+        createdAt: null,
+      });
       profile = {
-        uid: 'teacher_demo_olcayto',
-        displayName: 'Olcayto Öğretmen',
-        email: 'olcaytoh@gmail.com',
+        uid: defaultClass.teacherUid,
+        displayName: defaultClass.teacherName,
+        email: defaultClass.teacherEmail,
         role: 'teacher',
         userType: 'teacher',
-        institutionId: 'demo-institution-1',
-        institutionCode: 'KRM-1071',
+        institutionId: DEMO_INSTITUTION.id,
+        institutionCode: DEMO_INSTITUTION.code,
         // Teachers do not receive institutionAdminCode
-        institutionName: 'Cumhuriyet İlkokulu',
-        classId: 'demo-class-5a',
-        className: '5-A Sınıfı (Örnek)',
-        classCode: 'SINIF-5A',
+        institutionName: DEMO_INSTITUTION.name,
+        classId: defaultClass.id,
+        className: defaultClass.name,
+        classCode: defaultClass.code,
         currentWeekId: weekInfo.weekId,
         currentWeekStage: 4,
         currentWeekMinutes: 120,
       };
     } else {
+      const defaultClass = DEMO_3_CLASSES[0];
+      const defaultStd = defaultClass.students[0];
+      setClassroom({
+        id: defaultClass.id,
+        name: defaultClass.name,
+        code: defaultClass.code,
+        teacherId: defaultClass.teacherUid,
+        teacherName: defaultClass.teacherName,
+        teacherEmail: defaultClass.teacherEmail,
+        institutionId: defaultClass.institutionId,
+        institutionCode: defaultClass.institutionCode,
+        institutionName: defaultClass.institutionName,
+        createdAt: null,
+      });
       profile = {
-        uid: 'parent_demo_user',
-        displayName: 'Fatma Yılmaz',
-        email: 'veli.fatma@example.com',
+        uid: defaultStd.id,
+        displayName: `${defaultStd.studentName} (${defaultStd.parentName})`,
+        email: `${defaultStd.id}@akcakocailkokulu.k12.tr`,
         role: 'parent',
         userType: 'parent',
-        studentName: 'Ali Yılmaz',
-        institutionId: 'demo-institution-1',
-        institutionCode: 'KRM-1071',
-        institutionName: 'Cumhuriyet İlkokulu',
-        classId: 'demo-class-5a',
-        className: '5-A Sınıfı (Örnek)',
-        classCode: 'SINIF-5A',
+        studentName: defaultStd.studentName,
+        parentName: defaultStd.parentName,
+        institutionId: DEMO_INSTITUTION.id,
+        institutionCode: DEMO_INSTITUTION.code,
+        institutionName: DEMO_INSTITUTION.name,
+        classId: defaultClass.id,
+        className: defaultClass.name,
+        classCode: defaultClass.code,
         currentWeekId: weekInfo.weekId,
-        currentWeekStage: 4,
-        currentWeekMinutes: 120,
+        currentWeekStage: defaultStd.stage,
+        currentWeekMinutes: defaultStd.minutes,
       };
       setShowParentGuide(true);
     }
@@ -528,13 +558,18 @@ export default function App() {
       return () => unsubscribeClass();
     } else if (demoProfile) {
       if (demoProfile.role === 'teacher' || demoProfile.role === 'parent') {
+        const found =
+          DEMO_3_CLASSES.find((c) => c.id === demoProfile.classId) || DEMO_3_CLASSES[0];
         setClassroom({
-          id: 'demo-class-5a',
-          name: '5-A Sınıfı',
-          code: 'SINIF-5A',
-          teacherId: 'teacher_demo_olcayto',
-          teacherName: 'Olcayto Öğretmen',
-          teacherEmail: 'olcaytoh@gmail.com',
+          id: found.id,
+          name: found.name,
+          code: found.code,
+          teacherId: found.teacherUid,
+          teacherName: found.teacherName,
+          teacherEmail: found.teacherEmail,
+          institutionId: found.institutionId,
+          institutionCode: found.institutionCode,
+          institutionName: found.institutionName,
           createdAt: null,
         });
       } else {
@@ -573,76 +608,58 @@ export default function App() {
         return () => unsubscribeAll();
       }
     } else if (demoProfile) {
-      setAllUsers([
-        {
-          uid: 'student_1',
-          displayName: 'Ali Yılmaz',
-          studentName: 'Ali Yılmaz',
-          parentName: 'Mehmet Yılmaz',
-          email: 'veli.ali@example.com',
-          role: 'parent',
-          userType: 'parent',
-          classId: 'demo-class-5a',
-          className: '5-A Sınıfı',
-          currentWeekStage: 4,
-          currentWeekMinutes: 120,
-          currentWeekId: weekInfo.weekId,
-        },
-        {
-          uid: 'student_2',
-          displayName: 'Zeynep Kaya',
-          studentName: 'Zeynep Kaya',
-          parentName: 'Ayşe Kaya',
-          email: 'veli.zeynep@example.com',
-          role: 'parent',
-          userType: 'parent',
-          classId: 'demo-class-5a',
-          className: '5-A Sınıfı',
-          currentWeekStage: 8,
-          currentWeekMinutes: 240,
-          currentWeekId: weekInfo.weekId,
-        },
-        {
-          uid: 'student_3',
-          displayName: 'Can Demir',
-          studentName: 'Can Demir',
-          parentName: 'Fatma Demir',
-          email: 'veli.can@example.com',
-          role: 'parent',
-          userType: 'parent',
-          classId: 'demo-class-5a',
-          className: '5-A Sınıfı',
-          currentWeekStage: 12,
-          currentWeekMinutes: 360,
-          currentWeekId: weekInfo.weekId,
-        },
-        {
-          uid: 'demo_teacher_1',
-          displayName: 'Olcayto Öğretmen',
-          email: 'olcaytoh@gmail.com',
-          role: 'teacher',
-          userType: 'teacher',
-          classId: 'demo-class-5a',
-          className: '5-A Sınıfı',
-          currentWeekStage: 0,
-          currentWeekMinutes: 0,
-          currentWeekId: weekInfo.weekId,
-        },
-        {
-          uid: 'mistaken_user_1',
-          displayName: 'Hatalı Üye (Yanlış Mail)',
-          studentName: 'Yanlış Öğrenci',
-          parentName: 'Hatalı Veli',
-          email: 'yanlislikla.acilan@ornekmail.com',
-          role: 'parent',
-          userType: 'parent',
-          currentWeekStage: 2,
-          currentWeekMinutes: 60,
-          currentWeekId: weekInfo.weekId,
-        },
-      ]);
+      if (demoProfile.role === 'admin') {
+        setAllUsers(
+          DEMO_3_CLASSES.flatMap((cls) =>
+            cls.students.map((std) => ({
+              uid: std.id,
+              displayName: `${std.studentName} (${std.parentName})`,
+              studentName: std.studentName,
+              parentName: std.parentName,
+              email: `${std.id}@akcakocailkokulu.k12.tr`,
+              role: 'parent' as const,
+              userType: 'parent' as const,
+              classId: cls.id,
+              className: cls.name,
+              classCode: cls.code,
+              institutionId: DEMO_INSTITUTION.id,
+              institutionCode: DEMO_INSTITUTION.code,
+              institutionName: DEMO_INSTITUTION.name,
+              currentWeekStage: std.stage,
+              currentWeekMinutes: std.minutes,
+              currentWeekId: weekInfo.weekId,
+            }))
+          )
+        );
+      } else {
+        // Find the active classroom from DEMO_3_CLASSES, default to 1-A Sınıfı
+        const activeClass =
+          DEMO_3_CLASSES.find((c) => c.id === (classroom?.id || demoProfile.classId)) ||
+          DEMO_3_CLASSES[0];
+
+        setAllUsers(
+          activeClass.students.map((std) => ({
+            uid: std.id,
+            displayName: `${std.studentName} (${std.parentName})`,
+            studentName: std.studentName,
+            parentName: std.parentName,
+            email: `${std.id}@akcakocailkokulu.k12.tr`,
+            role: 'parent' as const,
+            userType: 'parent' as const,
+            classId: activeClass.id,
+            className: activeClass.name,
+            classCode: activeClass.code,
+            institutionId: DEMO_INSTITUTION.id,
+            institutionCode: DEMO_INSTITUTION.code,
+            institutionName: DEMO_INSTITUTION.name,
+            currentWeekStage: std.stage,
+            currentWeekMinutes: std.minutes,
+            currentWeekId: weekInfo.weekId,
+          }))
+        );
+      }
     }
-  }, [authUser, isTeacher, userProfile?.classId, demoProfile]);
+  }, [authUser, isTeacher, userProfile?.classId, demoProfile, classroom?.id]);
 
   // Admin: Listen to all classrooms belonging to this admin's institution
   useEffect(() => {
@@ -658,25 +675,21 @@ export default function App() {
       return () => unsubscribeClassrooms();
     }
     if (demoProfile) {
-      // Demo modu: 1 Hesap 1 Sınıf kuralına uygun olarak yalnızca 1 sınıf gösterilir
-      const demoClassName = demoProfile.className || '5-A Sınıfı';
-      const demoClassCode = demoProfile.classCode || 'SINIF-5A';
-      const singleClassId = demoProfile.classId || 'demo-class-5a';
-
-      setInstitutionClassrooms([
-        {
-          id: singleClassId,
-          code: demoClassCode,
-          name: demoClassName,
-          teacherUid: demoProfile.uid || 'teacher_demo_olcayto',
-          teacherName: demoProfile.displayName || 'Olcayto Öğretmen',
-          teacherEmail: demoProfile.email || 'olcaytoh@gmail.com',
-          institutionId: demoProfile.institutionId || 'demo-institution-1',
-          institutionCode: demoProfile.institutionCode || 'KRM-1071',
-          institutionName: demoProfile.institutionName || 'Cumhuriyet İlkokulu',
-          studentTargetCount: 25,
-        },
-      ]);
+      // Demo modu: 3 sınıfın tümü listelenir
+      setInstitutionClassrooms(
+        DEMO_3_CLASSES.map((cls) => ({
+          id: cls.id,
+          code: cls.code,
+          name: cls.name,
+          teacherUid: cls.teacherUid,
+          teacherName: cls.teacherName,
+          teacherEmail: cls.teacherEmail,
+          institutionId: cls.institutionId,
+          institutionCode: cls.institutionCode,
+          institutionName: cls.institutionName,
+          studentTargetCount: cls.studentTargetCount || 10,
+        }))
+      );
     }
   }, [authUser, activeLocalProfile, demoProfile, isSuperAdmin, effectiveProfile?.institutionId]);
 
@@ -695,53 +708,28 @@ export default function App() {
       return () => unsubs.forEach((u) => u());
     }
     if (demoProfile) {
-      const singleClassId = demoProfile.classId || 'demo-class-5a';
-      setClassStudentsMap({
-        [singleClassId]: [
-          {
-            uid: 'student_1',
-            displayName: 'Ali Yılmaz',
-            studentName: 'Ali Yılmaz',
-            parentName: 'Fatma Yılmaz',
-            email: 'veli.ali@example.com',
-            role: 'parent',
-            userType: 'parent',
-            classId: singleClassId,
-            className: demoProfile.className || '5-A Sınıfı',
-            currentWeekStage: 4,
-            currentWeekMinutes: 120,
-            currentWeekId: weekInfo.weekId,
-          },
-          {
-            uid: 'student_2',
-            displayName: 'Zeynep Kaya',
-            studentName: 'Zeynep Kaya',
-            parentName: 'Mehmet Kaya',
-            email: 'veli.zeynep@example.com',
-            role: 'parent',
-            userType: 'parent',
-            classId: singleClassId,
-            className: demoProfile.className || '5-A Sınıfı',
-            currentWeekStage: 8,
-            currentWeekMinutes: 240,
-            currentWeekId: weekInfo.weekId,
-          },
-          {
-            uid: 'student_3',
-            displayName: 'Can Demir',
-            studentName: 'Can Demir',
-            parentName: 'Selin Demir',
-            email: 'veli.can@example.com',
-            role: 'parent',
-            userType: 'parent',
-            classId: singleClassId,
-            className: demoProfile.className || '5-A Sınıfı',
-            currentWeekStage: 12,
-            currentWeekMinutes: 360,
-            currentWeekId: weekInfo.weekId,
-          },
-        ],
+      const map: Record<string, UserProfile[]> = {};
+      DEMO_3_CLASSES.forEach((cls) => {
+        map[cls.id] = cls.students.map((std) => ({
+          uid: std.id,
+          displayName: `${std.studentName} (${std.parentName})`,
+          studentName: std.studentName,
+          parentName: std.parentName,
+          email: `${std.id}@akcakocailkokulu.k12.tr`,
+          role: 'parent' as const,
+          userType: 'parent' as const,
+          classId: cls.id,
+          className: cls.name,
+          classCode: cls.code,
+          institutionId: cls.institutionId,
+          institutionCode: cls.institutionCode,
+          institutionName: cls.institutionName,
+          currentWeekStage: std.stage,
+          currentWeekMinutes: std.minutes,
+          currentWeekId: weekInfo.weekId,
+        }));
       });
+      setClassStudentsMap(map);
     }
   }, [authUser, demoProfile, isSuperAdmin, institutionClassrooms]);
 
@@ -1091,7 +1079,11 @@ export default function App() {
                   studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
                   userId={effectiveProfile?.uid}
                   isTeacher={false}
+                  isSuperAdmin={false}
                   userEmail={authUser?.email || effectiveProfile?.email || undefined}
+                  students={effectiveStudents}
+                  classrooms={classroom ? [classroom] : []}
+                  defaultClassName={classroom?.name || effectiveProfile?.className || 'Sınıfım'}
                 />
               )}
 
@@ -1116,7 +1108,7 @@ export default function App() {
       </main>
 
       {/* 3. Bottom 3D Dock Navigation (4 tabs only, teacher button deleted) */}
-      <footer className="flex-shrink-0 z-50">
+      <footer className="flex-shrink-0 z-30">
         <BottomDock
           activeTab={parentTab}
           onSelectTab={(tab) => setParentTab(tab)}

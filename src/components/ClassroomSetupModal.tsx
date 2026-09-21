@@ -73,7 +73,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
 
   // ADMIN: Kurum Alanları
   const [adminSubMode, setAdminSubMode] = useState<'create' | 'join'>('create');
-  const [institutionName, setInstitutionName] = useState(currentUser.institutionName || 'Cumhuriyet İlkokulu');
+  const [institutionName, setInstitutionName] = useState(currentUser.institutionName || 'AKÇAKOCA İLKOKULU');
   const [createdInstitutionCode, setCreatedInstitutionCode] = useState<string | null>(currentUser.institutionCode || null);
   const [createdAdminCode, setCreatedAdminCode] = useState<string | null>(currentUser.institutionAdminCode || null);
   const [adminCodeInput, setAdminCodeInput] = useState('');
@@ -251,7 +251,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
 
       if (isDemo) {
         await new Promise((r) => setTimeout(r, 400));
-        const name = currentUser.institutionName || 'Cumhuriyet İlkokulu';
+        const name = currentUser.institutionName || 'AKÇAKOCA İLKOKULU';
         setConnectedInstitutionName(name);
         setConnectedInstitutionId(currentUser.institutionId || 'demo-institution-manual');
         setIsInstitutionConnected(true);
