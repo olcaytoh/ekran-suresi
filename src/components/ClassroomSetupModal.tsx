@@ -312,8 +312,17 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
           currentUser.uid,
           className.trim(),
           studentTargetCount,
-          institutionPayload
+          institutionPayload,
+          {
+            displayName: currentUser.displayName,
+            email: currentUser.email,
+          }
         );
+        onDemoProfileUpdate?.({
+          className: className.trim(),
+          institutionCode: teacherInstitutionCode.trim().toUpperCase() || undefined,
+          institutionName: connectedInstitutionName || undefined,
+        });
         setSuccessMsg(`Sınıf bilgileriniz başarıyla güncellendi!`);
         setTimeout(() => onCompleted(), 1200);
         return;

@@ -742,7 +742,7 @@ export async function syncUserProfile(
       updatePayload.institutionAdminCode = deleteField();
     }
 
-    await updateDoc(userRef, updatePayload);
+    await setDoc(userRef, updatePayload, { merge: true });
   } else {
     let role: UserRole;
     let userType: 'teacher' | 'parent';
@@ -1657,7 +1657,8 @@ export async function updateClassroom(
   teacherUid: string,
   className: string,
   studentTargetCount?: number,
-  institution?: { id?: string; code: string; name: string }
+  institution?: { id?: string; code: string; name: string },
+  teacherProfile?: { displayName?: string; email?: string }
 ): Promise<void> {
   const trimmedName = className.trim();
   const classRef = doc(db, 'classes', classId);
@@ -1684,6 +1685,12 @@ export async function updateClassroom(
       classId: classId,
       updatedAt: serverTimestamp(),
     };
+    if (teacherProfile?.displayName) {
+      teacherUpdate.displayName = teacherProfile.displayName;
+    }
+    if (teacherProfile?.email) {
+      teacherUpdate.email = teacherProfile.email;
+    }
     if (institution && institution.code) {
       if (institution.id) teacherUpdate.institutionId = institution.id;
       teacherUpdate.institutionCode = institution.code;
