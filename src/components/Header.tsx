@@ -55,27 +55,23 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="flex-shrink-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs">
       <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
-        {/* Sol Taraf: Maskot, Başlık & Belirgin Hesap Rozetleri */}
+        {/* Sol Taraf: Logo & Belirgin Hesap Rozetleri */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-slate-200 flex-shrink-0 bg-slate-50 shadow-2xs">
+          <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden border border-slate-200/90 flex-shrink-0 bg-white shadow-xs p-0.5">
             <img
-              src={mascotImg}
-              alt="Mascot"
-              className="w-full h-full object-cover"
+              src="/icon-512.png"
+              alt="Logo"
+              className="w-full h-full object-contain rounded-xl"
               referrerPolicy="no-referrer"
             />
             <span
-              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${
+              className={`absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
                 isRed ? 'bg-rose-500' : 'bg-emerald-500'
               }`}
             />
           </div>
 
           <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-            <h1 className="text-sm sm:text-base font-black text-slate-900 tracking-tight whitespace-nowrap">
-              Ekran Süresi
-            </h1>
-
             {/* Hangi hesap açık olduğunu belirten net rozetler */}
             {isSuperAdmin && (
               <div className="flex items-center gap-1.5 flex-wrap">
