@@ -25,7 +25,10 @@ import {
   ExternalLink,
   ChevronRight,
   Filter,
+  MessageSquare,
+  Send,
 } from 'lucide-react';
+import { SendMessageModal } from './SendMessageModal';
 
 interface WeeklyStudentStatsModalProps {
   isOpen: boolean;
@@ -40,6 +43,7 @@ interface WeeklyStudentStatsModalProps {
   institutionName?: string;
   calendarConfig?: AcademicCalendarConfig;
   onOpenExportReport?: () => void;
+  currentUserProfile?: UserProfile | null;
 }
 
 export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = ({
@@ -54,6 +58,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
   classNameTitle = 'Sınıf Detayı',
   institutionName = 'AKÇAKOCA İLKOKULU',
   onOpenExportReport,
+  currentUserProfile,
 }) => {
   const [activeTab, setActiveTab] = useState<'students' | 'comparison'>('students');
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,6 +67,10 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
   >('all');
   const [copiedMsg, setCopiedMsg] = useState(false);
   const [copiedStudentUid, setCopiedStudentUid] = useState<string | null>(null);
+
+  // Uygulama içi mesajlaşma modal state'i
+  const [messagingStudent, setMessagingStudent] = useState<any | null>(null);
+  const [isMessagingOpen, setIsMessagingOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -750,8 +759,23 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
 
                       {/* Alt Satır: WhatsApp İletişimi + Haftalık Renk Geçmişi */}
                       <div className="pt-1.5 border-t border-slate-200/70 flex items-center justify-between gap-2 flex-wrap">
-                        {/* 2. WHATSAPP ENTEGRASYON BUTONU */}
-                        <div className="flex items-center gap-1">
+                        {/* 2. UYGULAMA İÇİ MESAJLAŞMA & WHATSAPP İLETİŞİM BUTONLARI */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Uygulama İçi Mesaj Butonu */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMessagingStudent(item);
+                              setIsMessagingOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10.5px] font-black cursor-pointer shadow-xs active:scale-95 transition-all"
+                            title="Veliye doğrudan uygulama içi mesaj gönder"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 fill-white/20" />
+                            <span>Uygulama İçi Mesaj</span>
+                          </button>
+
+                          {/* WhatsApp Butonu */}
                           <button
                             type="button"
                             onClick={() => handleOpenWhatsApp(item)}
@@ -974,6 +998,30 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
           </div>
         </div>
       </div>
+
+      {/* Uygulama İçi Mesajlaşma Modalı */}
+      {isMessagingOpen && messagingStudent && (
+        <SendMessageModal
+          isOpen={isMessagingOpen}
+          onClose={() => {
+            setIsMessagingOpen(false);
+            setMessagingStudent(null);
+          }}
+          senderProfile={currentUserProfile}
+          targetStudent={{
+            uid: messagingStudent.uid,
+            studentName: messagingStudent.studentName,
+            parentName: messagingStudent.parentName,
+            className: messagingStudent.className,
+            classId: messagingStudent.classId,
+          } as any}
+          defaultTitle={`${weekConfig.weekNum}. Hafta Ekran Süresi Bilgilendirmesi`}
+          defaultContent={generateWhatsAppMessage(messagingStudent)}
+          defaultWeekNum={weekConfig.weekNum}
+          classrooms={classrooms}
+          students={allStudents}
+        />
+      )}
     </div>
   );
 };

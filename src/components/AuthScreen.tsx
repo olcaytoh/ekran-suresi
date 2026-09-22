@@ -337,48 +337,48 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
           id="auth-form-card"
           className="w-full max-w-sm sm:max-w-md flex flex-col gap-1.5 animate-in fade-in duration-300 pointer-events-auto"
         >
-          {/* Role Badges (Öğretmen, Veli, Yönetici) */}
+          {/* Role Badges (Öğretmen, Veli, Yönetici) - Köşeler arkadaki panonun ovalliğiyle birebir uyumlu */}
           <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
               id="tab-role-teacher"
               onClick={() => setRole('teacher')}
-              className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`py-1 px-1 rounded-tl-2xl rounded-tr-lg rounded-b-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-7 ${
                 role === 'teacher'
                   ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300'
-                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-xs backdrop-blur-xs'
+                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-2xs backdrop-blur-xs'
               }`}
             >
-              <GraduationCap className="w-3.5 h-3.5" />
-              <span>Öğretmen</span>
+              <GraduationCap className="w-3.5 h-3.5 shrink-0" />
+              <span className="leading-none truncate">Öğretmen</span>
             </button>
 
             <button
               type="button"
               id="tab-role-parent"
               onClick={() => setRole('parent')}
-              className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`py-1 px-1 rounded-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-7 ${
                 role === 'parent'
                   ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300'
-                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-xs backdrop-blur-xs'
+                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-2xs backdrop-blur-xs'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>Veli</span>
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span className="leading-none truncate">Veli</span>
             </button>
 
             <button
               type="button"
               id="tab-role-admin"
               onClick={() => setRole('admin')}
-              className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`py-1 px-1 rounded-tr-2xl rounded-tl-lg rounded-b-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-7 ${
                 role === 'admin'
                   ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-300'
-                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-xs backdrop-blur-xs'
+                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-2xs backdrop-blur-xs'
               }`}
             >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Yönetici</span>
+              <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+              <span className="leading-none truncate">Yönetici</span>
             </button>
           </div>
 
@@ -529,8 +529,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
             </div>
 
             {/* Remember Me Checkbox & Forgot Password Link */}
-            <div className="flex items-center justify-between pt-0.5 px-0.5">
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <div className="flex items-center justify-between pt-0.5 px-0.5 gap-2">
+              <label className="flex items-center gap-1.5 cursor-pointer select-none shrink-0">
                 <input
                   id="checkbox-remember-me"
                   type="checkbox"
@@ -538,8 +538,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                 />
-                <span className="text-[11px] font-black text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                  Beni hatırla <span className="text-slate-600 font-medium">(Açık kalsın)</span>
+                <span className="text-[11px] font-black text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] whitespace-nowrap">
+                  Beni hatırla
                 </span>
               </label>
 
@@ -548,7 +548,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                   type="button"
                   id="btn-forgot-password"
                   onClick={handlePasswordReset}
-                  className="text-[11px] font-black text-indigo-700 hover:text-indigo-950 hover:underline cursor-pointer drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]"
+                  className="text-[11px] font-black text-indigo-700 hover:text-indigo-950 hover:underline cursor-pointer drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] whitespace-nowrap shrink-0"
                 >
                   Şifremi Unuttum?
                 </button>
@@ -593,13 +593,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
             </button>
           </form>
 
-          {/* Test / İnceleme Giriş Butonları (All buttons on the gray board, slight downward shift allowed) */}
-          <div className="pt-1 flex flex-col gap-1">
+          {/* Test / İnceleme Giriş Butonları (Yüksekliği küçültülmüş, ikon ve yazı sığan, pano kenarlarını ortaya çıkaran 3 kutu) */}
+          <div className="pt-0.5 flex flex-col gap-0.5">
             <div className="flex items-center justify-between px-1">
-              <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
+              <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
                 Test / İnceleme Girişleri
               </span>
-              <span className="text-[9px] text-slate-700 bg-white/75 px-1.5 py-0.5 rounded-md font-bold shadow-2xs">
+              <span className="text-[8.5px] text-slate-700 bg-white/75 px-1.5 py-0.5 rounded-md font-bold shadow-2xs">
                 Hızlı Giriş
               </span>
             </div>
@@ -609,33 +609,33 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                 type="button"
                 id="btn-quick-teacher-card"
                 onClick={() => handleTestLogin('teacher')}
-                className="py-2 px-1 bg-white/90 hover:bg-white active:scale-95 text-indigo-900 border border-indigo-200/90 rounded-xl text-[11px] font-black cursor-pointer transition-all flex flex-col items-center justify-center gap-0.5 shadow-xs"
+                className="py-1 px-1 bg-white/90 hover:bg-white active:scale-95 text-indigo-900 border border-indigo-200/90 rounded-bl-2xl rounded-br-lg rounded-t-lg text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-2xs h-7"
                 title="Öğretmen Test Girişi"
               >
-                <GraduationCap className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span className="truncate">Öğretmen</span>
+                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="truncate leading-none">Öğretmen</span>
               </button>
 
               <button
                 type="button"
                 id="btn-quick-parent-card"
                 onClick={() => handleTestLogin('parent')}
-                className="py-2 px-1 bg-white/90 hover:bg-white active:scale-95 text-emerald-900 border border-emerald-200/90 rounded-xl text-[11px] font-black cursor-pointer transition-all flex flex-col items-center justify-center gap-0.5 shadow-xs"
+                className="py-1 px-1 bg-white/90 hover:bg-white active:scale-95 text-emerald-900 border border-emerald-200/90 rounded-lg text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-2xs h-7"
                 title="Veli Test Girişi"
               >
-                <Users className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="truncate">Veli</span>
+                <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate leading-none">Veli</span>
               </button>
 
               <button
                 type="button"
                 id="btn-quick-admin-card"
                 onClick={() => handleTestLogin('admin')}
-                className="py-2 px-1 bg-white/90 hover:bg-white active:scale-95 text-amber-950 border border-amber-300/90 rounded-xl text-[11px] font-black cursor-pointer transition-all flex flex-col items-center justify-center gap-0.5 shadow-xs"
+                className="py-1 px-1 bg-white/90 hover:bg-white active:scale-95 text-amber-950 border border-amber-300/90 rounded-br-2xl rounded-bl-lg rounded-t-lg text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-2xs h-7"
                 title="Yönetici (Olcayto) Test Girişi"
               >
-                <span className="text-sm leading-none">👑</span>
-                <span className="truncate">Yönetici</span>
+                <span className="text-xs leading-none">👑</span>
+                <span className="truncate leading-none">Yönetici</span>
               </button>
             </div>
           </div>

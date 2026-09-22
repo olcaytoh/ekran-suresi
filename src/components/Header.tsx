@@ -12,6 +12,7 @@ import {
   User,
   HelpCircle,
   RefreshCw,
+  Bell,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -26,6 +27,8 @@ interface HeaderProps {
   onSwitchRole?: (role: 'admin' | 'teacher') => void;
   onSelectClass?: () => void;
   onOpenParentGuide?: () => void;
+  onOpenInbox?: () => void;
+  unreadCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,6 +40,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSwitchRole,
   onSelectClass,
   onOpenParentGuide,
+  onOpenInbox,
+  unreadCount = 0,
 }) => {
   const isSuperAdmin = currentUser?.role === 'admin';
   const isTeacher = currentUser?.role === 'teacher';
@@ -180,6 +185,24 @@ export const Header: React.FC<HeaderProps> = ({
               <Users className="w-3 h-3 text-slate-500" />
               <span>{memberCount} Öğrenci</span>
             </span>
+          )}
+
+          {/* Gelen Kutusu / Bildirimler Butonu */}
+          {onOpenInbox && (
+            <button
+              type="button"
+              id="btn-header-inbox"
+              onClick={onOpenInbox}
+              title="Mesajlar ve Bildirimler"
+              className="relative w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 transition-colors cursor-pointer active:scale-95 shadow-2xs"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-white animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
           )}
 
           {/* Veli Bilgilendirme Rehberi Butonu */}

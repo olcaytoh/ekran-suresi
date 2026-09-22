@@ -34,7 +34,7 @@ import {
   Firestore,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { UserProfile, WeekRecord, ClassroomInfo, UserRole } from '../types';
+import { UserProfile, WeekRecord, ClassroomInfo, UserRole, InAppMessage } from '../types';
 import { getCurrentWeekInfo } from './weekUtils';
 
 // Initialize Firebase App
@@ -1841,16 +1841,86 @@ export async function leaveClassroom(uid: string): Promise<void> {
   );
 }
 
-export async function updateStudentName(uid: string, studentName: string): Promise<void> {
+export async function updateStudentName(
+  uid: string,
+  studentName: string,
+  parentName?: string
+): Promise<void> {
   const userRef = doc(db, 'users', uid);
-  await setDoc(
-    userRef,
-    {
-      studentName: studentName.trim(),
-      updatedAt: serverTimestamp(),
+  const payload: any = {
+    studentName: studentName.trim(),
+    displayName: studentName.trim(),
+    updatedAt: serverTimestamp(),
+  };
+  if (parentName !== undefined) {
+    payload.parentName = parentName.trim();
+  }
+  await setDoc(userRef, payload, { merge: true });
+}
+
+export async function sendInAppMessage(
+  message: Omit<InAppMessage, 'id' | 'createdAt' | 'readBy'>
+): Promise<string> {
+  const messagesCol = collection(db, 'in_app_messages');
+  const msgDoc = doc(messagesCol);
+  const data = removeUndefined({
+    ...message,
+    id: msgDoc.id,
+    createdAt: serverTimestamp(),
+    readBy: [],
+  });
+  await setDoc(msgDoc, data);
+  return msgDoc.id;
+}
+
+export function subscribeInAppMessages(
+  onUpdate: (messages: InAppMessage[]) => void,
+  onError?: (err: Error) => void
+) {
+  const messagesCol = collection(db, 'in_app_messages');
+  const q = query(messagesCol, orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list: InAppMessage[] = [];
+      snap.forEach((d) => {
+        list.push({ id: d.id, ...d.data() } as InAppMessage);
+      });
+      onUpdate(list);
     },
-    { merge: true }
+    (err) => {
+      console.error('Error subscribing in_app_messages:', err);
+      // Fallback without orderBy in case index or empty collection
+      onSnapshot(messagesCol, (snap) => {
+        const list: InAppMessage[] = [];
+        snap.forEach((d) => {
+          list.push({ id: d.id, ...d.data() } as InAppMessage);
+        });
+        onUpdate(list);
+      }, onError);
+    }
   );
+}
+
+export async function markInAppMessageRead(messageId: string, userUid: string): Promise<void> {
+  if (!messageId || !userUid) return;
+  const msgRef = doc(db, 'in_app_messages', messageId);
+  const snap = await getDoc(msgRef);
+  if (snap.exists()) {
+    const data = snap.data() as InAppMessage;
+    const currentReadBy = Array.isArray(data.readBy) ? data.readBy : [];
+    if (!currentReadBy.includes(userUid)) {
+      await updateDoc(msgRef, {
+        readBy: [...currentReadBy, userUid],
+      });
+    }
+  }
+}
+
+export async function deleteInAppMessage(messageId: string): Promise<void> {
+  if (!messageId) return;
+  const msgRef = doc(db, 'in_app_messages', messageId);
+  await deleteDoc(msgRef);
 }
 
 export function subscribeClassroom(

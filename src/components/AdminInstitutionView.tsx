@@ -42,8 +42,10 @@ import {
   UserMinus,
   Info,
   FileSpreadsheet,
+  MessageSquare,
 } from 'lucide-react';
 import { StatsExportModal } from './StatsExportModal';
+import { SendMessageModal } from './SendMessageModal';
 
 interface AdminInstitutionViewProps {
   currentUser?: UserProfile | null;
@@ -133,6 +135,11 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isStatsExportModalOpen, setIsStatsExportModalOpen] = useState(false);
   const [exportClassId, setExportClassId] = useState<string | null>(null);
+
+  // Uygulama İçi Mesajlaşma State'leri
+  const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState(false);
+  const [messagingTargetUser, setMessagingTargetUser] = useState<UserProfile | null>(null);
+  const [messagingTargetClass, setMessagingTargetClass] = useState<ClassroomInfo | null>(null);
 
   // Sync props if updated from parent
   useEffect(() => {
@@ -1507,6 +1514,22 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   Sınıfsız ({unassignedCount})
                 </button>
               )}
+
+              <div className="ml-auto flex items-center">
+                <button
+                  type="button"
+                  id="btn-admin-broadcast-message"
+                  onClick={() => {
+                    setMessagingTargetUser(null);
+                    setMessagingTargetClass(null);
+                    setIsSendMessageModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap cursor-pointer transition-all bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs flex items-center gap-1.5 active:scale-95"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 fill-white/20" />
+                  <span>Uygulama İçi Mesaj Gönder</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1631,6 +1654,22 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
                       {/* Sağ Taraf: Admin Aksiyon Butonları */}
                       <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {/* Uygulama İçi Mesaj Gönder */}
+                        <button
+                          type="button"
+                          id={`btn-message-user-${user.uid}`}
+                          onClick={() => {
+                            setMessagingTargetUser(user);
+                            setMessagingTargetClass(null);
+                            setIsSendMessageModalOpen(true);
+                          }}
+                          className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-xs font-bold"
+                          title="Kullanıcıya / Veliye Uygulama İçi Mesaj Gönder"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+                          <span className="hidden sm:inline text-[10px]">Mesaj</span>
+                        </button>
+
                         {/* Şifre Sıfırlama Gönder Butonu */}
                         {user.email && (
                           <button
@@ -1941,6 +1980,23 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         defaultClassName="Tüm Sınıflar"
         isTeacher={false}
       />
+
+      {/* Uygulama İçi Mesajlaşma Modalı */}
+      {isSendMessageModalOpen && (
+        <SendMessageModal
+          isOpen={isSendMessageModalOpen}
+          onClose={() => {
+            setIsSendMessageModalOpen(false);
+            setMessagingTargetUser(null);
+            setMessagingTargetClass(null);
+          }}
+          senderProfile={currentUser}
+          targetStudent={messagingTargetUser}
+          targetClassroom={messagingTargetClass}
+          classrooms={classrooms}
+          students={allRegisteredUsers}
+        />
+      )}
     </div>
   );
 };

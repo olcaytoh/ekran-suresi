@@ -24,8 +24,9 @@ import {
   getActiveAppProfile,
   setActiveAppProfile,
   clearActiveAppProfile,
+  subscribeInAppMessages,
 } from './lib/firebase';
-import { UserProfile, ClassroomInfo } from './types';
+import { UserProfile, ClassroomInfo, InAppMessage } from './types';
 import { getCurrentWeekInfo } from './lib/weekUtils';
 import { Header } from './components/Header';
 import { ParentHeroBanner } from './components/ParentHeroBanner';
@@ -41,6 +42,7 @@ import { ClassroomSetupModal } from './components/ClassroomSetupModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { ParentGuideModal } from './components/ParentGuideModal';
 import { AdminCodePromptModal } from './components/AdminCodePromptModal';
+import { NotificationInboxModal } from './components/NotificationInboxModal';
 import { Loader2, GraduationCap, School, ChevronRight, X } from 'lucide-react';
 import { DEMO_3_CLASSES, DEMO_INSTITUTION } from './lib/demoData';
 
@@ -74,6 +76,8 @@ export default function App() {
   const [showParentGuide, setShowParentGuide] = useState(false);
   const [showTeacherClassPicker, setShowTeacherClassPicker] = useState(false);
   const [showAdminCodePrompt, setShowAdminCodePrompt] = useState(false);
+  const [inAppMessages, setInAppMessages] = useState<InAppMessage[]>([]);
+  const [showInboxModal, setShowInboxModal] = useState(false);
 
   const weekInfo = getCurrentWeekInfo();
 
@@ -823,6 +827,46 @@ export default function App() {
     classroom,
   ]);
 
+  // Uygulama içi mesajları dinle
+  useEffect(() => {
+    const unsub = subscribeInAppMessages(
+      (msgs) => {
+        setInAppMessages(msgs);
+      },
+      (err) => {
+        console.warn('In-app messages subscription error:', err);
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  // Kullanıcıya özel okunmamış ve filtrelenmiş mesajlar
+  const userVisibleMessages = useMemo(() => {
+    if (!effectiveProfile) return inAppMessages;
+    const isStaff = effectiveProfile.role === 'admin' || effectiveProfile.role === 'teacher';
+    if (isStaff) return inAppMessages;
+
+    return inAppMessages.filter((msg) => {
+      // 1. Tüm okula gönderilmiş
+      if (msg.targetType === 'all') return true;
+      // 2. Belirli bir sınıfa gönderilmiş ve kullanıcının sınıfı uyuyor
+      if (msg.targetType === 'class') {
+        if (effectiveProfile.classId && msg.targetClassId === effectiveProfile.classId) return true;
+        if (effectiveProfile.className && msg.targetClassName && effectiveProfile.className.toLowerCase() === msg.targetClassName.toLowerCase()) return true;
+      }
+      // 3. Doğrudan bu öğrenci/veliye gönderilmiş
+      if (msg.targetType === 'student') {
+        if (msg.targetStudentUid === effectiveProfile.uid) return true;
+      }
+      return false;
+    });
+  }, [inAppMessages, effectiveProfile]);
+
+  const unreadMessageCount = useMemo(() => {
+    if (!effectiveProfile?.uid) return 0;
+    return userVisibleMessages.filter((m) => !m.readBy?.includes(effectiveProfile.uid)).length;
+  }, [userVisibleMessages, effectiveProfile?.uid]);
+
   // Handle stage change (0 to 14)
   // Demo/inceleme modunda (gerçek Firebase Auth oturumu olmadan) yapılan
   // "kurum oluştur / sınıf oluştur / sınıfa katıl" gibi işlemleri yerel
@@ -958,6 +1002,8 @@ export default function App() {
         onSwitchRole={handleSwitchRole}
         onSelectClass={() => setShowTeacherClassPicker(true)}
         onOpenParentGuide={() => setShowParentGuide(true)}
+        onOpenInbox={() => setShowInboxModal(true)}
+        unreadCount={unreadMessageCount}
       />
 
       {/* 2. Main Body: Smooth scrollable container with modern scrollbar */}
@@ -1289,6 +1335,17 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 8. Gelen Kutusu / Bildirimler Modalı */}
+      {showInboxModal && (
+        <NotificationInboxModal
+          isOpen={showInboxModal}
+          onClose={() => setShowInboxModal(false)}
+          messages={userVisibleMessages}
+          currentUserId={effectiveProfile?.uid}
+          isStaffOrAdmin={isStaffOrAdmin}
+        />
       )}
     </div>
   );

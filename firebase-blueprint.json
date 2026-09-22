@@ -66,6 +66,25 @@
         "updatedAt": { "type": "timestamp" },
         "updatedBy": { "type": "string", "optional": true }
       }
+    },
+    "in_app_messages": {
+      "description": "In-app notifications and announcements sent by admins and teachers",
+      "fields": {
+        "id": { "type": "string" },
+        "senderUid": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["all", "class", "student"] },
+        "targetId": { "type": "string", "optional": true },
+        "targetName": { "type": "string", "optional": true },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "weekNum": { "type": "number", "optional": true },
+        "readBy": { "type": "array" },
+        "createdAt": { "type": "timestamp" },
+        "institutionId": { "type": "string", "optional": true }
+      }
     }
   }
 }
+
