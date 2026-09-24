@@ -60,16 +60,23 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
       if (cancelled) return;
 
       if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-        const scale = renderWidth / video.videoWidth;
+        // Üstteki (%16) ve alttaki (%15) boş yeşil ölü alanları kırp, tuval doğrudan kediyi sarsın
+        const topRatio = 0.16;
+        const bottomRatio = 0.15;
+        const sy = Math.round(video.videoHeight * topRatio);
+        const sh = Math.max(1, Math.round(video.videoHeight * (1 - topRatio - bottomRatio)));
+        const sx = 0;
+        const sw = video.videoWidth;
+
         const w = renderWidth;
-        const h = Math.max(1, Math.round(video.videoHeight * scale));
+        const h = Math.max(1, Math.round(sh * (renderWidth / sw)));
 
         if (canvas.width !== w || canvas.height !== h) {
           canvas.width = w;
           canvas.height = h;
         }
 
-        ctx.drawImage(video, 0, 0, w, h);
+        ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
 
         const frame = ctx.getImageData(0, 0, w, h);
         const data = frame.data;

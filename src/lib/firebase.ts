@@ -1235,6 +1235,52 @@ export async function regenerateInstitutionAdminCode(
   return adminCode;
 }
 
+const DEMO_INSTITUTION_FALLBACK = {
+  id: 'demo-institution-1',
+  name: 'AKÇAKOCA İLKOKULU',
+  code: 'KRM-AKC1',
+  adminCode: 'ADM-AKC1',
+};
+
+const DEMO_CLASSES_FALLBACK = [
+  {
+    id: 'demo-class-1a',
+    code: 'AKC-1A',
+    name: '1-A Sınıfı',
+    teacherUid: 'teacher_demo_olcayto',
+    teacherName: 'Olcayto Öğretmen',
+    teacherEmail: 'olcaytoh@gmail.com',
+    institutionId: 'demo-institution-1',
+    institutionCode: 'KRM-AKC1',
+    institutionName: 'AKÇAKOCA İLKOKULU',
+    studentTargetCount: 10,
+  },
+  {
+    id: 'demo-class-2b',
+    code: 'AKC-2B',
+    name: '2-B Sınıfı',
+    teacherUid: 'teacher_demo_ayse',
+    teacherName: 'Ayşe Öğretmen',
+    teacherEmail: 'ayse@akcakocailkokulu.k12.tr',
+    institutionId: 'demo-institution-1',
+    institutionCode: 'KRM-AKC1',
+    institutionName: 'AKÇAKOCA İLKOKULU',
+    studentTargetCount: 10,
+  },
+  {
+    id: 'demo-class-3c',
+    code: 'AKC-3C',
+    name: '3-C Sınıfı',
+    teacherUid: 'teacher_demo_mehmet',
+    teacherName: 'Mehmet Öğretmen',
+    teacherEmail: 'mehmet@akcakocailkokulu.k12.tr',
+    institutionId: 'demo-institution-1',
+    institutionCode: 'KRM-AKC1',
+    institutionName: 'AKÇAKOCA İLKOKULU',
+    studentTargetCount: 10,
+  },
+];
+
 export async function joinInstitutionWithCode(
   userUid: string,
   rawCode: string
@@ -1248,12 +1294,35 @@ export async function joinInstitutionWithCode(
   const q = query(instRef, where('code', '==', cleanedCode));
   const snap = await getDocs(q);
 
-  if (snap.empty) {
-    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
+  let instDoc = snap.empty ? null : snap.docs[0];
+  let instData = instDoc ? instDoc.data() : null;
+
+  if (!instDoc) {
+    const normalized = cleanedCode.replace(/[^A-Z0-9]/g, '');
+    if (normalized === 'KRMAKC1' || cleanedCode === DEMO_INSTITUTION_FALLBACK.code) {
+      const demoRef = doc(db, 'institutions', DEMO_INSTITUTION_FALLBACK.id);
+      await setDoc(
+        demoRef,
+        {
+          id: DEMO_INSTITUTION_FALLBACK.id,
+          name: DEMO_INSTITUTION_FALLBACK.name,
+          code: DEMO_INSTITUTION_FALLBACK.code,
+          adminCode: DEMO_INSTITUTION_FALLBACK.adminCode,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      const fetched = await getDoc(demoRef);
+      if (fetched.exists()) {
+        instDoc = fetched as any;
+        instData = fetched.data();
+      }
+    }
   }
 
-  const instDoc = snap.docs[0];
-  const instData = instDoc.data();
+  if (!instDoc || !instData) {
+    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
+  }
 
   const userRef = doc(db, 'users', userUid);
   const userSnap = await getDoc(userRef);
@@ -1324,12 +1393,35 @@ export async function joinInstitutionAsAdmin(
   const q = query(instRef, where('adminCode', '==', cleanedCode));
   const snap = await getDocs(q);
 
-  if (snap.empty) {
-    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
+  let instDoc = snap.empty ? null : snap.docs[0];
+  let instData = instDoc ? instDoc.data() : null;
+
+  if (!instDoc) {
+    const normalized = cleanedCode.replace(/[^A-Z0-9]/g, '');
+    if (normalized === 'ADMAKC1' || cleanedCode === DEMO_INSTITUTION_FALLBACK.adminCode) {
+      const demoRef = doc(db, 'institutions', DEMO_INSTITUTION_FALLBACK.id);
+      await setDoc(
+        demoRef,
+        {
+          id: DEMO_INSTITUTION_FALLBACK.id,
+          name: DEMO_INSTITUTION_FALLBACK.name,
+          code: DEMO_INSTITUTION_FALLBACK.code,
+          adminCode: DEMO_INSTITUTION_FALLBACK.adminCode,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      const fetched = await getDoc(demoRef);
+      if (fetched.exists()) {
+        instDoc = fetched as any;
+        instData = fetched.data();
+      }
+    }
   }
 
-  const instDoc = snap.docs[0];
-  const instData = instDoc.data();
+  if (!instDoc || !instData) {
+    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
+  }
 
   const userRef = doc(db, 'users', userUid);
   await setDoc(
@@ -1740,13 +1832,47 @@ export async function joinClassroomWithCode(
   const q = query(classesRef, where('code', '==', cleanedCode));
   const snap = await getDocs(q);
 
-  if (snap.empty) {
-    throw new Error(`"${cleanedCode}" koduna ait bir sınıf bulunamadı.`);
+  let classDoc = snap.empty ? null : snap.docs[0];
+  let classData = classDoc ? (classDoc.data() as ClassroomInfo) : null;
+  if (classData && classDoc) {
+    classData.id = classDoc.id;
   }
 
-  const classDoc = snap.docs[0];
-  const classData = classDoc.data() as ClassroomInfo;
-  classData.id = classDoc.id;
+  if (!classDoc || !classData) {
+    const normalized = cleanedCode.replace(/[^A-Z0-9]/g, '');
+    const matchedDemo = DEMO_CLASSES_FALLBACK.find(
+      (c) => c.code.toUpperCase() === cleanedCode || c.code.replace(/[^A-Z0-9]/g, '') === normalized
+    );
+    if (matchedDemo) {
+      const demoClassRef = doc(db, 'classes', matchedDemo.id);
+      await setDoc(
+        demoClassRef,
+        {
+          id: matchedDemo.id,
+          code: matchedDemo.code,
+          name: matchedDemo.name,
+          teacherUid: matchedDemo.teacherUid,
+          teacherName: matchedDemo.teacherName,
+          teacherEmail: matchedDemo.teacherEmail,
+          institutionId: matchedDemo.institutionId,
+          institutionCode: matchedDemo.institutionCode,
+          institutionName: matchedDemo.institutionName,
+          studentTargetCount: matchedDemo.studentTargetCount,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      const fetched = await getDoc(demoClassRef);
+      if (fetched.exists()) {
+        classDoc = fetched as any;
+        classData = { ...matchedDemo, id: matchedDemo.id } as ClassroomInfo;
+      }
+    }
+  }
+
+  if (!classDoc || !classData) {
+    throw new Error(`"${cleanedCode}" koduna ait bir sınıf bulunamadı.`);
+  }
 
   if (classData.teacherUid === userUid) {
     throw new Error('Siz bu sınıfın öğretmenisiniz!');

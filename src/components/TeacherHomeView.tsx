@@ -8,7 +8,6 @@ import {
   BarChart3,
   UserPlus,
   ShieldCheck,
-  ShieldAlert,
   Building2,
   Trash2,
   AlertTriangle,
@@ -236,42 +235,6 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         <div className="absolute bottom-0 left-1/3 w-52 h-52 bg-sky-300/25 rounded-full blur-3xl" />
       </div>
 
-      {/* Yönetici Moduna Geri Dönüş Banner'ı (Kullanıcı admin yetkisine sahipse veya öğretmen moduna geçmişse) */}
-      {(teacherProfile?.institutionAdminCode || onSwitchRole) && (
-        <div className="relative z-10 bg-gradient-to-r from-rose-50 via-pink-50 to-indigo-50 rounded-2xl p-2.5 sm:p-3 border border-rose-200 shadow-2xs flex items-center justify-between gap-2.5 flex-wrap">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-              <ShieldAlert className="w-3.5 h-3.5 stroke-[2.5]" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-black text-slate-900 leading-tight flex items-center gap-1.5 flex-wrap">
-                <span>Öğretmen Modundasınız</span>
-                {classroom?.name && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800">
-                    {classroom.name}
-                  </span>
-                )}
-              </div>
-              <div className="text-[11px] text-slate-600 truncate">
-                İşiniz bittiğinde tek tıkla kurum yöneticisi hesabınıza dönebilirsiniz.
-              </div>
-            </div>
-          </div>
-          {onSwitchRole && (
-            <button
-              type="button"
-              id="btn-teacher-return-to-admin"
-              onClick={() => onSwitchRole('admin')}
-              className="btn-3d-rose px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 flex-shrink-0"
-              title="Kurum Yönetici (Admin) Paneline Geri Dön"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Yönetici Moduna Dön</span>
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Bağlı Kurum Bilgisi (Varsa zarif ince çubuk) */}
       {instCode && (
         <div className="relative z-10 flex items-center justify-between px-3.5 py-1.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/80 shadow-2xs text-xs text-slate-700">
@@ -310,11 +273,11 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             : 'bg-gradient-to-r from-teal-200 via-emerald-300 to-green-200';
 
         return (
-          <div className="relative z-10 rounded-3xl p-4 sm:p-5 bg-white/75 backdrop-blur-xl border border-white/95 shadow-[0_2px_6px_rgba(0,0,0,0.16),0_8px_18px_rgba(0,0,0,0.10),0_20px_38px_rgba(124,58,237,0.18)] overflow-hidden flex items-stretch justify-between gap-3 sm:gap-4">
-            {/* Sol İçerik */}
-            <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-center gap-2.5">
+          <div className="relative z-10 rounded-3xl px-3.5 pt-3 pb-3 sm:px-4.5 sm:pt-3.5 sm:pb-3.5 bg-white/75 backdrop-blur-xl border border-white/95 shadow-[0_2px_6px_rgba(0,0,0,0.16),0_8px_18px_rgba(0,0,0,0.10),0_20px_38px_rgba(124,58,237,0.18)] overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-3.5">
+            {/* Sol İçerik: İstatistikler ve İlerleme Çubuğu */}
+            <div className="relative z-10 flex-1 min-w-0 flex flex-col justify-center gap-1.5 sm:gap-2">
               <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                {/* 1. Buton (Sol): ist.png - Üzerinde Yalnızca İstatistik Bilgileri (Ekstra İkon Yok) */}
+                {/* 1. Buton (Sol): ist.png - Üzerinde Yalnızca İstatistik Bilgileri */}
                 <div className="relative rounded-2xl overflow-hidden flex items-end justify-center select-none transition-transform duration-150 active:scale-95 cursor-pointer">
                   <img
                     src="/ist.png"
@@ -322,8 +285,8 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                     className="w-full h-auto object-contain block drop-shadow-sm"
                     draggable={false}
                   />
-                  <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 md:bottom-2 z-10 flex flex-col items-center justify-center text-center px-1">
-                    <span className="text-[8px] sm:text-[9.5px] md:text-[10px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+                  <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 z-10 flex flex-col items-center justify-center text-center px-1">
+                    <span className="text-[8px] sm:text-[9.5px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
                       Haftalık Ortalama
                     </span>
                     <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
@@ -332,7 +295,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                   </div>
                 </div>
 
-                {/* 2. Buton (Sağ): saf.png - Üzerinde Yalnızca Sınıf Durumu Bilgileri (Ekstra İkon Yok) */}
+                {/* 2. Buton (Sağ): saf.png - Üzerinde Yalnızca Sınıf Durumu Bilgileri */}
                 <div className="relative rounded-2xl overflow-hidden flex items-end justify-center select-none transition-transform duration-150 active:scale-95 cursor-pointer">
                   <img
                     src="/saf.png"
@@ -340,8 +303,8 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                     className="w-full h-auto object-contain block drop-shadow-sm"
                     draggable={false}
                   />
-                  <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 md:bottom-2 z-10 flex flex-col items-center justify-center text-center px-1">
-                    <span className="text-[8px] sm:text-[9.5px] md:text-[10px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+                  <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 z-10 flex flex-col items-center justify-center text-center px-1">
+                    <span className="text-[8px] sm:text-[9.5px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
                       {hasCritical ? 'Kritik Süre' : 'Sınıf Güvende'}
                     </span>
                     <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
@@ -352,7 +315,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
               </div>
 
               {/* 14-Kademe Spektrum İlerleme Çubuğu */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <div className="w-full h-2.5 sm:h-3 bg-slate-200/60 rounded-full p-0.5 border border-white shadow-inner overflow-hidden">
                   <div
                     className={`relative h-full rounded-full transition-all duration-500 overflow-hidden ${progressFillClass}`}
@@ -376,7 +339,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                     />
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-black text-slate-400">
+                <div className="flex items-center justify-between text-[8.5px] sm:text-[9.5px] font-black text-slate-400 leading-tight">
                   <span>0 dk</span>
                   <span>{avgStage}/14 Kademe Ortalaması</span>
                   <span>420+ dk</span>
@@ -384,11 +347,11 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
               </div>
             </div>
 
-            {/* Sağ Taraf: Kedi Maskotu (Şeffaf Arka Planlı Video) */}
-            <div className="relative z-10 flex-shrink-0 self-stretch flex items-end justify-center w-[110px] sm:w-[140px] md:w-[165px] -my-4 sm:-my-5 -mr-2 sm:-mr-3 overflow-hidden pointer-events-none select-none">
+            {/* Sağ Taraf: Kedi Maskotu (Alttaki boşluk silindi, ayaklar doğrudan alt sınıra oturtuldu) */}
+            <div className="relative z-10 flex-shrink-0 self-stretch flex items-end justify-center w-[100px] sm:w-[124px] md:w-[140px] -mb-3 sm:-mb-3.5 pointer-events-none select-none">
               <TransparentMascotVideo
                 src="/mascot.mp4"
-                className="h-full w-auto max-h-[160px] sm:max-h-[195px] md:max-h-[220px] drop-shadow-[0_10px_20px_rgba(124,58,237,0.18)] transition-all duration-300"
+                className="h-auto w-full max-h-[126px] sm:max-h-[140px] md:max-h-[150px] drop-shadow-[0_8px_16px_rgba(124,58,237,0.18)] transition-all duration-300"
               />
             </div>
           </div>

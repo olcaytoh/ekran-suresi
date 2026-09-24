@@ -230,7 +230,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       setSuccessMsg(`Tebrikler! "${inst.name}" kurumuna admin olarak katıldınız.`);
       setTimeout(() => onCompleted(), 1200);
     } catch (err: any) {
-      console.error('Join as admin error:', err);
+      console.warn('Join as admin validation notice:', err.message || err);
       setError(err.message || 'Admin olarak katılırken bir hata oluştu.');
     } finally {
       setLoading(false);
@@ -265,7 +265,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       setIsInstitutionConnected(true);
       setSuccessMsg(`Tebrikler! "${inst.name}" kurumuna bağlandınız.`);
     } catch (err: any) {
-      console.error('Connect institution error:', err);
+      console.warn('Connect institution validation notice:', err.message || err);
       setError(err.message || 'Kuruma bağlanırken hata oluştu.');
     } finally {
       setLoading(false);
@@ -411,7 +411,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       setSuccessMsg(`Tebrikler! "${classroom.name}" sınıfına başarıyla katıldınız.`);
       setTimeout(() => onCompleted(), 1200);
     } catch (err: any) {
-      console.error('Join class error:', err);
+      console.warn('Join class validation notice:', err.message || err);
       setError(err.message || 'Sınıfa katılırken bir hata oluştu. Kodu kontrol ediniz.');
     } finally {
       setLoading(false);

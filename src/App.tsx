@@ -172,7 +172,6 @@ export default function App() {
         currentWeekStage: defaultStd.stage,
         currentWeekMinutes: defaultStd.minutes,
       };
-      setShowParentGuide(true);
     }
     setDemoProfile(profile);
     if (typeof window !== 'undefined') {
@@ -267,6 +266,16 @@ export default function App() {
     // ÖĞRETMEN VEYA VELİ MODUNDAN ADMİN MODUNA GEÇİŞ:
     // KESİNLİKLE ADMİN KODU DOĞRULANMADAN GEÇİLEMEZ!
     if (newRole === 'admin') {
+      if (effectiveProfile?.institutionAdminCode) {
+        try {
+          await handleUpgradeToAdminWithCode(effectiveProfile.institutionAdminCode);
+          return;
+        } catch (e) {
+          console.warn('Could not auto-restore admin mode with saved code:', e);
+          setShowAdminCodePrompt(true);
+          return;
+        }
+      }
       setShowAdminCodePrompt(true);
       return;
     }
@@ -468,11 +477,6 @@ export default function App() {
 
           // Default tab is always 'home'
           setParentTab('home');
-
-          // Veli mail girişi yapınca, uygulamanın amacını anlatan bilgilendirme popup'ı göster
-          if (profile.role === 'parent' || profile.userType === 'parent') {
-            setShowParentGuide(true);
-          }
 
           // If user doesn't have classId and hasn't chosen role yet, prompt setup
           if (!profile.classId && !profile.className && profile.role !== 'parent') {
@@ -949,10 +953,20 @@ export default function App() {
     return (
       <AuthScreen
         onDemoLogin={handleDemoLogin}
-        onLoginSuccess={(profile) => {
+        onLoginSuccess={(profile, isNewRegistration) => {
           setActiveLocalProfile(profile);
-          if (profile?.role === 'parent' || profile?.userType === 'parent') {
-            setShowParentGuide(true);
+          // Veli bilgilendirme rehberi sadece üye olduktan sonra ilk açılışta 1 kere gösterilsin, her girişte değil
+          if (
+            isNewRegistration &&
+            (profile?.role === 'parent' || profile?.userType === 'parent')
+          ) {
+            const userKey = profile?.uid || profile?.email || 'default';
+            const storageKey = `parent_guide_seen_${userKey}`;
+            const alreadySeen = typeof window !== 'undefined' && localStorage.getItem(storageKey);
+            if (!alreadySeen) {
+              localStorage.setItem(storageKey, 'true');
+              setShowParentGuide(true);
+            }
           }
         }}
       />
@@ -1090,9 +1104,9 @@ export default function App() {
           </div>
         ) : (
           /* PARENT / VELİ VIEW (Responsive scrolling with rich 3D aesthetic) */
-          <div className={`flex flex-col ${parentTab === 'home' ? 'h-full justify-between gap-1 pb-0 flex-1 min-h-0' : 'gap-2.5 sm:gap-3 pb-8'}`}>
+          <div className={`flex flex-col ${parentTab === 'home' ? 'h-full justify-between pb-0 flex-1 min-h-0' : 'gap-2.5 sm:gap-3 pb-8'}`}>
             {/* Top Hero Banner (Always fully visible with large yesil.png & progress bar) */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 mb-3 sm:mb-4">
               <ParentHeroBanner
                 currentStage={currentStage}
                 studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
@@ -1190,7 +1204,13 @@ export default function App() {
       {/* Veli Bilgilendirme Modal (Uygulamanın nasıl ve ne amaçla kullanıldığını anlatan rehber popup) */}
       <ParentGuideModal
         isOpen={showParentGuide}
-        onClose={() => setShowParentGuide(false)}
+        onClose={() => {
+          const userKey = effectiveProfile?.uid || effectiveProfile?.email;
+          if (userKey && typeof window !== 'undefined') {
+            localStorage.setItem(`parent_guide_seen_${userKey}`, 'true');
+          }
+          setShowParentGuide(false);
+        }}
         studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
       />
 

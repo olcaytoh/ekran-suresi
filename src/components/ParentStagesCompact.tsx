@@ -69,7 +69,7 @@ export const ParentStagesCompact: React.FC<ParentStagesCompactProps> = ({
             {isTeacher ? 'Sınıf Ortalaması Kademeleri' : '14 Kademeli Dokunmatik Tuşlar'}
           </span>
           <span className="text-[11px] font-bold text-slate-500">
-            ({isTeacher ? `${classAverageMinutes} dk • ${teacherAvgStage}. Kademe` : `${currentStage * 30} dk`})
+            ({isTeacher ? `${classAverageMinutes} dk • ${teacherAvgStage}. Kademe` : `${currentStage}. Kademe`})
           </span>
         </div>
 
@@ -178,15 +178,15 @@ export const ParentStagesCompact: React.FC<ParentStagesCompactProps> = ({
         {/* 4x4 Grid Slot 15 & 16: Summary Status Tile */}
         <div className="col-span-2 flex flex-col items-center justify-center p-2 rounded-2xl bg-gradient-to-br from-sky-50/80 to-indigo-50/60 border border-sky-100 text-center select-none pointer-events-none">
           <span className="text-[10px] font-bold text-sky-700">
-            {isTeacher ? 'Sınıf Ortalaması' : 'Kayıtlı Toplam Süre'}
+            {isTeacher ? 'Sınıf Ortalaması' : 'Toplam Süre'}
           </span>
           <span className="text-xs sm:text-sm font-black text-sky-950 mt-0.5">
             {effectiveStage} / 14 Kademe
           </span>
           <span className="text-[10px] font-bold text-sky-600">
             {isTeacher
-              ? `${classAverageMinutes} dk (${Math.floor(classAverageMinutes / 60)}s ${classAverageMinutes % 60}dk)`
-              : `${currentStage * 30} dk (${Math.floor((currentStage * 30) / 60)}s ${(currentStage * 30) % 60}dk)`}
+              ? `${classAverageMinutes} dk (${Math.floor(classAverageMinutes / 60)} sa ${classAverageMinutes % 60} dk)`
+              : `${currentStage * 30} dk (${Math.floor((currentStage * 30) / 60)} sa ${(currentStage * 30) % 60} dk)`}
           </span>
         </div>
       </div>

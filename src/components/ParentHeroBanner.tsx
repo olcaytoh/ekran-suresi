@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Flame, AlertTriangle, Sparkles } from 'lucide-react';
+import { ShieldCheck, Flame, AlertTriangle, Sparkles, Award } from 'lucide-react';
 import { TransparentMascotVideo } from './TransparentMascotVideo';
 
 interface ParentHeroBannerProps {
@@ -16,6 +16,7 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
   const isYellow = currentStage >= 5 && currentStage <= 8;
   const isOrange = currentStage >= 9 && currentStage <= 13;
   const isRed = currentStage >= 14;
+  const isSafeGreen = currentStage <= 4;
 
   const remainingStages = Math.max(0, 14 - currentStage);
   const remainingMinutes = remainingStages * 30;
@@ -33,81 +34,106 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
 
   return (
     <div
-      className={`relative ${gradientClass} rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 text-white shadow-[0_8px_20px_rgba(0,0,0,0.1)] border border-white/25 overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-4`}
+      className="relative bg-white rounded-2xl sm:rounded-3xl p-2.5 sm:p-3 text-slate-900 shadow-sm border border-slate-200/80 overflow-hidden flex items-stretch justify-between gap-2 sm:gap-3 select-none"
     >
-      {/* Background Soft Glow Bubbles */}
-      <div className="absolute -top-10 -left-10 w-44 h-44 bg-white/15 rounded-full blur-2xl pointer-events-none" />
-      <div className="absolute -bottom-10 right-20 w-40 h-40 bg-black/10 rounded-full blur-xl pointer-events-none" />
-
       {/* Left Content: Clean Status Pill, Greeting, Progress Bar & Counters */}
-      <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-center">
-        {/* Top Status Tag (Clean & Without Redundant Text) */}
-        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-white/20 backdrop-blur-md text-white border border-white/30 shadow-xs">
-            {isRed ? (
-              <>
-                <Flame className="w-3 h-3 text-red-200 animate-pulse" />
-                <span>Kırmızı Sınır</span>
-              </>
-            ) : isOrange ? (
-              <>
-                <AlertTriangle className="w-3 h-3 text-amber-200" />
-                <span>Dikkat Sınırı</span>
-              </>
-            ) : isYellow ? (
-              <>
-                <Sparkles className="w-3 h-3 text-yellow-100" />
-                <span>Dengeli Süre</span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-3 h-3 text-emerald-200" />
-                <span>Güvenli Alan</span>
-              </>
-            )}
-          </span>
+      <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-between py-0.5">
+        {/* Top Status Tag & Weekly Star Badge (Altın Yıldız Rozeti) */}
+        <div className="flex flex-col items-start gap-1">
+          {/* Rozet Kazandıkça Üstte Yan Yana Dizilen Rozetler */}
+          {isSafeGreen && (
+            <div className="flex items-center gap-1 pl-0.5 animate-in fade-in zoom-in-95 duration-300 mb-0.5">
+              <img
+                src="/gold_medal.png"
+                alt="Haftalık Yıldız Rozeti"
+                className="w-9 h-11 sm:w-11 sm:h-13 object-contain drop-shadow-[0_3px_8px_rgba(245,158,11,0.25)] transition-transform duration-200 hover:scale-105 select-none"
+                draggable={false}
+              />
+            </div>
+          )}
+
+          {/* Sarı Çerçeve / Hap: Kalkan ikonu 'Haftalık' kelimesinin hemen solunda, kalkan yüksekliğinde */}
+          <div className="inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-0.5 sm:py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-amber-950 border border-amber-200/90 shadow-xs select-none">
+            {/* Kalkan İkonu (Duruma göre dinamik renkli, sarı çerçevenin içinde) */}
+            <span
+              className="inline-flex items-center justify-center p-0.5 sm:p-1 rounded-full bg-white/50 shadow-2xs border border-white/60"
+              title={
+                isRed
+                  ? 'Kırmızı Sınır'
+                  : isOrange
+                  ? 'Dikkat Sınırı'
+                  : isYellow
+                  ? 'Dengeli Süre'
+                  : 'Güvenli Alan'
+              }
+            >
+              <ShieldCheck
+                className={`w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5] ${
+                  isRed
+                    ? 'text-red-600'
+                    : isOrange
+                    ? 'text-amber-700'
+                    : isYellow
+                    ? 'text-yellow-700'
+                    : 'text-emerald-700'
+                }`}
+              />
+            </span>
+
+            {/* Metin */}
+            <span className="text-[10px] sm:text-[11px] font-black tracking-tight leading-none text-amber-950">
+              Haftalık Yıldız Rozeti
+            </span>
+          </div>
         </div>
 
-        {/* Greeting Headline */}
-        <h2 className="text-base sm:text-lg md:text-xl font-black tracking-tight drop-shadow-xs truncate">
-          Merhaba, {studentName || 'Ekran Takipçisi'}! ⭐
-        </h2>
-
         {/* Harmonious Progress Bar */}
-        <div className="mt-1.5 sm:mt-2">
-          <div className="w-full h-2.5 sm:h-3 bg-black/25 backdrop-blur-xs rounded-full p-0.5 border border-white/25 shadow-inner overflow-hidden">
+        <div className="mt-1 sm:mt-1.5">
+          <div className="w-full h-2 sm:h-2.5 bg-slate-100 rounded-full p-0.5 border border-slate-200/60 shadow-inner overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 shadow-sm ${
+              className={`h-full rounded-full transition-all duration-500 shadow-xs ${
                 isRed
-                  ? 'bg-gradient-to-r from-amber-300 via-orange-400 to-red-500 shadow-[0_0_12px_rgba(239,68,68,0.7)]'
+                  ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-red-500'
                   : isOrange
-                  ? 'bg-gradient-to-r from-yellow-200 via-amber-300 to-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.6)]'
+                  ? 'bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500'
                   : isYellow
-                  ? 'bg-gradient-to-r from-emerald-200 via-lime-300 to-yellow-300 shadow-[0_0_10px_rgba(234,179,8,0.6)]'
-                  : 'bg-gradient-to-r from-teal-200 via-emerald-300 to-green-200 shadow-[0_0_10px_rgba(52,211,153,0.6)]'
+                  ? 'bg-gradient-to-r from-emerald-300 via-lime-400 to-yellow-400'
+                  : 'bg-gradient-to-r from-teal-400 to-emerald-500'
               }`}
               style={{ width: `${Math.max(6, progressPercent)}%` }}
             />
           </div>
 
-          {/* Progress Counters under the bar */}
-          <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-black text-white/95 mt-1 drop-shadow-2xs">
+          {/* Sadeleştirilmiş Bilgi */}
+          <div className="flex items-center justify-between text-[11px] sm:text-xs font-extrabold text-slate-900 mt-1">
+            <div className="flex flex-col items-start">
+              <span>
+                {totalMinutes} dk <span className="font-semibold text-slate-500">({currentStage}. Kademe)</span>
+              </span>
+              <div className="w-8 h-0.5 bg-teal-500 rounded-full mt-0.5" />
+            </div>
             <span>
-              {totalMinutes} dk <span className="font-medium text-white/75">({currentStage}/14 Kademe)</span>
-            </span>
-            <span>
-              {remainingMinutes > 0 ? `${remainingMinutes} dk kalan` : 'Kritik Tavan Doldu'}
+              {remainingMinutes > 0 ? `${remainingMinutes} dk kaldı` : 'Maksimum Kademe'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Right Side: Kedi Maskotu (Şeffaf Arka Planlı Video) */}
-      <div className="relative z-10 flex-shrink-0 self-stretch -my-3 sm:-my-3.5 flex items-end justify-center pointer-events-none select-none">
-        <TransparentMascotVideo
-          src="/mascot.mp4"
-          className="h-full w-auto max-h-[120px] sm:max-h-[145px] md:max-h-[165px] max-w-[125px] sm:max-w-[155px] md:max-w-[185px] drop-shadow-[0_10px_20px_rgba(0,0,0,0.30)] transition-all duration-300"
-        />
+      {/* Right Side: Kedinin Kafasının Üstünde Açık Gri Çerçeve İçinde Karşılama Mesajı & Kedi Maskotu */}
+      <div className="relative z-10 flex-shrink-0 self-stretch -mb-1 pt-0.5 flex flex-col items-center justify-end select-none">
+        {/* Kedinin Kafasının Üstündeki Açık Gri Çerçeveli Mesaj */}
+        <div className="mb-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-200/80 shadow-2xs backdrop-blur-md">
+          <span className="text-[10px] sm:text-[11px] font-bold tracking-tight whitespace-nowrap text-slate-800">
+            Merhaba, {studentName || 'Ali Yılmaz'}!
+          </span>
+        </div>
+
+        <div className="pointer-events-none flex items-end justify-center">
+          <TransparentMascotVideo
+            src="/mascot.mp4"
+            className="h-full w-auto max-h-[78px] sm:max-h-[90px] md:max-h-[100px] max-w-[110px] sm:max-w-[130px] md:max-w-[145px] drop-shadow-[0_6px_14px_rgba(0,0,0,0.12)] transition-all duration-300"
+          />
+        </div>
       </div>
     </div>
   );

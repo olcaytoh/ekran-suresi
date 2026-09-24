@@ -129,7 +129,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
       setShowChangeInst(false);
       setTeacherInstCodeInput('');
     } catch (err: any) {
-      console.error('Error joining institution:', err);
+      console.warn('Institution join validation notice:', err.message || err);
       setTeacherInstFeedback({
         type: 'error',
         text: err.message || 'Kurum bulunamadı. Lütfen kurum kodunu doğru girdiğinizden emin olun.',
@@ -227,7 +227,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
       setShowChangeClass(false);
       setParentClassCodeInput('');
     } catch (err: any) {
-      console.error('Error joining classroom:', err);
+      console.warn('Classroom join validation notice:', err.message || err);
       setParentClassFeedback({
         type: 'error',
         text: err.message || 'Sınıf bulunamadı. Lütfen sınıf kodunu doğru girdiğinizden emin olun.',

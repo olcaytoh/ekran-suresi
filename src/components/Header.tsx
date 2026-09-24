@@ -48,129 +48,102 @@ export const Header: React.FC<HeaderProps> = ({
   const isStudentOnly = !isSuperAdmin && !isTeacher && (currentUser?.role === 'student' || currentUser?.userType === 'student');
   const isParent = !isSuperAdmin && !isTeacher && !isStudentOnly;
 
-  const stage = currentUser?.currentWeekStage ?? 0;
-  const isRed = stage >= 14;
-  const mascotImg = stage >= 13 ? '/keu.png' : stage >= 8 ? '/kedu.png' : '/kedd.png';
-
   return (
     <header className="flex-shrink-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs">
-      <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
-        {/* Sol Taraf: Logo & Belirgin Hesap Rozetleri */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden border border-slate-200/90 flex-shrink-0 bg-white shadow-xs p-0.5">
-            <img
-              src="/icon-512.png"
-              alt="Logo"
-              className="w-full h-full object-contain rounded-xl"
-              referrerPolicy="no-referrer"
-            />
-            <span
-              className={`absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                isRed ? 'bg-rose-500' : 'bg-emerald-500'
-              }`}
-            />
-          </div>
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 py-1 sm:py-1.5 flex items-center justify-between gap-2 min-h-[48px] sm:min-h-[52px]">
+        {/* Sol Taraf: Logo */}
+        <div className="flex items-center flex-shrink-0">
+          <img
+            src="/logo-header.png"
+            alt="Logo"
+            className="h-10 sm:h-12 w-auto max-w-[85px] sm:max-w-[105px] object-contain block select-none"
+            referrerPolicy="no-referrer"
+          />
+        </div>
 
-          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-            {/* Hangi hesap açık olduğunu belirten net rozetler */}
-            {isSuperAdmin && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-rose-600 text-white shadow-2xs whitespace-nowrap">
-                  <ShieldAlert className="w-3.5 h-3.5 text-white" />
-                  <span>Yönetici (Admin)</span>
+        {/* Orta Taraf: Soldaki Logo ile Sağdaki Butonlar (Mesajlar İkonu) Arasında Tam Ortalanmış Başlık */}
+        <div className="flex-1 flex items-center justify-center px-1 min-w-0">
+          {isSuperAdmin && (
+            <div className="flex flex-col items-center justify-center text-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-black bg-rose-600 text-white shadow-2xs whitespace-nowrap">
+                <ShieldAlert className="w-3.5 h-3.5 text-white" />
+                <span>Yönetici</span>
+              </span>
+              {currentUser?.institutionName && (
+                <span className="hidden sm:inline-block text-[10px] font-bold text-slate-500 truncate max-w-[150px] mt-0.5">
+                  {currentUser.institutionName}
                 </span>
-                {onSwitchRole && (
-                  <button
-                    type="button"
-                    onClick={() => onSwitchRole('teacher')}
-                    title="Öğretmen moduna geç ve sınıf seç"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
-                  >
-                    <GraduationCap className="w-3 h-3 text-indigo-600" />
-                    <span>Öğretmen Moduna Geç</span>
-                  </button>
-                )}
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
-            {isTeacher && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-indigo-600 text-white shadow-2xs whitespace-nowrap">
+          {isTeacher && (
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="flex items-center gap-1.5 flex-nowrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-black bg-indigo-600 text-white shadow-2xs whitespace-nowrap">
                   <GraduationCap className="w-3.5 h-3.5 text-white" />
                   <span>Öğretmen</span>
                 </span>
                 {currentUser?.className && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs whitespace-nowrap">
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold bg-slate-900 text-white shadow-2xs whitespace-nowrap">
                     <School className="w-3 h-3 text-indigo-300" />
                     <span>{currentUser.className}</span>
                   </span>
                 )}
-                {/* Admin yetkisine sahip kullanıcı öğretmen modundaysa sınıf değiştirme ve geri dönme butonları */}
-                {currentUser?.institutionAdminCode && (
-                  <>
-                    {onSelectClass && (
-                      <button
-                        type="button"
-                        onClick={onSelectClass}
-                        title="Farklı bir sınıf seç"
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
-                      >
-                        <RefreshCw className="w-3 h-3 text-slate-600" />
-                        <span>Sınıf Değiştir</span>
-                      </button>
-                    )}
-                    {onSwitchRole && (
-                      <button
-                        type="button"
-                        onClick={() => onSwitchRole('admin')}
-                        title="Yönetici (Admin) paneline geri dön"
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
-                      >
-                        <ShieldAlert className="w-3 h-3 text-rose-600" />
-                        <span>Yönetici Moduna Dön</span>
-                      </button>
-                    )}
-                  </>
-                )}
               </div>
-            )}
+              {/* Admin yetkisine sahip kullanıcı öğretmen modundaysa sınıf değiştirme ve yönetici paneline dönme butonları */}
+              {currentUser?.institutionAdminCode && (
+                <div className="inline-flex items-center gap-1 mt-0.5 flex-wrap justify-center">
+                  {onSelectClass && (
+                    <button
+                      type="button"
+                      onClick={onSelectClass}
+                      title="Farklı bir sınıf seç"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
+                    >
+                      <RefreshCw className="w-2.5 h-2.5 text-slate-600" />
+                      <span>Sınıf Değiştir</span>
+                    </button>
+                  )}
+                  {onSwitchRole && (
+                    <button
+                      type="button"
+                      onClick={() => onSwitchRole('admin')}
+                      title="Yönetici paneline geri dön"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
+                    >
+                      <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
+                      <span>Yönetici Paneli</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-            {isParent && (
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-emerald-600 text-white shadow-2xs whitespace-nowrap">
-                  <HeartHandshake className="w-3.5 h-3.5 text-white" />
-                  <span>Veli Hesabı</span>
+          {isParent && (
+            <div className="flex items-center gap-1.5 justify-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-black bg-emerald-600 text-white shadow-2xs whitespace-nowrap">
+                <HeartHandshake className="w-3.5 h-3.5 text-white" />
+                <span>Veli</span>
+              </span>
+              {currentUser?.className && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold bg-slate-800 text-white shadow-2xs whitespace-nowrap">
+                  <School className="w-3 h-3 text-emerald-300" />
+                  <span>{currentUser.className}</span>
                 </span>
-                {currentUser?.className && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-800 text-white shadow-2xs whitespace-nowrap">
-                    <School className="w-3 h-3 text-emerald-300" />
-                    <span>{currentUser.className}</span>
-                  </span>
-                )}
-                {currentUser?.studentName && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200 whitespace-nowrap">
-                    <span>Öğrenci:</span>
-                    <strong className="font-bold text-emerald-950">{currentUser.studentName}</strong>
-                  </span>
-                )}
-              </div>
-            )}
+              )}
+            </div>
+          )}
 
-            {isStudentOnly && (
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-black bg-sky-600 text-white shadow-2xs whitespace-nowrap">
-                  <User className="w-3.5 h-3.5 text-white" />
-                  <span>Öğrenci</span>
-                </span>
-                {currentUser?.className && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-slate-800 text-white shadow-2xs whitespace-nowrap">
-                    <School className="w-3 h-3 text-sky-300" />
-                    <span>{currentUser.className}</span>
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          {isStudentOnly && (
+            <div className="flex items-center gap-1.5 justify-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-black bg-sky-600 text-white shadow-2xs whitespace-nowrap">
+                <User className="w-3.5 h-3.5 text-white" />
+                <span>Öğrenci</span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Sağ Taraf: Aksiyonlar & Bilgiler */}

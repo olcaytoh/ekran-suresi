@@ -31,6 +31,7 @@ export interface UserProfile {
   currentWeekId: string;
   currentWeekMinutes: number;
   currentWeekStage: number; // 0 to 14
+  hasSeenParentGuide?: boolean;
   updatedAt?: any;
   createdAt?: any;
 }

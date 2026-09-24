@@ -30,7 +30,7 @@ import {
 
 interface AuthScreenProps {
   onDemoLogin?: (role: 'teacher' | 'parent' | 'admin') => void;
-  onLoginSuccess?: (profile: any) => void;
+  onLoginSuccess?: (profile: any, isNewRegistration?: boolean) => void;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSuccess }) => {
@@ -147,7 +147,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
             ? 'Yönetici hesabınız başarıyla oluşturuldu! Yönlendiriliyorsunuz...'
             : 'Veli hesabınız başarıyla oluşturuldu! Yönlendiriliyorsunuz...'
         );
-        onLoginSuccess?.(userProfile);
+        onLoginSuccess?.(userProfile, true);
       } catch (err: any) {
         console.warn('Registration error:', err);
         const isEmailInUse =
@@ -174,14 +174,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
         rememberMe
       );
       setSuccessMsg('Giriş başarılı! Yönlendiriliyorsunuz...');
-      onLoginSuccess?.(userProfile);
+      onLoginSuccess?.(userProfile, false);
     } catch (err: any) {
       console.warn('Sign in attempt:', err);
       if (cleanEmail.toLowerCase() === 'olcaytoh@gmail.com') {
         console.log('App owner Olcayto sign-in bypass triggered.');
         const guestProfile = await signInAsGuest('Olcayto (Yönetici)', cleanEmail, 'admin');
         setSuccessMsg('Hoş geldiniz Olcayto Bey! Başarıyla giriş yapıldı. Yönlendiriliyorsunuz...');
-        onLoginSuccess?.(guestProfile);
+        onLoginSuccess?.(guestProfile, false);
         if (onDemoLogin) onDemoLogin('admin');
         return;
       }
@@ -204,7 +204,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
             rememberMe
           );
           setSuccessMsg('Giriş başarılı! Hesabınız oluşturuldu, yönlendiriliyorsunuz...');
-          onLoginSuccess?.(registeredProfile);
+          onLoginSuccess?.(registeredProfile, true);
           return;
         } catch (regErr: any) {
           console.warn('Auto registration error:', regErr);
@@ -246,7 +246,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       const cleanEmail = email.trim() || undefined;
       const guestProfile = await signInAsGuest(cleanName, cleanEmail, role);
       setSuccessMsg('Şifresiz hızlı giriş başarılı! Yönlendiriliyorsunuz...');
-      onLoginSuccess?.(guestProfile);
+      onLoginSuccess?.(guestProfile, false);
       if (onDemoLogin && !guestProfile) {
         onDemoLogin(role);
       }
@@ -285,7 +285,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
           ? 'ogretmen@okul.k12.tr'
           : 'veli@example.com';
       const guestProfile = await signInAsGuest(guestName, guestEmail, targetRole);
-      onLoginSuccess?.(guestProfile);
+      onLoginSuccess?.(guestProfile, false);
       if (onDemoLogin) {
         onDemoLogin(targetRole);
       }
@@ -327,15 +327,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
         style={{ backgroundColor: 'transparent' }}
       />
 
-      {/* 3. Form & Buttons Layer: Positioned over the video's gray board without white frame */}
-      <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-end px-9 sm:px-11 pt-16 pb-3 sm:pb-6">
-        {/* Spacer to keep the cute mascot visible in the upper section */}
-        <div className="w-full max-w-sm sm:max-w-md h-[43vh] sm:h-[44vh] pointer-events-none shrink-0" />
-
-        {/* Buttons and Form aligned right over the gray board */}
+      {/* 3. Form & Buttons Layer: Arka panoya tam oturtulmuş, kenarları ferah ve pano sınırları belirgin form */}
+      <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-end px-10 sm:px-14 pb-[3.5vh] sm:pb-[4.5vh]">
+        {/* Buttons and Form vertically positioned to fill and balance the background board */}
         <div
           id="auth-form-card"
-          className="w-full max-w-sm sm:max-w-md flex flex-col gap-1.5 animate-in fade-in duration-300 pointer-events-auto"
+          className={`w-full max-w-[340px] sm:max-w-[370px] flex flex-col animate-in fade-in duration-300 pointer-events-auto transition-all ${
+            mode === 'login' ? 'gap-3 sm:gap-3.5' : 'gap-2'
+          }`}
         >
           {/* Role Badges (Öğretmen, Veli, Yönetici) - Köşeler arkadaki panonun ovalliğiyle birebir uyumlu */}
           <div className="grid grid-cols-3 gap-1.5">
