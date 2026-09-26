@@ -2,17 +2,15 @@ import React from 'react';
 import { UserProfile } from '../types';
 import { signOutUser } from '../lib/firebase';
 import {
-  Users,
-  LogOut,
-  GraduationCap,
-  Settings,
-  School,
-  ShieldAlert,
-  HeartHandshake,
-  User,
+  Check,
+  Mail,
   HelpCircle,
+  Settings,
+  LogOut,
+  ShieldAlert,
+  GraduationCap,
+  User,
   RefreshCw,
-  Bell,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -33,8 +31,6 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
-  isAdmin,
-  memberCount,
   onOpenClassSetup,
   onSignOut,
   onSwitchRole,
@@ -49,71 +45,96 @@ export const Header: React.FC<HeaderProps> = ({
   const isParent = !isSuperAdmin && !isTeacher && !isStudentOnly;
 
   return (
-    <header className="flex-shrink-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs">
-      <div className="max-w-3xl mx-auto px-3 sm:px-4 py-1 sm:py-1.5 flex items-center justify-between gap-2 min-h-[48px] sm:min-h-[52px]">
-        {/* Sol Taraf: Logo */}
-        <div className="flex items-center flex-shrink-0">
+    <header className="flex-shrink-0 z-40 px-2.5 sm:px-4 pt-2 sm:pt-2.5 pb-1 max-w-lg sm:max-w-xl md:max-w-2xl mx-auto w-full select-none">
+      {/* Frosted Glass Top Bar */}
+      <div
+        className="relative overflow-hidden rounded-2xl sm:rounded-3xl px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between select-none"
+        style={{
+          background: 'rgba(255, 255, 255, 0.20)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.35)',
+          boxShadow:
+            '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.5), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
+        }}
+      >
+        {/* Üstteki hafif parlama efekti */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[40%] pointer-events-none"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.25), transparent)',
+          }}
+        />
+
+        {/* Sol Taraf: Uygulama Logosu */}
+        <div className="relative z-10 flex items-center flex-shrink-0">
           <img
             src="/logo-header.png"
-            alt="Logo"
-            className="h-10 sm:h-12 w-auto max-w-[85px] sm:max-w-[105px] object-contain block select-none"
-            referrerPolicy="no-referrer"
+            alt="Haftalık Ekran Süresi"
+            className="h-7 sm:h-8 w-auto max-w-[110px] sm:max-w-[130px] object-contain select-none transition-transform hover:scale-105 drop-shadow-2xs"
+            draggable={false}
           />
         </div>
 
-        {/* Orta Taraf: Soldaki Logo ile Sağdaki Butonlar (Mesajlar İkonu) Arasında Tam Ortalanmış Başlık */}
-        <div className="flex-1 flex items-center justify-center px-1 min-w-0">
+        {/* Orta Alan: Logo ile İlk Buton (Mesaj) Arasında Ortalanmış Veli / Rol Başlığı */}
+        <div className="relative z-10 flex-1 flex items-center justify-center min-w-0 px-1 sm:px-2">
+          {isParent && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/70 backdrop-blur-md hover:bg-white/90 border border-white/80 text-emerald-800 shadow-2xs transition-colors">
+              <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[2.8]" />
+              <span className="font-bold text-xs sm:text-sm tracking-tight text-emerald-800">Veli</span>
+              {currentUser?.className && (
+                <span className="hidden sm:inline-block text-[11px] font-semibold text-emerald-700 ml-0.5">
+                  ({currentUser.className})
+                </span>
+              )}
+            </div>
+          )}
+
           {isSuperAdmin && (
-            <div className="flex flex-col items-center justify-center text-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-black bg-rose-600 text-white shadow-2xs whitespace-nowrap">
-                <ShieldAlert className="w-3.5 h-3.5 text-white" />
-                <span>Yönetici</span>
-              </span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-bold shadow-2xs">
+              <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-600" />
+              <span>Yönetici</span>
               {currentUser?.institutionName && (
-                <span className="hidden sm:inline-block text-[10px] font-bold text-slate-500 truncate max-w-[150px] mt-0.5">
-                  {currentUser.institutionName}
+                <span className="hidden sm:inline-block text-[11px] text-rose-600/80 ml-1">
+                  ({currentUser.institutionName})
                 </span>
               )}
             </div>
           )}
 
           {isTeacher && (
-            <div className="flex flex-col items-center justify-center text-center">
-              <div className="flex items-center gap-1.5 flex-nowrap">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-black bg-indigo-600 text-white shadow-2xs whitespace-nowrap">
-                  <GraduationCap className="w-3.5 h-3.5 text-white" />
-                  <span>Öğretmen</span>
-                </span>
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs sm:text-sm font-bold shadow-2xs">
+                <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
+                <span>Öğretmen</span>
                 {currentUser?.className && (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold bg-slate-900 text-white shadow-2xs whitespace-nowrap">
-                    <School className="w-3 h-3 text-indigo-300" />
-                    <span>{currentUser.className}</span>
+                  <span className="hidden sm:inline-block text-[11px] text-indigo-600/80 ml-1">
+                    ({currentUser.className})
                   </span>
                 )}
               </div>
-              {/* Admin yetkisine sahip kullanıcı öğretmen modundaysa sınıf değiştirme ve yönetici paneline dönme butonları */}
               {currentUser?.institutionAdminCode && (
-                <div className="inline-flex items-center gap-1 mt-0.5 flex-wrap justify-center">
+                <div className="inline-flex items-center gap-1">
                   {onSelectClass && (
                     <button
                       type="button"
                       onClick={onSelectClass}
                       title="Farklı bir sınıf seç"
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer active:scale-95"
                     >
-                      <RefreshCw className="w-2.5 h-2.5 text-slate-600" />
-                      <span>Sınıf Değiştir</span>
+                      <RefreshCw className="w-2.5 h-2.5 text-slate-500" />
+                      <span>Sınıf</span>
                     </button>
                   )}
                   {onSwitchRole && (
                     <button
                       type="button"
                       onClick={() => onSwitchRole('admin')}
-                      title="Yönetici paneline geri dön"
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer active:scale-95 shadow-2xs whitespace-nowrap"
+                      title="Yönetici paneline dön"
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all cursor-pointer active:scale-95"
                     >
                       <ShieldAlert className="w-2.5 h-2.5 text-rose-600" />
-                      <span>Yönetici Paneli</span>
+                      <span>Admin</span>
                     </button>
                   )}
                 </div>
@@ -121,87 +142,62 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
-          {isParent && (
-            <div className="flex items-center gap-1.5 justify-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-black bg-emerald-600 text-white shadow-2xs whitespace-nowrap">
-                <HeartHandshake className="w-3.5 h-3.5 text-white" />
-                <span>Veli</span>
-              </span>
-              {currentUser?.className && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold bg-slate-800 text-white shadow-2xs whitespace-nowrap">
-                  <School className="w-3 h-3 text-emerald-300" />
-                  <span>{currentUser.className}</span>
-                </span>
-              )}
-            </div>
-          )}
-
           {isStudentOnly && (
-            <div className="flex items-center gap-1.5 justify-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs sm:text-sm font-black bg-sky-600 text-white shadow-2xs whitespace-nowrap">
-                <User className="w-3.5 h-3.5 text-white" />
-                <span>Öğrenci</span>
-              </span>
+            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 text-xs sm:text-sm font-bold shadow-2xs">
+              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-600" />
+              <span>Öğrenci</span>
             </div>
           )}
         </div>
 
-        {/* Sağ Taraf: Aksiyonlar & Bilgiler */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Sınıf üye sayısı (mobilde gizli, masaüstünde görünür) */}
-          {!isSuperAdmin && memberCount > 0 && (
-            <span className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
-              <Users className="w-3 h-3 text-slate-500" />
-              <span>{memberCount} Öğrenci</span>
-            </span>
-          )}
+        {/* Sağ Taraf: Kapsül İçinde 3 Buton (Mesaj, Rehber, Ayarlar) ve Dışında Çıkış Butonu */}
+        <div className="relative z-10 flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+          {/* Kapsül: 3 İkon (Buzlu cam kapsül) */}
+          <div className="flex items-center gap-3 sm:gap-3.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-white/60 hover:bg-white/75 border border-white/80 shadow-2xs backdrop-blur-md">
+            {/* 1. Mesajlar / Bildirimler */}
+            {onOpenInbox && (
+              <button
+                type="button"
+                id="btn-header-inbox"
+                onClick={onOpenInbox}
+                title="Mesajlar ve Bildirimler"
+                className="relative text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer active:scale-95 flex items-center justify-center p-0.5"
+              >
+                <Mail className="w-4 h-4" strokeWidth={1.9} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white animate-pulse" />
+                )}
+              </button>
+            )}
 
-          {/* Gelen Kutusu / Bildirimler Butonu */}
-          {onOpenInbox && (
-            <button
-              type="button"
-              id="btn-header-inbox"
-              onClick={onOpenInbox}
-              title="Mesajlar ve Bildirimler"
-              className="relative w-8 h-8 rounded-xl flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 transition-colors cursor-pointer active:scale-95 shadow-2xs"
-            >
-              <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-white animate-pulse">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-          )}
+            {/* 2. Uygulama Rehberi (Nasıl Kullanılır?) */}
+            {onOpenParentGuide && (
+              <button
+                type="button"
+                id="btn-header-parent-guide"
+                onClick={onOpenParentGuide}
+                title="Uygulama Rehberi (Nasıl Kullanılır?)"
+                className="text-slate-700 hover:text-emerald-600 transition-colors cursor-pointer active:scale-95 flex items-center justify-center p-0.5"
+              >
+                <HelpCircle className="w-4 h-4" strokeWidth={1.9} />
+              </button>
+            )}
 
-          {/* Veli Bilgilendirme Rehberi Butonu */}
-          {!isTeacher && !isSuperAdmin && onOpenParentGuide && (
-            <button
-              type="button"
-              id="btn-header-parent-guide"
-              onClick={onOpenParentGuide}
-              title="Uygulama Rehberi (Nasıl ve Ne Amaçla Kullanılır?)"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-all shadow-2xs cursor-pointer active:scale-95"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">Nasıl Kullanılır?</span>
-            </button>
-          )}
+            {/* 3. Ayarlar */}
+            {onOpenClassSetup && (
+              <button
+                type="button"
+                id="btn-open-class-settings"
+                onClick={onOpenClassSetup}
+                title="Sınıf ve Profil Ayarları"
+                className="text-slate-700 hover:text-slate-900 transition-colors cursor-pointer active:scale-95 flex items-center justify-center p-0.5"
+              >
+                <Settings className="w-4 h-4" strokeWidth={1.9} />
+              </button>
+            )}
+          </div>
 
-          {/* Sınıf / Profil Ayarları Butonu */}
-          {onOpenClassSetup && (
-            <button
-              type="button"
-              id="btn-open-class-settings"
-              onClick={onOpenClassSetup}
-              title="Sınıf ve Rol Ayarları"
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* Çıkış Yap Butonu */}
+          {/* 4. Çıkış Yap Butonu (Kapsülün hemen sağında) */}
           {currentUser && (
             <button
               type="button"
@@ -214,9 +210,9 @@ export const Header: React.FC<HeaderProps> = ({
                 }
               }}
               title="Çıkış Yap"
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer active:scale-95"
+              className="text-slate-700 hover:text-rose-600 hover:bg-white/40 rounded-xl p-1 sm:p-1.5 transition-all cursor-pointer active:scale-95 flex items-center justify-center"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4" strokeWidth={1.9} />
             </button>
           )}
         </div>

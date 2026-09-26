@@ -262,37 +262,75 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
   });
 
   return (
-    <div className="w-full flex flex-col gap-2 pb-20 sm:pb-24">
-      {/* 1. Top Bar: Teacher Calendar Editor Button & Active Week Date Info */}
-      <div className="flex items-center justify-between px-1 pt-1 flex-shrink-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-black text-slate-800">
+    <div className="w-full flex flex-col gap-2.5 pb-20 sm:pb-24">
+      {/* 1. Top Bar: Teacher Calendar Editor Button & Active Week Date Info - Glass Frame */}
+      <div
+        className="relative z-10 rounded-3xl px-3.5 py-2.5 overflow-hidden flex items-center justify-between gap-2 flex-wrap"
+        style={{
+          background: 'rgba(255, 255, 255, 0.28)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: '1.5px solid rgba(255, 255, 255, 0.7)',
+          boxShadow: '0 8px 28px rgba(30, 64, 175, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+        }}
+      >
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-3xl" />
+        <div className="relative z-10 flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs sm:text-sm font-black text-slate-900 drop-shadow-2xs">
             Haftalık Kutular (35 Hafta)
           </span>
           {activeWeekData && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200">
-              {activeWeekIndex}. Hafta Aktif ({activeWeekData.label})
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full text-sky-900 border flex items-center gap-1 shadow-2xs"
+              style={{
+                background: 'rgba(224, 242, 254, 0.65)',
+                borderColor: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
+              <Sparkles className="w-2.5 h-2.5 text-sky-600" />
+              <span>{activeWeekIndex}. Hafta Aktif ({activeWeekData.label})</span>
             </span>
           )}
           {isTeacher && classrooms.length === 1 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-              <School className="w-3 h-3 text-indigo-500" />
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full text-indigo-950 border flex items-center gap-1 shadow-2xs"
+              style={{
+                background: 'rgba(238, 242, 255, 0.65)',
+                borderColor: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
+              <School className="w-3 h-3 text-indigo-600" />
               <span>{classrooms[0].name} ({students.length} Öğrenci)</span>
             </span>
           )}
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200/80 text-slate-600 flex items-center gap-0.5">
-            <ChevronDown className="w-3 h-3 text-slate-500 animate-bounce" />
+          <span
+            className="text-[9px] font-bold px-2 py-0.5 rounded-full text-slate-700 border flex items-center gap-1 shadow-2xs"
+            style={{
+              background: 'rgba(255, 255, 255, 0.55)',
+              borderColor: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(10px)',
+            }}
+          >
+            <ChevronDown className="w-3 h-3 text-slate-600 animate-bounce" />
             <span>1 - 35. Hafta</span>
           </span>
         </div>
 
         {/* Teacher Actions: Edit Calendar & Export Stats Buttons */}
         {isTeacher && (
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="relative z-10 flex items-center gap-1.5 flex-shrink-0">
             <button
               type="button"
               onClick={() => setIsExportModalOpen(true)}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+              className="text-[11px] font-bold px-2.5 py-1 rounded-xl text-emerald-900 border transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+              style={{
+                background: 'rgba(236, 253, 245, 0.75)',
+                borderColor: 'rgba(255, 255, 255, 0.9)',
+                boxShadow: '0 2px 10px rgba(16, 185, 129, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(12px)',
+              }}
               title="Sınıf istatistiklerini PDF / Excel olarak dışa aktar"
             >
               <span>📊 Rapor Al</span>
@@ -300,7 +338,13 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
             <button
               type="button"
               onClick={() => setIsCalendarModalOpen(true)}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+              className="text-[11px] font-bold px-2.5 py-1 rounded-xl text-indigo-900 border transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+              style={{
+                background: 'rgba(238, 242, 255, 0.75)',
+                borderColor: 'rgba(255, 255, 255, 0.9)',
+                boxShadow: '0 2px 10px rgba(99, 102, 241, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(12px)',
+              }}
               title="Hafta tarihlerini ve tatilleri düzenleyin"
             >
               <Calendar className="w-3.5 h-3.5 text-indigo-600" />
@@ -310,17 +354,34 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
         )}
       </div>
 
-      {/* Birden çok sınıf varsa sınıf seçici sekmeleri, tek sınıf varsa net bilgi rozeti */}
+      {/* Birden çok sınıf varsa sınıf seçici sekmeleri */}
       {isTeacher && classrooms.length > 1 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar px-1">
+        <div
+          className="relative z-10 rounded-2xl p-1.5 flex items-center gap-1.5 overflow-x-auto custom-scrollbar"
+          style={{
+            background: 'rgba(255, 255, 255, 0.28)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1.5px solid rgba(255, 255, 255, 0.7)',
+            boxShadow: '0 8px 28px rgba(30, 64, 175, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+          }}
+        >
           <button
             type="button"
             onClick={() => setSelectedClassId('all')}
-            className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+            className={`px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
               selectedClassId === 'all'
-                ? 'bg-slate-900 text-white shadow-2xs'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-800 hover:bg-white/40'
             }`}
+            style={
+              selectedClassId === 'all'
+                ? undefined
+                : {
+                    background: 'rgba(255, 255, 255, 0.35)',
+                    border: '1px solid rgba(255, 255, 255, 0.6)',
+                  }
+            }
           >
             Tüm Sınıflar ({students.length})
           </button>
@@ -330,16 +391,25 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                 s.classId === c.id ||
                 (s.className && s.className.trim().toLowerCase() === c.name.trim().toLowerCase())
             ).length;
+            const isSelected = selectedClassId === c.id;
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setSelectedClassId(c.id)}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
-                  selectedClassId === c.id
-                    ? 'bg-indigo-600 text-white shadow-2xs'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                className={`px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-800 hover:bg-white/40'
                 }`}
+                style={
+                  isSelected
+                    ? undefined
+                    : {
+                        background: 'rgba(255, 255, 255, 0.35)',
+                        border: '1px solid rgba(255, 255, 255, 0.6)',
+                      }
+                }
               >
                 {c.name} ({count})
               </button>
@@ -348,16 +418,21 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
         </div>
       )}
 
-      {isTeacher && classrooms.length === 1 && (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-900 text-xs font-bold w-fit">
-          <School className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
-          <span>{classrooms[0].name} ({activeStudentsForModal.length} Kayıtlı Öğrenci)</span>
-        </div>
-      )}
+      {/* 2. The 35 Boxes Grid (5 Columns x 7 Rows) - Full Glass Outer Frame */}
+      <div
+        className="relative z-10 rounded-3xl p-2.5 sm:p-3.5 overflow-hidden"
+        style={{
+          background: 'rgba(255, 255, 255, 0.28)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: '1.5px solid rgba(255, 255, 255, 0.7)',
+          boxShadow: '0 8px 28px rgba(30, 64, 175, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+        }}
+      >
+        {/* Üst cam parlama efekti */}
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-3xl" />
 
-      {/* 2. The 35 Boxes Grid (5 Columns x 7 Rows) - Starting right at the top */}
-      <div className="bg-white/95 backdrop-blur-md rounded-2xl p-2 sm:p-2.5 border border-slate-200/90 shadow-2xs">
-        <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+        <div className="relative z-10 grid grid-cols-5 gap-1.5 sm:gap-2">
           {weeksList.map((item) => {
             const isSelected = selectedWeekNum === item.weekNum;
 
@@ -369,34 +444,60 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                   type="button"
                   id={`badge-week-${item.weekNum}`}
                   onClick={() => setSelectedWeekNum(item.weekNum)}
-                  className={`relative rounded-2xl p-1 flex flex-col items-center justify-between cursor-pointer transition-all min-h-[76px] sm:min-h-[84px] border bg-gradient-to-b from-purple-50/90 to-purple-100/60 border-purple-200/90 shadow-2xs ${
+                  className={`relative rounded-2xl p-1 sm:p-1.5 flex flex-col items-center justify-between cursor-pointer transition-all duration-150 active:scale-95 min-h-[80px] sm:min-h-[88px] overflow-hidden select-none ${
                     item.isCurrent
                       ? 'ring-2 ring-purple-500 ring-offset-1 scale-[1.03] z-10'
                       : isSelected
-                      ? 'ring-2 ring-purple-800 scale-[1.02]'
-                      : 'hover:border-purple-300 hover:shadow-xs active:scale-95'
+                      ? 'ring-2 ring-purple-700 scale-[1.02] z-10'
+                      : 'hover:scale-[1.02]'
                   }`}
+                  style={{
+                    background: item.isCurrent
+                      ? 'rgba(243, 232, 255, 0.45)'
+                      : isSelected
+                      ? 'rgba(243, 232, 255, 0.40)'
+                      : 'rgba(255, 255, 255, 0.28)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: item.isCurrent
+                      ? '1.5px solid rgba(168, 85, 247, 0.85)'
+                      : isSelected
+                      ? '1.5px solid rgba(147, 51, 234, 0.85)'
+                      : '1.5px solid rgba(255, 255, 255, 0.7)',
+                    boxShadow: item.isCurrent
+                      ? '0 8px 24px rgba(168, 85, 247, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.85)'
+                      : '0 4px 16px rgba(30, 64, 175, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                  }}
                   title={`${item.weekNum}. Hafta (${item.holidayName || 'Tatil'}) - ${item.dateLabel}`}
                 >
+                  {/* Üst cam ışıma efekti */}
+                  <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/45 to-transparent pointer-events-none rounded-t-2xl" />
+
                   {/* Top: Week Number */}
-                  <div className="text-center w-full">
-                    <span className="text-[10px] sm:text-[11px] font-black text-purple-900 leading-none block">
+                  <div className="relative z-10 text-center w-full">
+                    <span className="text-[10px] sm:text-[11px] font-black text-purple-950 leading-none block">
                       {item.weekNum}.H
                     </span>
-                    <span className="text-[7.5px] sm:text-[8px] font-bold text-purple-600/90 leading-none mt-0.5 block truncate">
+                    <span className="text-[7.5px] sm:text-[8px] font-bold text-purple-800 leading-none mt-0.5 block truncate">
                       {item.dateLabel}
                     </span>
                   </div>
 
                   {/* Center: Vacation / Holiday Icon */}
-                  <div className="relative flex-1 w-full flex flex-col items-center justify-center my-0.5">
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-200/70 text-purple-700 flex items-center justify-center shadow-inner">
-                      <Palmtree className="w-4 h-4 sm:w-5 sm:h-5 text-purple-700" />
+                  <div className="relative z-10 flex-1 w-full flex flex-col items-center justify-center my-0.5">
+                    <div
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shadow-inner"
+                      style={{
+                        background: 'rgba(216, 180, 254, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.8)',
+                      }}
+                    >
+                      <Palmtree className="w-4 h-4 sm:w-5 sm:h-5 text-purple-800" />
                     </div>
                   </div>
 
                   {/* Bottom: Holiday Name Tag */}
-                  <span className="text-[7.5px] sm:text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none bg-purple-600 text-white shadow-2xs max-w-full truncate">
+                  <span className="relative z-10 text-[7.5px] sm:text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none bg-purple-600/90 text-white shadow-2xs max-w-full truncate border border-purple-400/50">
                     {item.holidayName || 'Tatil'}
                   </span>
                 </button>
@@ -411,36 +512,52 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                   type="button"
                   id={`badge-week-${item.weekNum}`}
                   onClick={() => setSelectedWeekNum(item.weekNum)}
-                  className={`relative rounded-2xl p-1 flex flex-col items-center justify-between cursor-pointer transition-all min-h-[76px] sm:min-h-[84px] border ${
+                  className={`relative rounded-2xl p-1 sm:p-1.5 flex flex-col items-center justify-between cursor-pointer transition-all duration-150 active:scale-95 min-h-[80px] sm:min-h-[88px] overflow-hidden select-none ${
                     isSelected
-                      ? 'ring-2 ring-slate-700 bg-slate-100 border-slate-300 scale-[1.03] shadow-xs'
-                      : 'bg-slate-50/70 border-slate-200/80 hover:bg-slate-100 hover:border-slate-300 active:scale-95'
+                      ? 'ring-2 ring-slate-700 scale-[1.03] z-10 shadow-xs'
+                      : 'hover:scale-[1.02]'
                   }`}
+                  style={{
+                    background: isSelected
+                      ? 'rgba(255, 255, 255, 0.40)'
+                      : 'rgba(255, 255, 255, 0.22)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: isSelected
+                      ? '1.5px solid rgba(255, 255, 255, 0.9)'
+                      : '1.5px solid rgba(255, 255, 255, 0.65)',
+                    boxShadow: isSelected
+                      ? '0 6px 20px rgba(30, 64, 175, 0.16), inset 0 1px 1px rgba(255, 255, 255, 0.85)'
+                      : '0 4px 14px rgba(30, 64, 175, 0.10), inset 0 1px 1px rgba(255, 255, 255, 0.75)',
+                  }}
                   title={`${item.weekNum}. Hafta (Gelecek Kutu) - ${item.dateLabel}`}
                 >
+                  {/* Üst cam ışıma efekti */}
+                  <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-2xl" />
+
                   {/* Top: Week Number & Date */}
-                  <div className="text-center w-full">
-                    <span className="text-[10px] sm:text-[11px] font-black text-slate-400 leading-none block">
+                  <div className="relative z-10 text-center w-full">
+                    <span className="text-[10px] sm:text-[11px] font-black text-slate-700 leading-none block">
                       {item.weekNum}.H
                     </span>
-                    <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-400/80 leading-none mt-0.5 block truncate">
+                    <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 leading-none mt-0.5 block truncate">
                       {item.dateLabel}
                     </span>
                   </div>
 
                   {/* Center: kutu.png enlarged to full size with locked state */}
-                  <div className="relative flex-1 w-full flex items-center justify-center my-0.5">
+                  <div className="relative z-10 flex-1 w-full flex items-center justify-center my-0.5">
                     <img
                       src="/kutu.png"
                       alt="Kilitli Kutu"
-                      className="w-8 h-8 sm:w-10 sm:h-10 object-contain opacity-35 filter grayscale"
+                      className="w-8 h-8 sm:w-10 sm:h-10 object-contain opacity-40 filter grayscale drop-shadow-2xs"
                       referrerPolicy="no-referrer"
                     />
-                    <Lock className="w-2.5 h-2.5 text-slate-400 absolute bottom-0 right-1 drop-shadow-xs" />
+                    <Lock className="w-2.5 h-2.5 text-slate-600 absolute bottom-0 right-1 drop-shadow-xs" />
                   </div>
 
                   {/* Bottom: Status */}
-                  <span className="text-[8px] font-bold text-slate-400 leading-none">
+                  <span className="relative z-10 text-[8px] font-black text-slate-700 leading-none px-1.5 py-0.5 rounded-md bg-white/40 border border-white/60">
                     Bekliyor
                   </span>
                 </button>
@@ -456,32 +573,52 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                 type="button"
                 id={`badge-week-${item.weekNum}`}
                 onClick={() => setSelectedWeekNum(item.weekNum)}
-                className={`relative rounded-2xl p-1 flex flex-col items-center justify-between cursor-pointer transition-all group min-h-[76px] sm:min-h-[84px] border ${
+                className={`relative rounded-2xl p-1 sm:p-1.5 flex flex-col items-center justify-between cursor-pointer transition-all duration-150 active:scale-95 group min-h-[80px] sm:min-h-[88px] overflow-hidden select-none ${
                   item.isCurrent
-                    ? 'ring-2 ring-sky-500 ring-offset-1 bg-sky-50/80 border-sky-300 scale-[1.04] shadow-md z-10'
+                    ? 'ring-2 ring-sky-500 ring-offset-1 scale-[1.04] shadow-md z-10'
                     : isSelected
-                    ? 'ring-2 ring-slate-900 bg-slate-50 border-slate-400 scale-[1.03] shadow-sm'
-                    : 'bg-white border-slate-200/90 hover:border-slate-300 hover:bg-slate-50/80 hover:shadow-2xs active:scale-95'
+                    ? 'ring-2 ring-slate-800 scale-[1.03] shadow-sm z-10'
+                    : 'hover:scale-[1.02]'
                 }`}
+                style={{
+                  background: item.isCurrent
+                    ? 'rgba(224, 242, 254, 0.50)'
+                    : isSelected
+                    ? 'rgba(255, 255, 255, 0.45)'
+                    : 'rgba(255, 255, 255, 0.28)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  border: item.isCurrent
+                    ? '1.5px solid rgba(56, 189, 248, 0.85)'
+                    : isSelected
+                    ? '1.5px solid rgba(15, 23, 42, 0.7)'
+                    : '1.5px solid rgba(255, 255, 255, 0.7)',
+                  boxShadow: item.isCurrent
+                    ? '0 8px 24px rgba(14, 165, 233, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.85)'
+                    : '0 8px 24px rgba(30, 64, 175, 0.16), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                }}
                 title={`${item.weekNum}. Hafta - ${item.dateLabel}`}
               >
                 {/* Active current week indicator dot */}
                 {item.isCurrent && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-sky-500 rounded-full border-2 border-white animate-pulse" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-sky-500 rounded-full border-2 border-white animate-pulse z-20" />
                 )}
 
+                {/* Üst cam ışıma efekti */}
+                <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/45 to-transparent pointer-events-none rounded-t-2xl" />
+
                 {/* Top: Week Number & Date */}
-                <div className="text-center w-full">
-                  <span className="text-[10px] sm:text-[11px] font-black text-slate-800 leading-none block">
+                <div className="relative z-10 text-center w-full">
+                  <span className="text-[10px] sm:text-[11px] font-black text-slate-900 leading-none block drop-shadow-2xs">
                     {item.weekNum}.H
                   </span>
-                  <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 leading-none mt-0.5 block truncate">
+                  <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-600 leading-none mt-0.5 block truncate">
                     {item.dateLabel}
                   </span>
                 </div>
 
                 {/* Center: kutu.png enlarged to fill box nicely with vibrant color glow */}
-                <div className="relative flex-1 w-full flex items-center justify-center my-0.5">
+                <div className="relative z-10 flex-1 w-full flex items-center justify-center my-0.5">
                   <img
                     src="/kutu.png"
                     alt={item.badgeInfo.name}
@@ -492,13 +629,67 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
 
                 {/* Bottom: Color and duration pill */}
                 <span
-                  className={`text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shadow-2xs ${pillClass}`}
+                  className={`relative z-10 text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shadow-2xs border border-white/50 ${pillClass}`}
                 >
                   {item.minutes} dk
                 </span>
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* 3. Badge Categories Legend - Glass Card */}
+      <div
+        className="relative z-10 rounded-3xl p-3 sm:p-3.5 overflow-hidden"
+        style={{
+          background: 'rgba(255, 255, 255, 0.28)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: '1.5px solid rgba(255, 255, 255, 0.7)',
+          boxShadow: '0 8px 28px rgba(30, 64, 175, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+        }}
+      >
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-3xl" />
+        <div className="relative z-10 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-slate-900 drop-shadow-2xs">
+              Kutu Seviyeleri ve Renkleri
+            </span>
+            <span className="text-[10px] font-bold text-slate-600">
+              1 Hafta = 1 Kutu
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2">
+            {Object.values(BADGE_LEVELS).map((lvl) => (
+              <div
+                key={lvl.key}
+                className="relative rounded-2xl p-2 overflow-hidden flex flex-col justify-between"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.32)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.7)',
+                  boxShadow: '0 4px 14px rgba(30, 64, 175, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                }}
+              >
+                <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent pointer-events-none rounded-t-2xl" />
+                <div className="relative z-10 flex items-center justify-between gap-1 mb-1">
+                  <span className="text-[11px] font-black text-slate-900 truncate">
+                    {lvl.name}
+                  </span>
+                  <span
+                    className={`text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shadow-2xs ${lvl.pillClass}`}
+                  >
+                    {lvl.timeRange}
+                  </span>
+                </div>
+                <p className="relative z-10 text-[9px] text-slate-600 leading-tight">
+                  {lvl.description}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -552,42 +743,73 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
         />
       )}
 
-      {/* Parent Week Detail Modal */}
+      {/* Parent Week Detail Modal - Glass Modal */}
       {!isTeacher && selectedWeekNum !== null && (() => {
         const item = weeksList.find((w) => w.weekNum === selectedWeekNum);
         if (!item) return null;
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-            <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-slate-200 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 mx-auto flex items-center justify-center font-black text-base">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
+            <div
+              className="relative rounded-3xl p-5 max-w-sm w-full overflow-hidden text-center space-y-3"
+              style={{
+                background: 'rgba(255, 255, 255, 0.75)',
+                backdropFilter: 'blur(28px)',
+                WebkitBackdropFilter: 'blur(28px)',
+                border: '1.5px solid rgba(255, 255, 255, 0.9)',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
+              }}
+            >
+              {/* Üst cam ışıma efekti */}
+              <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/50 to-transparent pointer-events-none rounded-t-3xl" />
+
+              <div
+                className="relative z-10 w-12 h-12 rounded-2xl mx-auto flex items-center justify-center font-black text-base shadow-xs"
+                style={{
+                  background: 'rgba(224, 242, 254, 0.65)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.9)',
+                  color: '#0369a1',
+                }}
+              >
                 {item.weekNum}
               </div>
-              <div>
+              <div className="relative z-10">
                 <h4 className="text-base font-black text-slate-900">{item.weekNum}. Hafta Detayı</h4>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5">{item.dateLabel}</p>
+                <p className="text-xs font-semibold text-slate-600 mt-0.5">{item.dateLabel}</p>
               </div>
 
               {item.isHoliday ? (
-                <div className="p-3 bg-purple-50 rounded-2xl border border-purple-200 text-purple-900">
+                <div
+                  className="relative z-10 p-3 rounded-2xl text-purple-950"
+                  style={{
+                    background: 'rgba(243, 232, 255, 0.6)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.8)',
+                  }}
+                >
                   <div className="font-black text-sm flex items-center justify-center gap-1">
-                    <Palmtree className="w-4 h-4 text-purple-600" />
+                    <Palmtree className="w-4 h-4 text-purple-700" />
                     <span>{item.holidayName || 'Tatil Haftası'}</span>
                   </div>
-                  <p className="text-xs text-purple-700 mt-1">Okullar tatil olduğu için ekran süresi kaydı serbesttir.</p>
+                  <p className="text-xs text-purple-800 mt-1">Okullar tatil olduğu için ekran süresi kaydı serbesttir.</p>
                 </div>
               ) : (
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div
+                  className="relative z-10 p-3 rounded-2xl space-y-2"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.55)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.8)',
+                  }}
+                >
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-600">Rozet Seviyesi:</span>
+                    <span className="font-bold text-slate-700">Rozet Seviyesi:</span>
                     <span className={`font-black px-2 py-0.5 rounded-md ${item.badgeInfo.pillClass}`}>
                       {item.badgeInfo.name}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-600">Ekran Süresi:</span>
-                    <span className="font-black text-slate-900">{item.minutes} dk ({item.stage}. Kademe)</span>
+                    <span className="font-bold text-slate-700">Ekran Süresi:</span>
+                    <span className="font-black text-slate-950">{item.minutes} dk ({item.stage}. Kademe)</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 italic pt-1 border-t border-slate-200">
+                  <p className="text-[11px] text-slate-600 italic pt-1 border-t border-slate-200/80">
                     {item.badgeInfo.description}
                   </p>
                 </div>
@@ -596,7 +818,7 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedWeekNum(null)}
-                className="btn-3d-cyan w-full py-2 rounded-xl text-xs font-black cursor-pointer"
+                className="relative z-10 btn-3d-cyan w-full py-2 rounded-xl text-xs font-black cursor-pointer shadow-md"
               >
                 Kapat
               </button>

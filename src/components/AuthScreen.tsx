@@ -328,24 +328,28 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       />
 
       {/* 3. Form & Buttons Layer: Arka panoya tam oturtulmuş, kenarları ferah ve pano sınırları belirgin form */}
-      <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-end px-10 sm:px-14 pb-[3.5vh] sm:pb-[4.5vh]">
+      <div
+        className={`relative z-10 min-h-screen w-full flex flex-col items-center justify-end px-10 sm:px-14 transition-all duration-200 ${
+          mode === 'register' ? 'pb-[3vh] sm:pb-[4vh]' : 'pb-[3.5vh] sm:pb-[4.5vh]'
+        }`}
+      >
         {/* Buttons and Form vertically positioned to fill and balance the background board */}
         <div
           id="auth-form-card"
           className={`w-full max-w-[340px] sm:max-w-[370px] flex flex-col animate-in fade-in duration-300 pointer-events-auto transition-all ${
-            mode === 'login' ? 'gap-3 sm:gap-3.5' : 'gap-2'
+            mode === 'login' ? 'gap-2.5 sm:gap-3' : 'gap-2 sm:gap-2.5'
           }`}
         >
-          {/* Role Badges (Öğretmen, Veli, Yönetici) - Köşeler arkadaki panonun ovalliğiyle birebir uyumlu */}
+          {/* Role Badges (Öğretmen, Veli, Yönetici) - "Sınıfım" panosundaki renkli parlayan cam kart stili */}
           <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
               id="tab-role-teacher"
               onClick={() => setRole('teacher')}
-              className={`py-1 px-1 rounded-tl-2xl rounded-tr-lg rounded-b-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-7 ${
+              className={`py-1.5 px-1 rounded-2xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-8 border-2 backdrop-blur-md ${
                 role === 'teacher'
-                  ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-300'
-                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-2xs backdrop-blur-xs'
+                  ? 'bg-indigo-600/85 text-white border-indigo-300 shadow-[0_0_16px_rgba(79,70,229,0.55),inset_0_1px_0_rgba(255,255,255,0.35)]'
+                  : 'bg-gradient-to-br from-indigo-200/60 via-sky-100/50 to-white/40 hover:from-indigo-200/75 text-indigo-950 border-indigo-300/70 shadow-[0_0_14px_rgba(99,102,241,0.35),inset_0_1px_0_rgba(255,255,255,0.5)]'
               }`}
             >
               <GraduationCap className="w-3.5 h-3.5 shrink-0" />
@@ -356,10 +360,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               type="button"
               id="tab-role-parent"
               onClick={() => setRole('parent')}
-              className={`py-1 px-1 rounded-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-7 ${
+              className={`py-1.5 px-1 rounded-2xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-8 border-2 backdrop-blur-md ${
                 role === 'parent'
-                  ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-300'
-                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-2xs backdrop-blur-xs'
+                  ? 'bg-emerald-600/85 text-white border-emerald-300 shadow-[0_0_16px_rgba(5,150,105,0.55),inset_0_1px_0_rgba(255,255,255,0.35)]'
+                  : 'bg-gradient-to-br from-emerald-200/60 via-teal-100/50 to-white/40 hover:from-emerald-200/75 text-emerald-950 border-emerald-300/70 shadow-[0_0_14px_rgba(16,185,129,0.35),inset_0_1px_0_rgba(255,255,255,0.5)]'
               }`}
             >
               <Users className="w-3.5 h-3.5 shrink-0" />
@@ -370,10 +374,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               type="button"
               id="tab-role-admin"
               onClick={() => setRole('admin')}
-              className={`py-1 px-1 rounded-tr-2xl rounded-tl-lg rounded-b-lg text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-7 ${
+              className={`py-1.5 px-1 rounded-2xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer h-8 border-2 backdrop-blur-md ${
                 role === 'admin'
-                  ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-300'
-                  : 'bg-white/85 hover:bg-white text-slate-800 border border-slate-300/80 shadow-2xs backdrop-blur-xs'
+                  ? 'bg-rose-600/85 text-white border-rose-300 shadow-[0_0_16px_rgba(225,29,72,0.55),inset_0_1px_0_rgba(255,255,255,0.35)]'
+                  : 'bg-gradient-to-br from-amber-200/60 via-rose-100/50 to-white/40 hover:from-amber-200/75 text-rose-950 border-amber-300/70 shadow-[0_0_14px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.5)]'
               }`}
             >
               <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
@@ -382,7 +386,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
           </div>
 
           {/* Mode Switcher: Giriş Yap | Üye Ol */}
-          <div className="flex bg-black/15 backdrop-blur-xs p-1 rounded-2xl border border-white/20">
+          <div className="flex bg-gradient-to-br from-white/40 via-white/25 to-white/40 backdrop-blur-sm p-1 rounded-2xl border border-white/60 shadow-md">
             <button
               type="button"
               id="tab-sub-login"
@@ -392,7 +396,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               }}
               className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 mode === 'login'
-                  ? 'bg-white text-indigo-700 shadow-md'
+                  ? `bg-white ${role === 'parent' ? 'text-emerald-700' : role === 'admin' ? 'text-rose-700' : 'text-indigo-700'} shadow-md`
                   : 'text-slate-800 hover:text-slate-950 font-bold'
               }`}
             >
@@ -409,7 +413,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               }}
               className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 mode === 'register'
-                  ? 'bg-indigo-600 text-white shadow-md'
+                  ? `${role === 'parent' ? 'bg-emerald-600' : role === 'admin' ? 'bg-rose-600' : 'bg-indigo-600'} text-white shadow-md`
                   : 'text-slate-800 hover:text-slate-950 font-bold'
               }`}
             >
@@ -464,7 +468,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
           )}
 
           {/* Form Fields */}
-          <form onSubmit={handleSubmit} className="space-y-1">
+          <form onSubmit={handleSubmit} className={mode === 'register' ? 'space-y-1 sm:space-y-1.5' : 'space-y-1.5'}>
             {/* Ad Soyad (Only in register mode) */}
             {mode === 'register' && (
               <div className="relative">
@@ -478,7 +482,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Adınız Soyadınız"
-                  className="w-full pl-9 pr-3 py-2 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl text-xs sm:text-sm font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 placeholder:font-medium"
+                  className={`w-full pl-9 pr-3 py-1.5 sm:py-2 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl text-xs sm:text-sm font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 ${
+                    role === 'parent' ? 'focus:ring-emerald-500' : role === 'admin' ? 'focus:ring-rose-500' : 'focus:ring-indigo-500'
+                  } transition-all placeholder:text-slate-400 placeholder:font-medium`}
                 />
               </div>
             )}
@@ -496,7 +502,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="E-posta adresiniz"
                 autoComplete="off"
-                className="w-full pl-9 pr-3 py-2 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl text-xs sm:text-sm font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 placeholder:font-medium"
+                className={`w-full pl-9 pr-3 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 ${
+                  role === 'parent' ? 'focus:ring-emerald-500' : role === 'admin' ? 'focus:ring-rose-500' : 'focus:ring-indigo-500'
+                } transition-all placeholder:text-slate-400 placeholder:font-medium text-xs sm:text-sm ${
+                  mode === 'register' ? 'py-1.5 sm:py-2' : 'py-2'
+                }`}
               />
             </div>
 
@@ -514,7 +524,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Şifre (en az 6 karakter)"
                 autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                className="w-full pl-9 pr-9 py-2 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl text-xs sm:text-sm font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400 placeholder:font-medium"
+                className={`w-full pl-9 pr-9 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 ${
+                  role === 'parent' ? 'focus:ring-emerald-500' : role === 'admin' ? 'focus:ring-rose-500' : 'focus:ring-indigo-500'
+                } transition-all placeholder:text-slate-400 placeholder:font-medium text-xs sm:text-sm ${
+                  mode === 'register' ? 'py-1.5 sm:py-2' : 'py-2'
+                }`}
               />
               <button
                 type="button"
@@ -535,7 +549,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  className={`w-3.5 h-3.5 rounded border-slate-300 ${
+                    role === 'parent'
+                      ? 'text-emerald-600 focus:ring-emerald-500'
+                      : role === 'admin'
+                      ? 'text-rose-600 focus:ring-rose-500'
+                      : 'text-indigo-600 focus:ring-indigo-500'
+                  } cursor-pointer`}
                 />
                 <span className="text-[11px] font-black text-slate-900 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] whitespace-nowrap">
                   Beni hatırla
@@ -547,7 +567,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                   type="button"
                   id="btn-forgot-password"
                   onClick={handlePasswordReset}
-                  className="text-[11px] font-black text-indigo-700 hover:text-indigo-950 hover:underline cursor-pointer drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] whitespace-nowrap shrink-0"
+                  className={`text-[11px] font-black ${
+                    role === 'parent'
+                      ? 'text-emerald-700 hover:text-emerald-950'
+                      : role === 'admin'
+                      ? 'text-rose-700 hover:text-rose-950'
+                      : 'text-indigo-700 hover:text-indigo-950'
+                  } hover:underline cursor-pointer drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] whitespace-nowrap shrink-0`}
                 >
                   Şifremi Unuttum?
                 </button>
@@ -559,7 +585,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               type="submit"
               id="btn-submit-auth"
               disabled={loading}
-              className="w-full py-2 px-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 active:scale-[0.99] text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 mt-1 disabled:opacity-60"
+              className={`w-full active:scale-[0.99] text-white font-black text-xs sm:text-sm rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 ${
+                mode === 'register' ? 'py-1.5 sm:py-2 px-4 mt-0.5' : 'py-2 px-4 mt-1'
+              } ${
+                role === 'parent'
+                  ? 'bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-700 hover:to-teal-900 border-2 border-emerald-300 shadow-[0_0_18px_rgba(5,150,105,0.5),inset_0_1px_0_rgba(255,255,255,0.35)]'
+                  : role === 'admin'
+                  ? 'bg-gradient-to-r from-rose-600 via-rose-700 to-red-800 hover:from-rose-700 hover:to-red-900 border-2 border-rose-300 shadow-[0_0_18px_rgba(225,29,72,0.5),inset_0_1px_0_rgba(255,255,255,0.35)]'
+                  : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 border-2 border-indigo-300 shadow-[0_0_18px_rgba(79,70,229,0.5),inset_0_1px_0_rgba(255,255,255,0.35)]'
+              }`}
             >
               {loading ? (
                 <>
@@ -592,7 +626,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
             </button>
           </form>
 
-          {/* Test / İnceleme Giriş Butonları (Yüksekliği küçültülmüş, ikon ve yazı sığan, pano kenarlarını ortaya çıkaran 3 kutu) */}
+          {/* Test / İnceleme Giriş Butonları */}
           <div className="pt-0.5 flex flex-col gap-0.5">
             <div className="flex items-center justify-between px-1">
               <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
@@ -608,7 +642,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                 type="button"
                 id="btn-quick-teacher-card"
                 onClick={() => handleTestLogin('teacher')}
-                className="py-1 px-1 bg-white/90 hover:bg-white active:scale-95 text-indigo-900 border border-indigo-200/90 rounded-bl-2xl rounded-br-lg rounded-t-lg text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-2xs h-7"
+                className="py-1 px-1 bg-gradient-to-br from-indigo-200/60 via-sky-100/50 to-white/40 hover:from-indigo-200/75 backdrop-blur-md active:scale-95 text-indigo-950 border-2 border-indigo-300/70 rounded-2xl text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-[0_0_14px_rgba(99,102,241,0.35),inset_0_1px_0_rgba(255,255,255,0.5)] h-7"
                 title="Öğretmen Test Girişi"
               >
                 <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
@@ -619,7 +653,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                 type="button"
                 id="btn-quick-parent-card"
                 onClick={() => handleTestLogin('parent')}
-                className="py-1 px-1 bg-white/90 hover:bg-white active:scale-95 text-emerald-900 border border-emerald-200/90 rounded-lg text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-2xs h-7"
+                className="py-1 px-1 bg-gradient-to-br from-emerald-200/60 via-teal-100/50 to-white/40 hover:from-emerald-200/75 backdrop-blur-md active:scale-95 text-emerald-950 border-2 border-emerald-300/70 rounded-2xl text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-[0_0_14px_rgba(16,185,129,0.35),inset_0_1px_0_rgba(255,255,255,0.5)] h-7"
                 title="Veli Test Girişi"
               >
                 <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -630,7 +664,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                 type="button"
                 id="btn-quick-admin-card"
                 onClick={() => handleTestLogin('admin')}
-                className="py-1 px-1 bg-white/90 hover:bg-white active:scale-95 text-amber-950 border border-amber-300/90 rounded-br-2xl rounded-bl-lg rounded-t-lg text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-2xs h-7"
+                className="py-1 px-1 bg-gradient-to-br from-amber-200/60 via-rose-100/50 to-white/40 hover:from-amber-200/75 backdrop-blur-md active:scale-95 text-rose-950 border-2 border-amber-300/70 rounded-2xl text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-[0_0_14px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.5)] h-7"
                 title="Yönetici (Olcayto) Test Girişi"
               >
                 <span className="text-xs leading-none">👑</span>

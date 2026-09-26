@@ -1002,7 +1002,16 @@ export default function App() {
   const isCurrentDemo = !authUser && !activeLocalProfile && !!demoProfile;
 
   return (
-    <div className="h-screen max-h-screen w-full flex flex-col justify-between overflow-hidden bg-slate-100 select-none">
+    <div
+      className="h-screen max-h-screen w-full flex flex-col justify-between overflow-hidden select-none bg-slate-800"
+      style={{
+        backgroundImage: 'url(/arkaplan.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed',
+      }}
+    >
       {/* 1. Slim Top Navigation Header */}
       <Header
         currentUser={effectiveProfile}

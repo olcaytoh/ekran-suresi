@@ -184,6 +184,67 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
 
   const { summary, activeWeekNum, weeksToInclude } = reportData;
 
+  // Glass effect styles matching Sınıfım (ParentClassroomView)
+  const classroomGlassCardStyle: React.CSSProperties = {
+    backgroundImage:
+      'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.75)',
+    boxShadow:
+      '0 8px 32px rgba(31, 38, 135, 0.15), 0 0 16px rgba(168, 85, 247, 0.18), 0 0 16px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+  };
+
+  const neutralGlassCardStyle: React.CSSProperties = {
+    backgroundImage:
+      'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.75)',
+    boxShadow:
+      '0 8px 32px rgba(31, 38, 135, 0.15), 0 0 16px rgba(168, 85, 247, 0.18), 0 0 16px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+  };
+
+  const indigoGlassCardStyle: React.CSSProperties = {
+    backgroundImage:
+      'radial-gradient(140% 140% at 0% 0%, rgba(199,210,254,0.65) 0%, rgba(199,210,254,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(165,180,252,0.50) 0%, rgba(165,180,252,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.75)',
+    boxShadow:
+      '0 8px 32px rgba(99, 102, 241, 0.16), 0 0 16px rgba(129, 140, 248, 0.18), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+  };
+
+  const emeraldGlassCardStyle: React.CSSProperties = {
+    backgroundImage:
+      'radial-gradient(140% 140% at 0% 0%, rgba(167,243,208,0.65) 0%, rgba(167,243,208,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(110,231,183,0.50) 0%, rgba(110,231,183,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.75)',
+    boxShadow:
+      '0 8px 32px rgba(16, 185, 129, 0.16), 0 0 16px rgba(52, 211, 153, 0.18), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+  };
+
+  const skyGlassCardStyle: React.CSSProperties = {
+    backgroundImage:
+      'radial-gradient(140% 140% at 0% 0%, rgba(186,230,253,0.65) 0%, rgba(186,230,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(125,211,252,0.50) 0%, rgba(125,211,252,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.75)',
+    boxShadow:
+      '0 8px 32px rgba(14, 165, 233, 0.16), 0 0 16px rgba(56, 189, 248, 0.18), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+  };
+
+  const roseGlassCardStyle: React.CSSProperties = {
+    backgroundImage:
+      'radial-gradient(140% 140% at 0% 0%, rgba(254,205,211,0.65) 0%, rgba(254,205,211,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(253,164,175,0.50) 0%, rgba(253,164,175,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.75)',
+    boxShadow:
+      '0 8px 32px rgba(244, 63, 94, 0.16), 0 0 16px rgba(251, 113, 133, 0.18), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+  };
+
   const getWeekCellColor = (minutes: number) => {
     const stage = Math.min(14, Math.max(0, Math.round(minutes / 30)));
     if (stage >= 14) {
@@ -215,10 +276,37 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 pb-20 sm:pb-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col border border-indigo-100 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* 1. MODAL ÜST BAŞLIK */}
-        <div className="relative z-10 px-4 sm:px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-violet-50 via-indigo-50 to-pink-50 flex items-center justify-between gap-3">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 pb-20 sm:pb-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 shadow-2xl"
+        style={{
+          background:
+            'linear-gradient(145deg, rgba(255, 255, 255, 0.92) 0%, rgba(240, 244, 255, 0.88) 50%, rgba(235, 248, 255, 0.90) 100%)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          border: '1.5px solid rgba(255, 255, 255, 0.85)',
+          boxShadow:
+            '0 25px 60px -15px rgba(15, 23, 42, 0.35), 0 0 35px rgba(99, 102, 241, 0.20), inset 0 1.5px 1px rgba(255, 255, 255, 0.9)',
+        }}
+      >
+        {/* 1. MODAL ÜST BAŞLIK — Cam Efekti */}
+        <div
+          className="relative z-10 px-4 sm:px-6 py-4 flex items-center justify-between gap-3 flex-shrink-0"
+          style={{
+            backgroundImage:
+              'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.40), rgba(255,255,255,0.40))',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.75)',
+            boxShadow:
+              '0 4px 20px rgba(31, 38, 135, 0.08), inset 0 1.5px 1px rgba(255, 255, 255, 0.9)',
+          }}
+        >
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-md flex-shrink-0">
               <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -226,11 +314,11 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
             <div className="min-w-0">
               <h3 className="text-base sm:text-lg font-black text-slate-900 truncate flex items-center gap-2">
                 <span>İstatistik Raporu &amp; Çıktı Alma</span>
-                <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100/90 text-indigo-900 border border-indigo-200 shadow-2xs">
                   PDF &amp; Excel
                 </span>
               </h3>
-              <p className="text-[11px] sm:text-xs text-slate-500 truncate">
+              <p className="text-[11px] sm:text-xs text-slate-600 font-bold truncate">
                 {institutionName} • {currentClassName} ({summary.totalStudents} Öğrenci)
               </p>
             </div>
@@ -240,7 +328,8 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
             type="button"
             id="btn-close-stats-export"
             onClick={onClose}
-            className="p-2 rounded-2xl text-slate-400 hover:text-slate-700 hover:bg-white/80 transition-all cursor-pointer active:scale-95"
+            className="p-2 rounded-2xl text-slate-500 hover:text-slate-900 hover:bg-white/70 transition-all cursor-pointer active:scale-95"
+            title="Kapat"
           >
             <X className="w-5 h-5 stroke-[2.5]" />
           </button>
@@ -255,18 +344,23 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         )}
 
         {/* 3. MODAL İÇERİĞİ (KAYDIRILABİLİR) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 custom-scrollbar">
-          {/* FİLTRE VE YAPILANDIRMA BARLARI */}
-          <div className="bg-slate-50/80 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-black text-slate-700">
-              <Filter className="w-3.5 h-3.5 text-indigo-600" />
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 custom-scrollbar">
+          {/* FİLTRE VE YAPILANDIRMA BARLARI — Sınıfım Cam Çerçevesi */}
+          <div
+            className="rounded-3xl p-3.5 sm:p-4 space-y-3"
+            style={classroomGlassCardStyle}
+          >
+            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+              <div className="p-1.5 rounded-xl bg-indigo-100/80 text-indigo-700 border border-indigo-200/80 shadow-2xs">
+                <Filter className="w-3.5 h-3.5 text-indigo-600" />
+              </div>
               <span>Rapor Kapsamı &amp; Sıralama Ayarları</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {/* Sınıf / Kapsam Seçimi */}
               <div>
-                <label className="text-[10.5px] font-bold text-slate-500 block mb-1">
+                <label className="text-[10.5px] font-bold text-slate-600 block mb-1">
                   Sınıf / Kurum Kapsamı:
                 </label>
                 <select
@@ -274,7 +368,7 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
                   disabled={isTeacher && classrooms.length <= 1}
-                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-indigo-400 cursor-pointer disabled:bg-slate-100"
+                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-white/70 bg-white/70 backdrop-blur-md text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-indigo-400 cursor-pointer disabled:bg-slate-100/80"
                 >
                   {!isTeacher && <option value="all">🏢 Tüm Okul / Tüm Sınıflar</option>}
                   {classrooms.map((c) => (
@@ -290,14 +384,14 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
 
               {/* Sıralama Seçimi (KULLANICI İSTEĞİ: DÜŞÜKTEN-YÜKSEK SÜREYE SIRALAMA) */}
               <div>
-                <label className="text-[10.5px] font-bold text-slate-500 block mb-1">
+                <label className="text-[10.5px] font-bold text-slate-600 block mb-1">
                   Öğrenci Sıralama Ölçütü:
                 </label>
                 <select
                   id="select-report-sorting"
                   value={sortOption}
                   onChange={(e) => setSortOption(e.target.value as ReportSortOption)}
-                  className="w-full px-3 py-2 text-xs font-black rounded-xl border border-slate-200 bg-white text-indigo-950 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+                  className="w-full px-3 py-2 text-xs font-black rounded-xl border border-white/70 bg-white/70 backdrop-blur-md text-indigo-950 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-indigo-400 cursor-pointer"
                 >
                   <option value="minutes-asc">
                     🟢 Ekran Süresi: Düşükten Yükseğe (Az Süre Önce)
@@ -312,14 +406,14 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
 
               {/* Hafta Kapsamı */}
               <div>
-                <label className="text-[10.5px] font-bold text-slate-500 block mb-1">
+                <label className="text-[10.5px] font-bold text-slate-600 block mb-1">
                   Haftalık Veri Kapsamı:
                 </label>
                 <select
                   id="select-report-week-range"
                   value={weekRange}
                   onChange={(e) => setWeekRange(e.target.value as ReportWeekRange)}
-                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-white/70 bg-white/70 backdrop-blur-md text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-indigo-400 cursor-pointer"
                 >
                   <option value="all_active_past">
                     📅 1. Haftadan Aktif Haftaya Kadar ({weeksToInclude.length} Hafta)
@@ -331,81 +425,107 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
             </div>
           </div>
 
-          {/* İSTATİSTİK METRİKLERİ KARTLARI */}
+          {/* İSTATİSTİK METRİKLERİ KARTLARI — Sınıfım Cam Çerçeveleri */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5">
-            <div className="bg-slate-50 rounded-2xl p-2.5 sm:p-3 border border-slate-200 flex flex-col justify-between">
-              <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                <Users className="w-3 h-3 text-slate-400" />
+            <div
+              className="rounded-3xl p-3 sm:p-3.5 flex flex-col justify-between"
+              style={neutralGlassCardStyle}
+            >
+              <span className="text-[10.5px] font-black text-slate-700 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-indigo-600" />
                 Toplam Öğrenci
               </span>
-              <div className="text-base sm:text-xl font-black text-slate-900 mt-1">
+              <div className="text-lg sm:text-2xl font-black text-slate-900 mt-1.5">
                 {summary.totalStudents}
               </div>
-              <span className="text-[9.5px] text-slate-400 mt-0.5">Kayıtlı veri</span>
+              <span className="text-[10px] font-bold text-slate-500 mt-0.5">Kayıtlı veri</span>
             </div>
 
-            <div className="bg-indigo-50/80 rounded-2xl p-2.5 sm:p-3 border border-indigo-200 flex flex-col justify-between">
-              <span className="text-[10px] font-black text-indigo-600 flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-indigo-500" />
+            <div
+              className="rounded-3xl p-3 sm:p-3.5 flex flex-col justify-between"
+              style={indigoGlassCardStyle}
+            >
+              <span className="text-[10.5px] font-black text-indigo-800 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                 Haftalık Ortalama
               </span>
-              <div className="text-base sm:text-xl font-black text-indigo-950 mt-1">
-                {summary.avgMinutes} dk
+              <div className="text-lg sm:text-2xl font-black text-indigo-950 mt-1.5">
+                {summary.avgMinutes} <span className="text-sm font-bold">dk</span>
               </div>
-              <span className="text-[9.5px] font-bold text-indigo-700 mt-0.5">
+              <span className="text-[10px] font-black text-indigo-700 mt-0.5">
                 {summary.avgHoursStr}
               </span>
             </div>
 
-            <div className="bg-emerald-50/80 rounded-2xl p-2.5 sm:p-3 border border-emerald-200 flex flex-col justify-between">
-              <span className="text-[10px] font-black text-emerald-700 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+            <div
+              className="rounded-3xl p-3 sm:p-3.5 flex flex-col justify-between"
+              style={emeraldGlassCardStyle}
+            >
+              <span className="text-[10.5px] font-black text-emerald-800 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 Yeşil (Güvenli)
               </span>
-              <div className="text-base sm:text-xl font-black text-emerald-950 mt-1">
+              <div className="text-lg sm:text-2xl font-black text-emerald-950 mt-1.5">
                 {summary.safeCount}{' '}
                 <span className="text-xs font-bold text-emerald-700">
                   (%{summary.safePercent})
                 </span>
               </div>
-              <span className="text-[9.5px] text-emerald-600 mt-0.5">0-7 Kademe (0-210 dk)</span>
+              <span className="text-[10px] font-bold text-emerald-700 mt-0.5">0-7 Kademe (0-210 dk)</span>
             </div>
 
-            <div className="bg-sky-50/80 rounded-2xl p-2.5 sm:p-3 border border-sky-200 flex flex-col justify-between">
-              <span className="text-[10px] font-black text-sky-700 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-sky-600" />
+            <div
+              className="rounded-3xl p-3 sm:p-3.5 flex flex-col justify-between"
+              style={skyGlassCardStyle}
+            >
+              <span className="text-[10.5px] font-black text-sky-800 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-sky-600" />
                 Mavi (Orta)
               </span>
-              <div className="text-base sm:text-xl font-black text-sky-950 mt-1">
+              <div className="text-lg sm:text-2xl font-black text-sky-950 mt-1.5">
                 {summary.moderateCount}{' '}
                 <span className="text-xs font-bold text-sky-700">
                   (%{summary.moderatePercent})
                 </span>
               </div>
-              <span className="text-[9.5px] text-sky-600 mt-0.5">8-10 Kademe (240-300 dk)</span>
+              <span className="text-[10px] font-bold text-sky-700 mt-0.5">8-10 Kademe (240-300 dk)</span>
             </div>
 
-            <div className="bg-rose-50/80 rounded-2xl p-2.5 sm:p-3 border border-rose-200 flex flex-col justify-between col-span-2 sm:col-span-1">
-              <span className="text-[10px] font-black text-rose-700 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3 text-rose-600" />
+            <div
+              className="rounded-3xl p-3 sm:p-3.5 flex flex-col justify-between col-span-2 sm:col-span-1"
+              style={roseGlassCardStyle}
+            >
+              <span className="text-[10.5px] font-black text-rose-800 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                 Uyarı &amp; Kritik
               </span>
-              <div className="text-base sm:text-xl font-black text-rose-950 mt-1">
+              <div className="text-lg sm:text-2xl font-black text-rose-950 mt-1.5">
                 {summary.warningCount + summary.criticalCount}{' '}
                 <span className="text-xs font-bold text-rose-700">
                   (%{summary.warningPercent + summary.criticalPercent})
                 </span>
               </div>
-              <span className="text-[9.5px] text-rose-600 mt-0.5">11+ Kademe (330+ dk)</span>
+              <span className="text-[10px] font-bold text-rose-700 mt-0.5">11+ Kademe (330+ dk)</span>
             </div>
           </div>
 
-          {/* HAFTANIN EN DÜŞÜK EKRAN SÜRESİNE SAHİP ÖĞRENCİLERİ (ROL MODELLER) */}
+          {/* HAFTANIN EN DÜŞÜK EKRAN SÜRESİNE SAHİP ÖĞRENCİLERİ (ROL MODELLER) — Cam Çerçeve */}
           {summary.topModelStudents.length > 0 && (
-            <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 rounded-2xl p-3 border border-emerald-200/80 flex items-center justify-between gap-2 flex-wrap">
+            <div
+              className="rounded-3xl p-3.5 flex items-center justify-between gap-2 flex-wrap"
+              style={{
+                backgroundImage:
+                  'radial-gradient(140% 140% at 0% 0%, rgba(167,243,208,0.60) 0%, rgba(167,243,208,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(153,246,228,0.55) 0%, rgba(153,246,228,0) 55%), linear-gradient(rgba(255,255,255,0.40), rgba(255,255,255,0.40))',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.85)',
+                boxShadow:
+                  '0 8px 32px rgba(16, 185, 129, 0.12), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+              }}
+            >
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
-                  <Award className="w-3.5 h-3.5" />
+                <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs">
+                  <Award className="w-4 h-4" />
                 </div>
                 <div className="text-xs font-black text-emerald-950">
                   Haftanın Rol Modelleri (En Az Ekran Süresi):
@@ -415,27 +535,41 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
                 {summary.topModelStudents.map((st, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white text-emerald-900 border border-emerald-200 text-xs font-extrabold shadow-2xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black shadow-2xs"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.75)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(255, 255, 255, 0.9)',
+                    }}
                   >
                     <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black">
                       {i + 1}
                     </span>
-                    <span>{st.name}</span>
-                    <span className="text-emerald-600 font-bold">({st.minutes} dk)</span>
+                    <span className="text-slate-900">{st.name}</span>
+                    <span className="text-emerald-700 font-extrabold">({st.minutes} dk)</span>
                   </span>
                 ))}
               </div>
             </div>
           )}
 
-          {/* ÖĞRENCİ CANLI ÖNİZLEME TABLOSU */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-2.5 p-3 sm:p-4">
+          {/* ÖĞRENCİ CANLI ÖNİZLEME TABLOSU — Sınıfım Cam Çerçevesi */}
+          <div
+            className="rounded-3xl p-3.5 sm:p-4 space-y-3 overflow-hidden"
+            style={classroomGlassCardStyle}
+          >
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-slate-900">
+                <span className="text-xs sm:text-sm font-black text-slate-900">
                   Öğrenci Haftalık Çizelge Önizlemesi ({previewRows.length} Öğrenci)
                 </span>
-                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                <span
+                  className="text-[10px] font-bold text-indigo-900 px-2.5 py-0.5 rounded-full shadow-2xs"
+                  style={{
+                    background: 'rgba(238, 242, 255, 0.75)',
+                    border: '1px solid rgba(255, 255, 255, 0.9)',
+                  }}
+                >
                   {sortOption === 'minutes-asc'
                     ? 'Düşükten Yükseğe Sıralı'
                     : sortOption === 'minutes-desc'
@@ -445,38 +579,56 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
               </div>
 
               {/* Tablo İçi Hızlı Arama */}
-              <div className="relative w-full sm:w-60">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Öğrenci veya veli ara..."
-                  className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-400 font-medium"
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-white/70 bg-white/70 backdrop-blur-md focus:bg-white/95 focus:outline-hidden focus:ring-2 focus:ring-indigo-400 font-medium text-slate-800 placeholder:text-slate-400 shadow-2xs"
                 />
               </div>
             </div>
 
             {/* Haftalık Renk Durumu Bilgilendirme Çubuğu */}
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-[10px] sm:text-[10.5px] font-bold text-slate-600 bg-slate-50/80 px-3 py-1.5 rounded-xl border border-slate-200/80">
-              <span className="text-slate-400 font-semibold">Haftalık Renk Durumu:</span>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-black shadow-2xs">
+            <div
+              className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-[10px] sm:text-[10.5px] font-bold text-slate-700 px-3 py-2 rounded-2xl"
+              style={{
+                background: 'rgba(255, 255, 255, 0.50)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
+                border: '1px solid rgba(255, 255, 255, 0.75)',
+                boxShadow: '0 2px 10px rgba(31, 38, 135, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+              }}
+            >
+              <span className="text-slate-500 font-black">Haftalık Renk Durumu:</span>
+              <span className="px-2 py-0.5 rounded-lg bg-emerald-100/90 text-emerald-800 border border-emerald-300 font-black shadow-2xs">
                 🟢 Yeşil (0-210 dk - Güvenli)
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 border border-sky-300 font-black shadow-2xs">
+              <span className="px-2 py-0.5 rounded-lg bg-sky-100/90 text-sky-800 border border-sky-300 font-black shadow-2xs">
                 🔵 Mavi (240-300 dk - Dengeli)
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-black shadow-2xs">
+              <span className="px-2 py-0.5 rounded-lg bg-amber-100/90 text-amber-900 border border-amber-300 font-black shadow-2xs">
                 🟠 Turuncu (330-390 dk - Dikkat)
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300 font-black shadow-2xs">
+              <span className="px-2 py-0.5 rounded-lg bg-rose-100/90 text-rose-800 border border-rose-300 font-black shadow-2xs">
                 🔴 Kırmızı (420+ dk - Sınır)
               </span>
             </div>
 
-            <div className="overflow-x-auto max-h-[320px] custom-scrollbar border border-slate-100 rounded-xl">
+            <div
+              className="overflow-x-auto max-h-[330px] custom-scrollbar rounded-2xl border"
+              style={{
+                background: 'rgba(255, 255, 255, 0.75)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderColor: 'rgba(255, 255, 255, 0.85)',
+                boxShadow: '0 4px 16px rgba(31, 38, 135, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
+              }}
+            >
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100 text-slate-700 sticky top-0 z-10 text-[11px] font-black border-b border-slate-200">
+                <thead className="bg-slate-100/90 backdrop-blur-md text-slate-800 sticky top-0 z-10 text-[11px] font-black border-b border-slate-200/80">
                   <tr>
                     <th className="py-2.5 px-3 w-12 text-center">Sıra</th>
                     <th className="py-2.5 px-3 min-w-[140px]">Öğrenci Adı</th>
@@ -587,8 +739,19 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
           </div>
         </div>
 
-        {/* 4. ALT AKSİYON / İNDİRME ÇUBUĞU */}
-        <div className="px-4 sm:px-6 py-3.5 bg-slate-50 border-t border-slate-200/90 flex items-center justify-between gap-3 flex-wrap">
+        {/* 4. ALT AKSİYON / İNDİRME ÇUBUĞU — Cam Efekti */}
+        <div
+          className="px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 flex-wrap flex-shrink-0"
+          style={{
+            backgroundImage:
+              'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.45) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.40) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.45), rgba(255,255,255,0.45))',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.75)',
+            boxShadow:
+              '0 -4px 20px rgba(31, 38, 135, 0.06), inset 0 1.5px 1px rgba(255, 255, 255, 0.9)',
+          }}
+        >
           <div className="text-xs text-slate-500 flex items-center gap-1.5">
             <span className="font-bold text-slate-800">{summary.totalStudents} Öğrenci</span>
             <span>analiz edildi • İstenilen formatı seçerek anında indirin.</span>

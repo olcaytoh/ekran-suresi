@@ -324,7 +324,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
   const getStageColorToken = (stage: number) => {
     if (stage >= 14) {
       return {
-        bg: 'bg-rose-50/90 hover:bg-rose-100/70 border-rose-200',
+        bg: 'bg-gradient-to-b from-rose-50/90 to-rose-100/50 hover:to-rose-100/70 border-rose-200 ring-1 ring-white/40 backdrop-blur-md',
         badge: 'bg-rose-100 text-rose-800 border-rose-300',
         dot: 'bg-rose-500',
         label: 'Kırmızı',
@@ -332,7 +332,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
     }
     if (stage >= 11) {
       return {
-        bg: 'bg-amber-50/90 hover:bg-amber-100/70 border-amber-200',
+        bg: 'bg-gradient-to-b from-amber-50/90 to-amber-100/50 hover:to-amber-100/70 border-amber-200 ring-1 ring-white/40 backdrop-blur-md',
         badge: 'bg-amber-100 text-amber-900 border-amber-300',
         dot: 'bg-amber-500',
         label: 'Turuncu',
@@ -340,14 +340,14 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
     }
     if (stage >= 8) {
       return {
-        bg: 'bg-sky-50/90 hover:bg-sky-100/70 border-sky-200',
+        bg: 'bg-gradient-to-b from-sky-50/90 to-sky-100/50 hover:to-sky-100/70 border-sky-200 ring-1 ring-white/40 backdrop-blur-md',
         badge: 'bg-sky-100 text-sky-800 border-sky-300',
         dot: 'bg-sky-500',
         label: 'Mavi',
       };
     }
     return {
-      bg: 'bg-emerald-50/80 hover:bg-emerald-100/70 border-emerald-200',
+      bg: 'bg-gradient-to-b from-emerald-50/90 to-emerald-100/50 hover:to-emerald-100/70 border-emerald-200 ring-1 ring-white/40 backdrop-blur-md',
       badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
       dot: 'bg-emerald-500',
       label: 'Yeşil',
@@ -356,16 +356,16 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 pb-20 sm:pb-6 bg-slate-900/70 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 pb-20 sm:pb-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-5rem)] sm:max-h-[90vh] my-auto animate-in zoom-in-95 duration-150">
-        {/* 1. Modal Başlık Çubuğu */}
-        <div className="flex items-center justify-between p-3.5 sm:p-4 border-b border-slate-200 bg-slate-50/90 flex-shrink-0">
+      <div className="relative w-full max-w-2xl bg-gradient-to-b from-sky-400 via-indigo-500 to-purple-600 rounded-3xl border border-white/40 ring-1 ring-white/20 shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-5rem)] sm:max-h-[90vh] my-auto animate-in zoom-in-95 duration-150">
+        {/* 1. Modal Başlık Çubuğu — Açık Cam (Glass) Çerçeve */}
+        <div className="flex items-center justify-between gap-2 m-3 sm:m-4 mb-0 p-3.5 sm:p-4 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex-shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm sm:text-base shadow-sm flex-shrink-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm sm:text-base shadow-md flex-shrink-0">
               {weekConfig.weekNum}.H
             </div>
             <div className="min-w-0">
@@ -383,7 +383,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                     Tatil
                   </span>
                 ) : (
-                  <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                  <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 border border-slate-300/60">
                     Kayıt
                   </span>
                 )}
@@ -399,7 +399,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
               <button
                 type="button"
                 onClick={onOpenExportReport}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold cursor-pointer transition-colors"
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/70 text-xs font-bold cursor-pointer transition-colors"
                 title="Rapor Çıktısı Al (PDF / Excel)"
               >
                 <Printer className="w-3.5 h-3.5" />
@@ -410,7 +410,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors cursor-pointer"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
               title="Kapat"
             >
               <X className="w-5 h-5" />
@@ -418,9 +418,9 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
           </div>
         </div>
 
-        {/* Görünüm Sekmeleri: Öğrenci Listesi & Sınıf Karşılaştırması */}
-        <div className="px-3 sm:px-4 pt-2.5 pb-2 bg-white border-b border-slate-200 flex items-center justify-between gap-2 flex-shrink-0">
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+        {/* Görünüm Sekmeleri: Öğrenci Listesi & Sınıf Karşılaştırması — Açık Cam Çerçeve */}
+        <div className="mx-3 sm:mx-4 mt-3 p-2.5 sm:p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex items-center justify-between gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 p-1 bg-gradient-to-b from-white/55 to-white/25 rounded-2xl border border-white/50 ring-1 ring-white/20">
             <button
               type="button"
               onClick={() => setActiveTab('students')}
@@ -454,17 +454,17 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
           </div>
         </div>
 
-        {/* Tatil Bildirimi */}
+        {/* Tatil Bildirimi — Açık Cam Çerçeve */}
         {isHoliday && (
-          <div className="p-3 bg-purple-50 border-b border-purple-200 text-purple-900 flex items-center gap-2.5 flex-shrink-0 text-xs">
-            <div className="w-8 h-8 rounded-xl bg-purple-200 text-purple-700 flex items-center justify-center flex-shrink-0">
+          <div className="mx-3 sm:mx-4 mt-3 p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] text-purple-900 flex items-center gap-2.5 flex-shrink-0 text-xs">
+            <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center flex-shrink-0">
               <Palmtree className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="font-black text-purple-950">
+              <h4 className="font-black text-slate-900">
                 {weekConfig.holidayName || 'Tatil Haftası'}
               </h4>
-              <p className="text-purple-700 text-[11px]">
+              <p className="text-purple-700/80 text-[11px]">
                 Okullar tatilde olduğu için bu haftada sınıf ekran kısıtlaması uygulanmamaktadır.
               </p>
             </div>
@@ -473,8 +473,8 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
 
         {activeTab === 'students' ? (
           <>
-            {/* 2. Sınıf Dağılım Çubuğu & Özet Renkler */}
-            <div className="px-3 sm:px-4 pt-3 pb-2 bg-slate-50/70 border-b border-slate-200 flex-shrink-0 space-y-2">
+            {/* 2. Sınıf Dağılım Çubuğu & Özet Renkler — Açık Cam Çerçeve */}
+            <div className="mx-3 sm:mx-4 mt-3 p-3 sm:p-3.5 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex-shrink-0 space-y-2">
               <div className="flex items-center justify-between text-[11px] font-black">
                 <span className="text-slate-700 flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
@@ -486,7 +486,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
               </div>
 
               {/* Çok Renkli Progress Bar */}
-              <div className="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden flex shadow-inner">
+              <div className="h-2.5 w-full bg-slate-200/70 rounded-full overflow-hidden flex shadow-inner">
                 {safePercent > 0 && (
                   <div
                     style={{ width: `${safePercent}%` }}
@@ -517,9 +517,9 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                 )}
               </div>
 
-              {/* 4 Renk İstatistik Kartları */}
+              {/* 4 Renk İstatistik Kartları — Açık Cam Çerçeveler */}
               <div className="grid grid-cols-4 gap-1.5 pt-1">
-                <div className="bg-white p-1.5 rounded-xl border border-emerald-200 text-center shadow-2xs">
+                <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-emerald-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
                   <div className="text-[9px] font-black text-emerald-700">Yeşil (Güvenli)</div>
                   <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
                     {safeCount} <span className="text-[9px] font-bold text-slate-400">(%{safePercent})</span>
@@ -527,7 +527,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                   <div className="text-[8px] font-bold text-slate-400 truncate">0 - 210 dk</div>
                 </div>
 
-                <div className="bg-white p-1.5 rounded-xl border border-sky-200 text-center shadow-2xs">
+                <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-sky-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
                   <div className="text-[9px] font-black text-sky-700">Mavi (Dengeli)</div>
                   <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
                     {moderateCount} <span className="text-[9px] font-bold text-slate-400">(%{moderatePercent})</span>
@@ -535,7 +535,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                   <div className="text-[8px] font-bold text-slate-400 truncate">240 - 300 dk</div>
                 </div>
 
-                <div className="bg-white p-1.5 rounded-xl border border-amber-200 text-center shadow-2xs">
+                <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-amber-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
                   <div className="text-[9px] font-black text-amber-700">Turuncu (Dikkat)</div>
                   <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
                     {warningCount} <span className="text-[9px] font-bold text-slate-400">(%{warningPercent})</span>
@@ -543,7 +543,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                   <div className="text-[8px] font-bold text-slate-400 truncate">330 - 390 dk</div>
                 </div>
 
-                <div className="bg-white p-1.5 rounded-xl border border-rose-200 text-center shadow-2xs">
+                <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-rose-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
                   <div className="text-[9px] font-black text-rose-700">Kırmızı (Kritik)</div>
                   <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
                     {criticalCount} <span className="text-[9px] font-bold text-slate-400">(%{criticalPercent})</span>
@@ -553,8 +553,8 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
               </div>
             </div>
 
-            {/* 3. Arama, Hızlı Risk Filtresi & Veli Notu Kopyalama */}
-            <div className="p-2.5 sm:p-3 border-b border-slate-200 flex flex-col gap-2 flex-shrink-0 bg-white">
+            {/* 3. Arama, Hızlı Risk Filtresi & Veli Notu Kopyalama — Açık Cam Çerçeve */}
+            <div className="mx-3 sm:mx-4 mt-3 p-2.5 sm:p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex flex-col gap-2 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -563,14 +563,14 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Öğrenci veya veli adına göre ara..."
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-bold"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-white/60 bg-white/60 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-400 font-bold"
                   />
                 </div>
 
                 <button
                   type="button"
                   onClick={handleCopyParentNote}
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors flex-shrink-0 border border-slate-200"
+                  className="px-2.5 py-1.5 rounded-xl bg-white/50 hover:bg-white/80 text-slate-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors flex-shrink-0 border border-white/60"
                   title="WhatsApp veli grubuna kopyalanacak genel özet metin"
                 >
                   {copiedMsg ? (
@@ -596,7 +596,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                   className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
                     filterCategory === 'all'
                       ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                      : 'bg-white/50 text-slate-600 border-white/60 hover:bg-white/80'
                   }`}
                 >
                   Tümü ({studentStats.length})
@@ -666,10 +666,10 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
               </div>
             </div>
 
-            {/* 4. Öğrenci Listesi (Trend Okları + WhatsApp Butonları + Hafta Renkleri) */}
-            <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-2">
+            {/* 4. Öğrenci Listesi (Trend Okları + WhatsApp Butonları + Hafta Renkleri) — Açık Cam Kartlar */}
+            <div className="flex-1 overflow-y-auto mx-3 sm:mx-4 mt-3 mb-3 sm:mb-4 space-y-2.5">
               {filteredStudents.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 space-y-2">
+                <div className="p-8 text-center text-slate-400 space-y-2 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)]">
                   <Users className="w-8 h-8 mx-auto text-slate-300" />
                   <p className="text-xs font-bold text-slate-600">
                     {searchQuery
@@ -684,12 +684,12 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                   return (
                     <div
                       key={item.uid}
-                      className={`rounded-2xl p-2.5 sm:p-3 border transition-all flex flex-col gap-2 shadow-2xs ${colorInfo.bg}`}
+                      className={`rounded-2xl p-2.5 sm:p-3 border transition-all flex flex-col gap-2 shadow-md ${colorInfo.bg}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         {/* Sol: Sıra No ve Öğrenci/Veli Bilgisi */}
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-600 text-[10px] font-black flex items-center justify-center flex-shrink-0 shadow-2xs">
+                          <span className="w-6 h-6 rounded-lg bg-white/80 border border-slate-200 text-slate-600 text-[10px] font-black flex items-center justify-center flex-shrink-0 shadow-2xs">
                             {i + 1}
                           </span>
 
@@ -699,7 +699,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                                 {item.studentName}
                               </span>
                               {item.className && (
-                                <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-md bg-white text-indigo-700 border border-indigo-200 leading-none">
+                                <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-md bg-white/80 text-indigo-700 border border-indigo-200 leading-none">
                                   {item.className}
                                 </span>
                               )}
@@ -789,11 +789,11 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                           <button
                             type="button"
                             onClick={() => handleCopyStudentWhatsApp(item)}
-                            className="p-1 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold cursor-pointer transition-colors shadow-2xs"
+                            className="p-1 rounded-xl bg-white/70 hover:bg-white text-slate-600 border border-slate-200 text-[10px] font-bold cursor-pointer transition-colors shadow-2xs"
                             title="Mesaj metnini kopyala"
                           >
                             {copiedStudentUid === item.uid ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
                             ) : (
                               <Copy className="w-3.5 h-3.5 text-slate-500" />
                             )}
@@ -830,16 +830,16 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
           </>
         ) : (
           /* 4. SINIFLAR ARASI KARŞILAŞTIRMA GRAFİĞİ (Class Comparison Chart) */
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
-            <div className="p-3 bg-indigo-50/80 border border-indigo-200 rounded-2xl flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+          <div className="flex-1 overflow-y-auto mx-3 sm:mx-4 mt-3 mb-3 sm:mb-4 space-y-3">
+            <div className="p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
                 <BarChart3 className="w-5 h-5" />
               </div>
               <div className="text-xs">
-                <h4 className="font-black text-indigo-950">
+                <h4 className="font-black text-slate-900">
                   {institutionName} — {weekConfig.weekNum}. Hafta Sınıf Karşılaştırması
                 </h4>
-                <p className="text-indigo-700 text-[11.5px] mt-0.5">
+                <p className="text-slate-500 text-[11.5px] mt-0.5">
                   Tüm sınıfların haftalık ortalama ekran süreleri ve renk dağılımları listelenmiştir. Düşük ekran süresine sahip sınıflar öncelikli olarak ödüllendirilir.
                 </p>
               </div>
@@ -855,10 +855,10 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                 return (
                   <div
                     key={cls.classId}
-                    className={`p-3.5 rounded-2xl border transition-all shadow-xs ${
+                    className={`p-3.5 rounded-2xl border backdrop-blur-xl transition-all shadow-md ${
                       isBest
-                        ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-300'
-                        : 'bg-white border-slate-200'
+                        ? 'bg-gradient-to-b from-emerald-50/95 to-emerald-100/60 border-emerald-300 ring-1 ring-emerald-300'
+                        : 'bg-gradient-to-b from-white/85 to-white/45 border-white/60 ring-1 ring-white/30'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -907,7 +907,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                         <span>Ortalama Süre Seviyesi</span>
                         <span>{cls.avgMinutes} / 420 dk</span>
                       </div>
-                      <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden flex border border-slate-200">
+                      <div className="h-2.5 w-full bg-slate-200/70 rounded-full overflow-hidden flex border border-slate-200">
                         <div
                           style={{ width: `${barWidth}%` }}
                           className={`h-full rounded-full transition-all duration-500 ${
@@ -924,7 +924,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                     </div>
 
                     {/* Sınıf İçi 4 Renk Dağılım Dağıtıcısı */}
-                    <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-slate-600 flex-wrap gap-1">
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/70 flex items-center justify-between text-[10px] font-bold text-slate-600 flex-wrap gap-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="flex items-center gap-1 text-emerald-700">
                           <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -957,8 +957,8 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
           </div>
         )}
 
-        {/* 5. Modal Alt Kapatma & Aksiyon Çubuğu (Görselde Altta Kalmayan Sabit Bar) */}
-        <div className="flex-shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-white flex items-center justify-between gap-2 shadow-xs">
+        {/* 5. Modal Alt Kapatma & Aksiyon Çubuğu — Açık Cam Çerçeve */}
+        <div className="flex-shrink-0 mx-3 sm:mx-4 mb-3 sm:mb-4 p-3 sm:p-4 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex items-center justify-between gap-2">
           <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-indigo-500" />
             <span>

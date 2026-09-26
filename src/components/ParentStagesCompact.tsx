@@ -101,18 +101,18 @@ export const ParentStagesCompact: React.FC<ParentStagesCompactProps> = ({
               : '/y.png';
 
           // Text colors based on stage category
-          let titleColor = 'text-emerald-700';
-          let subColor = 'text-emerald-600/90';
+          let titleColor = 'text-emerald-900';
+          let subColor = 'text-emerald-800';
 
           if (cfg.category === 'moderate') {
-            titleColor = 'text-amber-700';
-            subColor = 'text-amber-600/90';
+            titleColor = 'text-amber-900';
+            subColor = 'text-amber-800';
           } else if (cfg.category === 'warning') {
-            titleColor = 'text-orange-700';
-            subColor = 'text-orange-600/90';
+            titleColor = 'text-orange-900';
+            subColor = 'text-orange-800';
           } else if (cfg.category === 'critical') {
-            titleColor = 'text-rose-700';
-            subColor = 'text-rose-600/90';
+            titleColor = 'text-rose-900';
+            subColor = 'text-rose-800';
           }
 
           return (
@@ -122,11 +122,20 @@ export const ParentStagesCompact: React.FC<ParentStagesCompactProps> = ({
               id={`stage-btn-${cfg.stageNumber}`}
               onClick={() => handleStageClick(cfg.stageNumber)}
               disabled={isTeacher || isUpdating}
-              className={`group relative flex flex-col items-center justify-between p-1 sm:p-2 rounded-2xl transition-all duration-150 border-0 bg-transparent select-none min-h-[95px] sm:min-h-[110px] ${
-                isTeacher
-                  ? 'cursor-default'
-                  : 'cursor-pointer active:scale-95 hover:bg-slate-100/60 focus:outline-hidden'
-              } ${isCurrent ? 'bg-sky-50/60 ring-2 ring-sky-400/50' : ''}`}
+              className={`group relative flex flex-col items-center justify-between p-1 sm:p-2 rounded-2xl transition-all duration-150 select-none min-h-[95px] sm:min-h-[110px] ${
+                isTeacher ? 'cursor-default' : 'cursor-pointer active:scale-95 focus:outline-hidden'
+              } ${isCurrent ? 'scale-[1.03]' : ''}`}
+              style={{
+                background: isCurrent ? 'rgba(255, 255, 255, 0.30)' : 'rgba(255, 255, 255, 0.16)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
+                border: isCurrent
+                  ? '1.5px solid rgba(56, 189, 248, 0.8)'
+                  : '1px solid rgba(255, 255, 255, 0.32)',
+                boxShadow: isCurrent
+                  ? '0 6px 18px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.5)'
+                  : '0 4px 14px rgba(0, 0, 0, 0.10), inset 0 1px 1px rgba(255, 255, 255, 0.35)',
+              }}
               title={`${cfg.stageNumber}. Kademe (${cfg.durationMinutes} dk)`}
             >
               {/* Frameless Dragon Mascot (y.png / s.png / t.png / k.png) with automatic height */}
@@ -155,17 +164,22 @@ export const ParentStagesCompact: React.FC<ParentStagesCompactProps> = ({
               </div>
 
               {/* Frameless Text Labels */}
-              <div className="w-full text-center mt-0.5 pointer-events-none">
+              <div
+                className="w-full text-center mt-0.5 pointer-events-none rounded-lg py-0.5 px-1"
+                style={{
+                  background: isFilled ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.30)',
+                }}
+              >
                 <div
                   className={`text-[11px] sm:text-xs font-black leading-tight transition-colors ${
-                    isFilled ? titleColor : 'text-slate-400'
+                    isFilled ? titleColor : 'text-slate-500'
                   }`}
                 >
                   {cfg.stageNumber}. Kademe
                 </div>
                 <div
                   className={`text-[9.5px] sm:text-[10px] font-bold mt-0.5 transition-colors ${
-                    isFilled ? subColor : 'text-slate-300'
+                    isFilled ? subColor : 'text-slate-400'
                   }`}
                 >
                   {cfg.stageNumber * 30} dk

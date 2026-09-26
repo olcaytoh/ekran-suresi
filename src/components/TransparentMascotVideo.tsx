@@ -13,6 +13,10 @@ interface TransparentMascotVideoProps {
    * gerçek video çözünürlüğünden düşük tutulur.
    */
   renderWidth?: number;
+  /** Üstten kırpma oranı (0-1). Kedinin kepi/üstü kesilmemesi için güvenli default 0.08 */
+  cropTop?: number;
+  /** Alttan kırpma oranı (0-1). Kedinin ayakları kesilmemesi için güvenli default 0.08 */
+  cropBottom?: number;
 }
 
 /**
@@ -32,6 +36,8 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
   loop = true,
   muted = true,
   renderWidth = 360,
+  cropTop = 0.08,
+  cropBottom = 0.08,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -60,9 +66,9 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
       if (cancelled) return;
 
       if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-        // Üstteki (%16) ve alttaki (%15) boş yeşil ölü alanları kırp, tuval doğrudan kediyi sarsın
-        const topRatio = 0.16;
-        const bottomRatio = 0.15;
+        // Üst ve alt güvenli oranla kırpılarak kedinin kepi (üst) ve ayakları (alt) hiçbir zaman kesilmez
+        const topRatio = Math.max(0, Math.min(0.4, cropTop));
+        const bottomRatio = Math.max(0, Math.min(0.4, cropBottom));
         const sy = Math.round(video.videoHeight * topRatio);
         const sh = Math.max(1, Math.round(video.videoHeight * (1 - topRatio - bottomRatio)));
         const sx = 0;
@@ -158,10 +164,10 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
         rafIdRef.current = null;
       }
     };
-  }, [src, autoPlay, renderWidth]);
+  }, [src, autoPlay, renderWidth, cropTop, cropBottom]);
 
   return (
-    <div className={`relative flex items-center justify-center overflow-hidden ${className}`}>
+    <div className={`relative flex items-center justify-center ${className}`}>
       {/* Gerçek video gizli oynatılır; görünen şey aşağıdaki işlenmiş canvas'tır */}
       <video
         ref={videoRef}
@@ -186,9 +192,10 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
       />
       <canvas
         ref={canvasRef}
-        className={`max-w-full max-h-full w-auto h-full object-contain pointer-events-none select-none transition-opacity duration-200 ${
+        className={`max-w-full max-h-full w-auto h-auto object-contain pointer-events-none select-none transition-opacity duration-200 block ${
           hasDrawnFrame ? 'opacity-100' : 'opacity-0'
         }`}
+        style={{ maxHeight: '100%', maxWidth: '100%' }}
       />
     </div>
   );

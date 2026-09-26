@@ -20,10 +20,6 @@ import { seed25ClassroomStudents } from '../lib/demoData';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
 import { StatsExportModal } from './StatsExportModal';
 import { TransparentMascotVideo } from './TransparentMascotVideo';
-import badgeRed from '../buttons/badge_red.png';
-import badgeBlue from '../buttons/badge_blue.png';
-import badgeOrange from '../buttons/badge_orange.png';
-import badgeGreen from '../buttons/badge_green.png';
 import {
   subscribeAcademicCalendar,
   generateDefaultAcademicCalendar,
@@ -227,17 +223,18 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
 
   return (
     <div className="relative flex-1 flex flex-col gap-3 pb-8 select-none">
-      {/* Pastel Arka Plan Katmanı (Bulanık Renk Lekeleri) */}
-      <div className="absolute -inset-3 -z-10 overflow-hidden rounded-[32px] pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-100 via-pink-50 to-orange-50" />
-        <div className="absolute -top-16 -left-10 w-56 h-56 bg-violet-300/35 rounded-full blur-3xl" />
-        <div className="absolute top-4 right-0 w-48 h-48 bg-pink-300/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 w-52 h-52 bg-sky-300/25 rounded-full blur-3xl" />
-      </div>
-
-      {/* Bağlı Kurum Bilgisi (Varsa zarif ince çubuk) */}
+      {/* Bağlı Kurum Bilgisi (Zarif Cam Çubuk) */}
       {instCode && (
-        <div className="relative z-10 flex items-center justify-between px-3.5 py-1.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/80 shadow-2xs text-xs text-slate-700">
+        <div
+          className="relative z-10 flex items-center justify-between px-3.5 py-1.5 rounded-2xl border text-xs text-slate-700 shadow-2xs overflow-hidden"
+          style={{
+            backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.5) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.45) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            borderColor: 'rgba(255, 255, 255, 0.75)',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.06), 0 0 14px rgba(168,85,247,0.15), 0 0 14px rgba(45,212,191,0.14), inset 0 1px 1px rgba(255, 255, 255, 0.7)',
+          }}
+        >
           <div className="flex items-center gap-1.5 min-w-0">
             <Building2 className="w-4 h-4 text-rose-600 flex-shrink-0" />
             <span className="font-extrabold text-slate-900 truncate">
@@ -246,16 +243,16 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-[10px] text-slate-500 font-medium">Kurum Kodu:</span>
-            <span className="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 font-mono font-black text-[11px] border border-rose-200">
+            <span className="px-2 py-0.5 rounded-lg bg-rose-50/80 text-rose-700 font-mono font-black text-[11px] border border-rose-200">
               {instCode}
             </span>
           </div>
         </div>
       )}
 
-      {/* 1. ÖĞRETMEN ANASAYFA KAHRAMAN KARTI (Buzlu Cam / Pastel) */}
+      {/* 1. ÖĞRETMEN ANASAYFA KAHRAMAN KARTI (Veli Sayfası Gibi Buzlu Cam / Glassmorphism) */}
       {(() => {
-        // Durum bazlı vurgu rengi (arka plan artık pastel, sadece aksan/degrade değişiyor)
+        // Durum bazlı vurgu rengi
         let accent: 'teal' | 'amber' | 'orange' | 'rose' = 'teal';
         if (hasCritical) accent = 'rose';
         else if (avgStage >= 11) accent = 'orange';
@@ -273,43 +270,101 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             : 'bg-gradient-to-r from-teal-200 via-emerald-300 to-green-200';
 
         return (
-          <div className="relative z-10 rounded-3xl px-3.5 pt-3 pb-3 sm:px-4.5 sm:pt-3.5 sm:pb-3.5 bg-white/75 backdrop-blur-xl border border-white/95 shadow-[0_2px_6px_rgba(0,0,0,0.16),0_8px_18px_rgba(0,0,0,0.10),0_20px_38px_rgba(124,58,237,0.18)] overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-3.5">
+          <div
+            className="relative z-10 rounded-3xl px-3.5 pt-3 pb-3 sm:px-4.5 sm:pt-3.5 sm:pb-3.5 overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-3.5"
+            style={{
+              backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.75)',
+              boxShadow:
+                '0 8px 32px rgba(31, 38, 135, 0.15), 0 0 16px rgba(168, 85, 247, 0.18), 0 0 16px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+            }}
+          >
+            {/* Üstteki hafif cam parlama efekti */}
+            <div
+              className="absolute top-0 left-0 right-0 h-[40%] pointer-events-none rounded-t-3xl"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent)',
+              }}
+            />
+
             {/* Sol İçerik: İstatistikler ve İlerleme Çubuğu */}
             <div className="relative z-10 flex-1 min-w-0 flex flex-col justify-center gap-1.5 sm:gap-2">
               <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                {/* 1. Buton (Sol): ist.png - Üzerinde Yalnızca İstatistik Bilgileri */}
-                <div className="relative rounded-2xl overflow-hidden flex items-end justify-center select-none transition-transform duration-150 active:scale-95 cursor-pointer">
-                  <img
-                    src="/ist.png"
-                    alt="İstatistik"
-                    className="w-full h-auto object-contain block drop-shadow-sm"
-                    draggable={false}
+                {/* 1. Buton (Sol): ist.png - Cam Efektli Çerçeve */}
+                <div
+                  className="relative rounded-2xl p-1 sm:p-1.5 overflow-hidden flex flex-col items-center justify-center select-none transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.22)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(255, 255, 255, 0.55)',
+                    boxShadow:
+                      '0 6px 20px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
+                  }}
+                >
+                  {/* Üst cam ışıma efekti */}
+                  <div
+                    className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl z-20"
+                    style={{
+                      background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
+                    }}
                   />
-                  <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 z-10 flex flex-col items-center justify-center text-center px-1">
-                    <span className="text-[8px] sm:text-[9.5px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-                      Haftalık Ortalama
-                    </span>
-                    <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-                      {avgMinutes} dk
-                    </span>
+
+                  <div className="relative z-10 w-full rounded-xl overflow-hidden flex items-end justify-center">
+                    <img
+                      src="/ist.png"
+                      alt="Haftalık Ortalama"
+                      className="w-full h-auto object-contain block drop-shadow-sm"
+                      draggable={false}
+                    />
+                    <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 z-10 flex flex-col items-center justify-center text-center px-1">
+                      <span className="text-[8.5px] sm:text-[10px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
+                        Haftalık Ortalama
+                      </span>
+                      <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
+                        {avgMinutes} dk
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* 2. Buton (Sağ): saf.png - Üzerinde Yalnızca Sınıf Durumu Bilgileri */}
-                <div className="relative rounded-2xl overflow-hidden flex items-end justify-center select-none transition-transform duration-150 active:scale-95 cursor-pointer">
-                  <img
-                    src="/saf.png"
-                    alt="Sınıf Durumu"
-                    className="w-full h-auto object-contain block drop-shadow-sm"
-                    draggable={false}
+                {/* 2. Buton (Sağ): saf.png - Cam Efektli Çerçeve */}
+                <div
+                  className="relative rounded-2xl p-1 sm:p-1.5 overflow-hidden flex flex-col items-center justify-center select-none transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.22)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(255, 255, 255, 0.55)',
+                    boxShadow:
+                      '0 6px 20px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
+                  }}
+                >
+                  {/* Üst cam ışıma efekti */}
+                  <div
+                    className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl z-20"
+                    style={{
+                      background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
+                    }}
                   />
-                  <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 z-10 flex flex-col items-center justify-center text-center px-1">
-                    <span className="text-[8px] sm:text-[9.5px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-                      {hasCritical ? 'Kritik Süre' : 'Sınıf Güvende'}
-                    </span>
-                    <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-                      {avgStage}. Kademe
-                    </span>
+
+                  <div className="relative z-10 w-full rounded-xl overflow-hidden flex items-end justify-center">
+                    <img
+                      src="/saf.png"
+                      alt="Sınıf Durumu"
+                      className="w-full h-auto object-contain block drop-shadow-sm"
+                      draggable={false}
+                    />
+                    <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 z-10 flex flex-col items-center justify-center text-center px-1">
+                      <span className="text-[8.5px] sm:text-[10px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
+                        {hasCritical ? 'Kritik Süre' : 'Sınıf Güvende'}
+                      </span>
+                      <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
+                        {avgStage}. Kademe
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -339,7 +394,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                     />
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-[8.5px] sm:text-[9.5px] font-black text-slate-400 leading-tight">
+                <div className="flex items-center justify-between text-[8.5px] sm:text-[9.5px] font-black text-slate-500 leading-tight">
                   <span>0 dk</span>
                   <span>{avgStage}/14 Kademe Ortalaması</span>
                   <span>420+ dk</span>
@@ -347,7 +402,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
               </div>
             </div>
 
-            {/* Sağ Taraf: Kedi Maskotu (Alttaki boşluk silindi, ayaklar doğrudan alt sınıra oturtuldu) */}
+            {/* Sağ Taraf: Kedi Maskotu */}
             <div className="relative z-10 flex-shrink-0 self-stretch flex items-end justify-center w-[100px] sm:w-[124px] md:w-[140px] -mb-3 sm:-mb-3.5 pointer-events-none select-none">
               <TransparentMascotVideo
                 src="/mascot.mp4"
@@ -358,155 +413,267 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         );
       })()}
 
-      {/* 2. RENK BÖLGELERİNE GÖRE DAĞILIM (Pastel İkonlu İstatistik Kutuları) */}
-      <div className="relative z-10 bg-white/75 backdrop-blur-xl rounded-3xl border border-white/95 p-2.5 sm:p-3 shadow-[0_2px_6px_rgba(0,0,0,0.14),0_8px_18px_rgba(0,0,0,0.09),0_20px_38px_rgba(124,58,237,0.16)] space-y-2">
-        <div className="flex items-center justify-between px-1">
+      {/* 2. RENK BÖLGELERİNE GÖRE DAĞILIM (Veli Sayfasındaki Gibi Glass Efektli Çerçeveler) */}
+      <div
+        className="relative z-10 rounded-3xl p-3 sm:p-3.5 space-y-2 overflow-hidden"
+        style={{
+          backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.75)',
+          boxShadow:
+            '0 8px 32px rgba(31, 38, 135, 0.15), 0 0 16px rgba(168, 85, 247, 0.18), 0 0 16px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+        }}
+      >
+        {/* Üst cam parlama efekti */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[40%] pointer-events-none rounded-t-3xl"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent)',
+          }}
+        />
+
+        <div className="relative z-10 flex items-center justify-between px-1">
           <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-            <BarChart3 className="w-3.5 h-3.5 text-violet-500" />
+            <BarChart3 className="w-3.5 h-3.5 text-violet-600" />
             <span>Renk Bölgelerine Göre Dağılım</span>
           </span>
           {filterCategory !== 'all' && (
             <button
               type="button"
               onClick={() => setFilterCategory('all')}
-              className="text-[10px] font-bold text-violet-600 hover:underline cursor-pointer"
+              className="text-[10px] font-bold text-violet-700 hover:underline cursor-pointer"
             >
               Filtreyi Temizle
             </button>
           )}
         </div>
 
-        {/* 4 Yeni 3D Rozet Buton (Yeşil, Mavi, Turuncu, Kırmızı) */}
-        <div className="grid grid-cols-4 gap-2 sm:gap-3">
-          {/* Yeşil Buton */}
+        {/* 4 Renk Bölgesi Çerçevesi (Veli Sayfasındaki Birebir Glass Efekti: /ta.png, /ro.png, /sa.png, /me.png) */}
+        <div className="relative z-10 grid grid-cols-4 gap-1.5 sm:gap-2.5">
+          {/* 1. Güvenli Alan (Yeşil) */}
           <button
             type="button"
             onClick={() => setFilterCategory(filterCategory === 'safe' ? 'all' : 'safe')}
-            className={`relative aspect-[456/513] w-full rounded-2xl select-none transition-all duration-200 cursor-pointer active:scale-95 ${
+            className={`rounded-2xl py-2 px-0.5 sm:py-2.5 sm:px-1.5 flex flex-col items-center justify-between gap-1 text-center min-h-[92px] sm:min-h-[102px] transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md overflow-hidden select-none relative ${
               filterCategory === 'safe'
-                ? 'scale-[1.05] drop-shadow-[0_8px_20px_rgba(16,185,129,0.5)] ring-3 ring-emerald-400 z-10'
-                : filterCategory !== 'all'
-                ? 'opacity-60 hover:opacity-100 hover:scale-[1.02] drop-shadow-md'
-                : 'hover:scale-[1.03] drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]'
+                ? 'bg-emerald-200/40 border-2 border-emerald-400 scale-[1.03]'
+                : `bg-emerald-100/25 hover:bg-emerald-100/35 border border-white/50 ${
+                    filterCategory !== 'all' ? 'opacity-60 hover:opacity-100' : ''
+                  }`
             }`}
+            style={{
+              boxShadow:
+                filterCategory === 'safe'
+                  ? '0 8px 24px rgba(16, 185, 129, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)'
+                  : '0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
+            }}
+            title="Güvenli Alan (0-210 dk) - Filtrelemek için tıklayın"
           >
-            <img
-              src={badgeGreen}
-              alt="Yeşil Bölge"
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-              draggable={false}
+            {/* Üst cam ışıma efekti */}
+            <div
+              className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
+              }}
             />
-            <div className="relative z-10 h-full w-full flex flex-col justify-end items-center pb-2.5 sm:pb-3.5 md:pb-4 px-1">
-              <div className="text-xl sm:text-2xl md:text-3xl font-black leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+
+            <div className="relative z-10 flex items-center justify-center h-10 sm:h-12 w-full my-0">
+              <img
+                src="/ta.png"
+                alt="Güvenli Alan"
+                className="h-10 sm:h-12 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
+                draggable={false}
+              />
+            </div>
+
+            <div className="relative z-10 flex flex-col items-center w-full leading-none px-0.5">
+              <div className="text-base sm:text-lg font-black text-slate-900 leading-none">
                 {safeStudents.length}
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 ml-0.5">öğr</span>
               </div>
-              <div className="text-[9px] sm:text-[10px] md:text-xs font-black tracking-wide text-white uppercase mt-0.5 sm:mt-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">
-                Yeşil
-              </div>
-              <div className="text-[7px] sm:text-[8px] md:text-[9px] font-bold text-white/95 leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight mt-0.5">
+                Güvenli Alan
+              </span>
+              <span className="text-[9px] sm:text-[10px] font-black text-emerald-900 leading-tight mt-1 px-1.5 py-0.5 rounded bg-white/70 whitespace-nowrap border border-white/60">
                 0-210 dk
-              </div>
+              </span>
             </div>
           </button>
 
-          {/* Mavi Buton */}
+          {/* 2. Dengeli Süre (Mavi/Sarı) */}
           <button
             type="button"
             onClick={() => setFilterCategory(filterCategory === 'moderate' ? 'all' : 'moderate')}
-            className={`relative aspect-[456/513] w-full rounded-2xl select-none transition-all duration-200 cursor-pointer active:scale-95 ${
+            className={`rounded-2xl py-2 px-0.5 sm:py-2.5 sm:px-1.5 flex flex-col items-center justify-between gap-1 text-center min-h-[92px] sm:min-h-[102px] transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md overflow-hidden select-none relative ${
               filterCategory === 'moderate'
-                ? 'scale-[1.05] drop-shadow-[0_8px_20px_rgba(59,130,246,0.5)] ring-3 ring-sky-400 z-10'
-                : filterCategory !== 'all'
-                ? 'opacity-60 hover:opacity-100 hover:scale-[1.02] drop-shadow-md'
-                : 'hover:scale-[1.03] drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]'
+                ? 'bg-amber-200/40 border-2 border-amber-400 scale-[1.03]'
+                : `bg-amber-100/25 hover:bg-amber-100/35 border border-white/50 ${
+                    filterCategory !== 'all' ? 'opacity-60 hover:opacity-100' : ''
+                  }`
             }`}
+            style={{
+              boxShadow:
+                filterCategory === 'moderate'
+                  ? '0 8px 24px rgba(245, 158, 11, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)'
+                  : '0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
+            }}
+            title="Dengeli Süre (240-300 dk) - Filtrelemek için tıklayın"
           >
-            <img
-              src={badgeBlue}
-              alt="Mavi Bölge"
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-              draggable={false}
+            {/* Üst cam ışıma efekti */}
+            <div
+              className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
+              }}
             />
-            <div className="relative z-10 h-full w-full flex flex-col justify-end items-center pb-2.5 sm:pb-3.5 md:pb-4 px-1">
-              <div className="text-xl sm:text-2xl md:text-3xl font-black leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+
+            <div className="relative z-10 flex items-center justify-center h-10 sm:h-12 w-full my-0">
+              <img
+                src="/ro.png"
+                alt="Dengeli Süre"
+                className="h-10 sm:h-12 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
+                draggable={false}
+              />
+            </div>
+
+            <div className="relative z-10 flex flex-col items-center w-full leading-none px-0.5">
+              <div className="text-base sm:text-lg font-black text-slate-900 leading-none">
                 {moderateStudents.length}
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 ml-0.5">öğr</span>
               </div>
-              <div className="text-[9px] sm:text-[10px] md:text-xs font-black tracking-wide text-white uppercase mt-0.5 sm:mt-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">
-                Mavi
-              </div>
-              <div className="text-[7px] sm:text-[8px] md:text-[9px] font-bold text-white/95 leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight mt-0.5">
+                Dengeli Süre
+              </span>
+              <span className="text-[9px] sm:text-[10px] font-black text-amber-900 leading-tight mt-1 px-1.5 py-0.5 rounded bg-white/70 whitespace-nowrap border border-white/60">
                 240-300 dk
-              </div>
+              </span>
             </div>
           </button>
 
-          {/* Turuncu Buton */}
+          {/* 3. Dikkat Sınırı (Turuncu) */}
           <button
             type="button"
             onClick={() => setFilterCategory(filterCategory === 'warning' ? 'all' : 'warning')}
-            className={`relative aspect-[456/513] w-full rounded-2xl select-none transition-all duration-200 cursor-pointer active:scale-95 ${
+            className={`rounded-2xl py-2 px-0.5 sm:py-2.5 sm:px-1.5 flex flex-col items-center justify-between gap-1 text-center min-h-[92px] sm:min-h-[102px] transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md overflow-hidden select-none relative ${
               filterCategory === 'warning'
-                ? 'scale-[1.05] drop-shadow-[0_8px_20px_rgba(249,115,22,0.5)] ring-3 ring-orange-400 z-10'
-                : filterCategory !== 'all'
-                ? 'opacity-60 hover:opacity-100 hover:scale-[1.02] drop-shadow-md'
-                : 'hover:scale-[1.03] drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]'
+                ? 'bg-orange-200/40 border-2 border-orange-400 scale-[1.03]'
+                : `bg-orange-100/25 hover:bg-orange-100/35 border border-white/50 ${
+                    filterCategory !== 'all' ? 'opacity-60 hover:opacity-100' : ''
+                  }`
             }`}
+            style={{
+              boxShadow:
+                filterCategory === 'warning'
+                  ? '0 8px 24px rgba(249, 115, 22, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)'
+                  : '0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
+            }}
+            title="Dikkat Sınırı (330-390 dk) - Filtrelemek için tıklayın"
           >
-            <img
-              src={badgeOrange}
-              alt="Turuncu Bölge"
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-              draggable={false}
+            {/* Üst cam ışıma efekti */}
+            <div
+              className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
+              }}
             />
-            <div className="relative z-10 h-full w-full flex flex-col justify-end items-center pb-2.5 sm:pb-3.5 md:pb-4 px-1">
-              <div className="text-xl sm:text-2xl md:text-3xl font-black leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+
+            <div className="relative z-10 flex items-center justify-center h-10 sm:h-12 w-full my-0">
+              <img
+                src="/sa.png"
+                alt="Dikkat Sınırı"
+                className="h-10 sm:h-12 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
+                draggable={false}
+              />
+            </div>
+
+            <div className="relative z-10 flex flex-col items-center w-full leading-none px-0.5">
+              <div className="text-base sm:text-lg font-black text-slate-900 leading-none">
                 {warningStudents.length}
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 ml-0.5">öğr</span>
               </div>
-              <div className="text-[9px] sm:text-[10px] md:text-xs font-black tracking-wide text-white uppercase mt-0.5 sm:mt-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">
-                Turuncu
-              </div>
-              <div className="text-[7px] sm:text-[8px] md:text-[9px] font-bold text-white/95 leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight mt-0.5">
+                Dikkat Sınırı
+              </span>
+              <span className="text-[9px] sm:text-[10px] font-black text-orange-900 leading-tight mt-1 px-1.5 py-0.5 rounded bg-white/70 whitespace-nowrap border border-white/60">
                 330-390 dk
-              </div>
+              </span>
             </div>
           </button>
 
-          {/* Kırmızı Buton */}
+          {/* 4. Kırmızı Sınır (Kırmızı) */}
           <button
             type="button"
             onClick={() => setFilterCategory(filterCategory === 'critical' ? 'all' : 'critical')}
-            className={`relative aspect-[456/513] w-full rounded-2xl select-none transition-all duration-200 cursor-pointer active:scale-95 ${
+            className={`rounded-2xl py-2 px-0.5 sm:py-2.5 sm:px-1.5 flex flex-col items-center justify-between gap-1 text-center min-h-[92px] sm:min-h-[102px] transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md overflow-hidden select-none relative ${
               filterCategory === 'critical'
-                ? 'scale-[1.05] drop-shadow-[0_8px_20px_rgba(244,63,94,0.5)] ring-3 ring-rose-400 z-10'
-                : filterCategory !== 'all'
-                ? 'opacity-60 hover:opacity-100 hover:scale-[1.02] drop-shadow-md'
-                : 'hover:scale-[1.03] drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]'
+                ? 'bg-rose-200/40 border-2 border-rose-400 scale-[1.03]'
+                : `bg-rose-100/25 hover:bg-rose-100/35 border border-white/50 ${
+                    filterCategory !== 'all' ? 'opacity-60 hover:opacity-100' : ''
+                  }`
             }`}
+            style={{
+              boxShadow:
+                filterCategory === 'critical'
+                  ? '0 8px 24px rgba(244, 63, 94, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)'
+                  : '0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
+            }}
+            title="Kırmızı Sınır (420+ dk) - Filtrelemek için tıklayın"
           >
-            <img
-              src={badgeRed}
-              alt="Kırmızı Bölge"
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-              draggable={false}
+            {/* Üst cam ışıma efekti */}
+            <div
+              className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
+              }}
             />
-            <div className="relative z-10 h-full w-full flex flex-col justify-end items-center pb-2.5 sm:pb-3.5 md:pb-4 px-1">
-              <div className="text-xl sm:text-2xl md:text-3xl font-black leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+
+            <div className="relative z-10 flex items-center justify-center h-10 sm:h-12 w-full my-0">
+              <img
+                src="/me.png"
+                alt="Kırmızı Sınır"
+                className="h-10 sm:h-12 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
+                draggable={false}
+              />
+            </div>
+
+            <div className="relative z-10 flex flex-col items-center w-full leading-none px-0.5">
+              <div className="text-base sm:text-lg font-black text-slate-900 leading-none">
                 {criticalStudents.length}
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 ml-0.5">öğr</span>
               </div>
-              <div className="text-[9px] sm:text-[10px] md:text-xs font-black tracking-wide text-white uppercase mt-0.5 sm:mt-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">
-                Kırmızı
-              </div>
-              <div className="text-[7px] sm:text-[8px] md:text-[9px] font-bold text-white/95 leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight mt-0.5">
+                Kırmızı Sınır
+              </span>
+              <span className="text-[9px] sm:text-[10px] font-black text-rose-900 leading-tight mt-1 px-1.5 py-0.5 rounded bg-white/70 whitespace-nowrap border border-white/60">
                 420+ dk
-              </div>
+              </span>
             </div>
           </button>
         </div>
       </div>
 
       {/* 3. ÖĞRENCİ BİLGİLERİ (Buzlu Cam Kart) */}
-      <div className="relative z-10 bg-white/75 backdrop-blur-xl rounded-3xl border border-white/95 p-3.5 sm:p-4 shadow-[0_2px_6px_rgba(0,0,0,0.14),0_8px_18px_rgba(0,0,0,0.09),0_20px_38px_rgba(124,58,237,0.16)] space-y-3">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div
+        className="relative z-10 rounded-3xl p-3.5 sm:p-4 space-y-3 overflow-hidden"
+        style={{
+          backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.75)',
+          boxShadow:
+            '0 8px 32px rgba(31, 38, 135, 0.15), 0 0 16px rgba(168, 85, 247, 0.18), 0 0 16px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
+        }}
+      >
+        {/* Üst cam parlama efekti */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[30%] pointer-events-none rounded-t-3xl"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent)',
+          }}
+        />
+
+        <div className="relative z-10 flex items-center justify-between gap-2 flex-wrap">
           <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
             <Users className="w-4 h-4 text-violet-500" />
             <span>Öğrenci Bilgileri ({sortedStudents.length} / {totalStudents})</span>
@@ -647,7 +814,12 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                 <div
                   key={user.uid}
                   id={`teacher-student-card-${user.uid}`}
-                  className={`relative bg-white/70 backdrop-blur-md rounded-2xl border p-2.5 sm:p-3 transition-all hover:bg-white/90 flex items-center justify-between gap-2.5 ${cardTint}`}
+                  className={`relative backdrop-blur-md rounded-2xl border p-2.5 sm:p-3 transition-all hover:bg-white/40 flex items-center justify-between gap-2.5 ${cardTint}`}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.32)',
+                    borderColor: 'rgba(255, 255, 255, 0.55)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.6)',
+                  }}
                 >
                   {/* Sol: Maskot ve İsim Bilgileri */}
                   <div className="flex items-center gap-3 min-w-0">
@@ -729,8 +901,18 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
       {/* ÖĞRENCİ BİLGİLERİNİ DÜZENLEME MODALI */}
       {studentToEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-indigo-200 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200">
+          <div
+            className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
+            style={{
+              background: 'rgba(255, 255, 255, 0.78)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255, 255, 255, 0.7)',
+              boxShadow:
+                '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
+            }}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 backdrop-blur-md text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200/70">
               <Pencil className="w-6 h-6 stroke-[2.5]" />
             </div>
 
@@ -809,8 +991,18 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
       {/* ÖĞRENCİ HESABI SİLME ONAY MODALI */}
       {studentToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-rose-200 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+          <div
+            className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
+            style={{
+              background: 'rgba(255, 255, 255, 0.78)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255, 255, 255, 0.7)',
+              boxShadow:
+                '0 20px 48px rgba(76, 5, 25, 0.22), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
+            }}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-100/80 backdrop-blur-md text-rose-600 flex items-center justify-center mx-auto border border-rose-200/70">
               <UserX className="w-6 h-6 stroke-[2.5]" />
             </div>
 
@@ -823,7 +1015,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
               </p>
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+            <div className="p-3 bg-white/50 backdrop-blur-md rounded-2xl border border-white/70 text-[11px] text-slate-600 space-y-1">
               <div className="font-bold text-slate-900 flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                 <span>Öğrenci: {studentToDelete.studentName || studentToDelete.displayName || 'Öğrenci'}</span>

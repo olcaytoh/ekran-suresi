@@ -32,106 +32,87 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
     gradientClass = 'bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-700';
   }
 
+  const hours = Math.floor(totalMinutes / 60);
+
   return (
     <div
-      className="relative bg-white rounded-2xl sm:rounded-3xl p-2.5 sm:p-3 text-slate-900 shadow-sm border border-slate-200/80 overflow-hidden flex items-stretch justify-between gap-2 sm:gap-3 select-none"
+      className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 text-slate-900 overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-3.5 select-none min-h-[136px] sm:min-h-[148px]"
+      style={{
+        background: 'rgba(255, 255, 255, 0.20)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.35)',
+        boxShadow:
+          '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.5), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
+      }}
     >
-      {/* Left Content: Clean Status Pill, Greeting, Progress Bar & Counters */}
+      {/* Üstteki hafif parlama efekti */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[40%] pointer-events-none"
+        style={{
+          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.25), transparent)',
+        }}
+      />
+
+      {/* Left Content */}
       <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-between py-0.5">
-        {/* Top Status Tag & Weekly Star Badge (Altın Yıldız Rozeti) */}
-        <div className="flex flex-col items-start gap-1">
-          {/* Rozet Kazandıkça Üstte Yan Yana Dizilen Rozetler */}
-          {isSafeGreen && (
-            <div className="flex items-center gap-1 pl-0.5 animate-in fade-in zoom-in-95 duration-300 mb-0.5">
-              <img
-                src="/gold_medal.png"
-                alt="Haftalık Yıldız Rozeti"
-                className="w-9 h-11 sm:w-11 sm:h-13 object-contain drop-shadow-[0_3px_8px_rgba(245,158,11,0.25)] transition-transform duration-200 hover:scale-105 select-none"
-                draggable={false}
-              />
-            </div>
-          )}
-
-          {/* Sarı Çerçeve / Hap: Kalkan ikonu 'Haftalık' kelimesinin hemen solunda, kalkan yüksekliğinde */}
-          <div className="inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-0.5 sm:py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-amber-950 border border-amber-200/90 shadow-xs select-none">
-            {/* Kalkan İkonu (Duruma göre dinamik renkli, sarı çerçevenin içinde) */}
-            <span
-              className="inline-flex items-center justify-center p-0.5 sm:p-1 rounded-full bg-white/50 shadow-2xs border border-white/60"
-              title={
-                isRed
-                  ? 'Kırmızı Sınır'
-                  : isOrange
-                  ? 'Dikkat Sınırı'
-                  : isYellow
-                  ? 'Dengeli Süre'
-                  : 'Güvenli Alan'
-              }
-            >
-              <ShieldCheck
-                className={`w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.5] ${
-                  isRed
-                    ? 'text-red-600'
-                    : isOrange
-                    ? 'text-amber-700'
-                    : isYellow
-                    ? 'text-yellow-700'
-                    : 'text-emerald-700'
-                }`}
-              />
+        {/* Top Status Tag: Haftalık Yıldız Rozeti: Altın */}
+        <div className="flex items-center">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-amber-950 border border-amber-300 shadow-2xs select-none">
+            <span className="w-4 h-4 rounded-full bg-amber-500/30 flex items-center justify-center text-[10px] font-black text-amber-900 leading-none">
+              ★
             </span>
-
-            {/* Metin */}
             <span className="text-[10px] sm:text-[11px] font-black tracking-tight leading-none text-amber-950">
-              Haftalık Yıldız Rozeti
+              Haftalık Yıldız Rozeti: Altın
             </span>
           </div>
         </div>
 
-        {/* Harmonious Progress Bar */}
-        <div className="mt-1 sm:mt-1.5">
-          <div className="w-full h-2 sm:h-2.5 bg-slate-100 rounded-full p-0.5 border border-slate-200/60 shadow-inner overflow-hidden">
+        {/* Center: Saat ve Kademe Bilgisi */}
+        <div className="mt-2 text-center">
+          <span className="text-xs sm:text-sm font-black text-white drop-shadow-2xs">
+            {hours > 0 ? `${hours}. Saat` : `${totalMinutes} dk`}{' '}
+            <span className="font-semibold text-white/80 text-[11px] sm:text-xs">
+              ({currentStage}. Kademe)
+            </span>
+          </span>
+        </div>
+
+        {/* Progress Bar (Full Gradient: Yeşil -> Sarı -> Turuncu -> Kırmızı) */}
+        <div className="mt-1">
+          <div className="w-full h-2 bg-white/40 rounded-full p-0.5 border border-white/60 shadow-inner overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 shadow-xs ${
-                isRed
-                  ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-red-500'
-                  : isOrange
-                  ? 'bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500'
-                  : isYellow
-                  ? 'bg-gradient-to-r from-emerald-300 via-lime-400 to-yellow-400'
-                  : 'bg-gradient-to-r from-teal-400 to-emerald-500'
-              }`}
-              style={{ width: `${Math.max(6, progressPercent)}%` }}
+              className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-400 via-amber-300 via-orange-400 to-rose-500"
+              style={{ width: `${Math.max(4, progressPercent)}%` }}
             />
           </div>
+        </div>
 
-          {/* Sadeleştirilmiş Bilgi */}
-          <div className="flex items-center justify-between text-[11px] sm:text-xs font-extrabold text-slate-900 mt-1">
-            <div className="flex flex-col items-start">
-              <span>
-                {totalMinutes} dk <span className="font-semibold text-slate-500">({currentStage}. Kademe)</span>
-              </span>
-              <div className="w-8 h-0.5 bg-teal-500 rounded-full mt-0.5" />
-            </div>
-            <span>
-              {remainingMinutes > 0 ? `${remainingMinutes} dk kaldı` : 'Maksimum Kademe'}
-            </span>
-          </div>
+        {/* Bottom: Günlük Ekran Süresi: X dk & Beyaz/Turkuaz Çizgi */}
+        <div className="mt-1.5 flex flex-col items-start">
+          <span className="text-[11px] sm:text-xs font-black text-white/95 tracking-tight drop-shadow-2xs">
+            Günlük Ekran Süresi: {totalMinutes} dk
+          </span>
+          <div className="w-10 h-0.5 bg-white/70 rounded-full mt-0.5" />
         </div>
       </div>
 
-      {/* Right Side: Kedinin Kafasının Üstünde Açık Gri Çerçeve İçinde Karşılama Mesajı & Kedi Maskotu */}
-      <div className="relative z-10 flex-shrink-0 self-stretch -mb-1 pt-0.5 flex flex-col items-center justify-end select-none">
-        {/* Kedinin Kafasının Üstündeki Açık Gri Çerçeveli Mesaj */}
-        <div className="mb-1 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-slate-100 text-slate-800 border border-slate-200/80 shadow-2xs backdrop-blur-md">
+      {/* Right Side: Merhaba Mesajı ve Sevimli Öğretmen Kedi Video Maskotu */}
+      <div className="relative z-10 flex-shrink-0 self-stretch flex flex-col items-center justify-between select-none pl-1 min-w-[105px] sm:min-w-[125px] max-w-[140px]">
+        {/* Karşılama Balonu */}
+        <div className="px-2.5 py-0.5 sm:px-3 sm:py-0.5 rounded-full bg-white/75 backdrop-blur-md text-slate-800 border border-white/80 shadow-2xs z-20">
           <span className="text-[10px] sm:text-[11px] font-bold tracking-tight whitespace-nowrap text-slate-800">
             Merhaba, {studentName || 'Ali Yılmaz'}!
           </span>
         </div>
 
-        <div className="pointer-events-none flex items-end justify-center">
+        {/* Öğretmen Kedi Video Maskotu - Üst ve alt tarafı tam sığdırılmış ve kesilmeden görüntülenir */}
+        <div className="relative z-10 flex-1 min-h-0 w-full flex items-end justify-center pointer-events-none select-none pt-1">
           <TransparentMascotVideo
             src="/mascot.mp4"
-            className="h-full w-auto max-h-[78px] sm:max-h-[90px] md:max-h-[100px] max-w-[110px] sm:max-w-[130px] md:max-w-[145px] drop-shadow-[0_6px_14px_rgba(0,0,0,0.12)] transition-all duration-300"
+            cropTop={0.08}
+            cropBottom={0.08}
+            className="w-auto h-full max-h-[102px] sm:max-h-[116px] drop-shadow-[0_6px_14px_rgba(124,58,237,0.18)] transition-all duration-300"
           />
         </div>
       </div>
