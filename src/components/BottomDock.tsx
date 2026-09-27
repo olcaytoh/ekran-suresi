@@ -66,7 +66,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-lg mx-auto px-2 pb-2 select-none">
+    <div className="w-full max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-2 pb-2 select-none">
       <nav
         aria-label="Ana Menü"
         className="bg-white/95 backdrop-blur-md rounded-[32px] p-1.5 sm:p-2 shadow-[0_6px_20px_rgba(0,0,0,0.14),0_16px_36px_rgba(0,0,0,0.18),0_24px_50px_rgba(15,23,42,0.16)] border border-slate-200/90 flex items-center justify-around gap-1 sm:gap-2"

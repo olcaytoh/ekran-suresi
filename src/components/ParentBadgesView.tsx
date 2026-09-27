@@ -263,6 +263,11 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-2.5 pb-20 sm:pb-24">
+      {/* Başlıklar için profesyonel font yüklemesi (Manrope) — sadece başlıklarda kullanılır */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&display=swap');
+        .cv-heading-font { font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.01em; }
+      `}</style>
       {/* 1. Top Bar: Teacher Calendar Editor Button & Active Week Date Info - Glass Frame */}
       <div
         className="relative z-10 rounded-3xl px-3.5 py-2.5 overflow-hidden flex items-center justify-between gap-2 flex-wrap"
@@ -276,7 +281,7 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
       >
         <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-3xl" />
         <div className="relative z-10 flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs sm:text-sm font-black text-slate-900 drop-shadow-2xs">
+          <span className="text-xs sm:text-sm font-black text-slate-900 drop-shadow-2xs cv-heading-font">
             Haftalık Kutular (35 Hafta)
           </span>
           {activeWeekData && (
@@ -653,7 +658,7 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
         <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-3xl" />
         <div className="relative z-10 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-slate-900 drop-shadow-2xs">
+            <span className="text-xs font-black text-slate-900 drop-shadow-2xs cv-heading-font">
               Kutu Seviyeleri ve Renkleri
             </span>
             <span className="text-[10px] font-bold text-slate-600">
@@ -773,7 +778,7 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                 {item.weekNum}
               </div>
               <div className="relative z-10">
-                <h4 className="text-base font-black text-slate-900">{item.weekNum}. Hafta Detayı</h4>
+                <h4 className="text-base font-black text-slate-900 cv-heading-font">{item.weekNum}. Hafta Detayı</h4>
                 <p className="text-xs font-semibold text-slate-600 mt-0.5">{item.dateLabel}</p>
               </div>
 

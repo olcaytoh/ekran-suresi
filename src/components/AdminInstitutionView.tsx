@@ -730,7 +730,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         </div>
 
         {/* Öğrenci Listesi */}
-        <div className="relative z-10 space-y-2.5">
+        <div className="relative z-10 space-y-1.5">
           {sortedStudents.length === 0 ? (
             <div
               className="rounded-3xl p-8 text-center space-y-2 backdrop-blur-md"
@@ -762,7 +762,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               return (
                 <div
                   key={user.uid}
-                  className="relative rounded-2xl p-3 sm:p-3.5 shadow-xs flex items-center justify-between gap-3 backdrop-blur-md overflow-hidden transition-all duration-150"
+                  className="relative rounded-xl p-2 sm:p-2.5 shadow-xs flex items-center justify-between gap-2 backdrop-blur-md overflow-hidden transition-all duration-150"
                   style={{
                     background: isRed
                       ? 'rgba(255, 241, 242, 0.38)'
@@ -786,17 +786,17 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 >
                   {/* Üst cam ışıma efekti */}
                   <div
-                    className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
+                    className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-xl"
                     style={{
                       background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent)',
                     }}
                   />
 
-                  <div className="relative z-10 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs sm:text-sm font-black text-slate-900 truncate">{sName}</span>
+                  <div className="relative z-10 min-w-0 leading-none">
+                    <div className="flex items-center gap-1.5 flex-wrap leading-none">
+                      <span className="text-[11px] sm:text-xs font-black text-slate-900 truncate leading-none">{sName}</span>
                       <span
-                        className={`text-[8.5px] font-black px-1.5 py-0.5 rounded-md leading-none ${
+                        className={`text-[8px] font-black px-1 py-0.5 rounded leading-none ${
                           isRed
                             ? 'bg-rose-600 text-white'
                             : isOrange
@@ -808,25 +808,19 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       >
                         {category.name}
                       </span>
-                      {isRed && <Flame className="w-3 h-3 text-rose-600" />}
+                      {isRed && <Flame className="w-2.5 h-2.5 text-rose-600" />}
                     </div>
 
-                    <div className="text-[10px] font-bold text-slate-800 truncate mt-1 flex items-center gap-1.5 flex-wrap">
+                    <div className="text-[9px] font-bold text-slate-800 truncate mt-1 leading-none flex items-center gap-1.5 flex-wrap">
                       <span>Veli: <strong className="text-slate-900">{pName}</strong></span>
-                      {user.email && (
-                        <span className="text-indigo-700 font-mono bg-indigo-50/80 px-1.5 py-0.5 rounded border border-indigo-200/70 flex items-center gap-1 backdrop-blur-xs">
-                          <Mail className="w-2.5 h-2.5" />
-                          <span>{user.email}</span>
-                        </span>
-                      )}
                       <span>• {formatTimeAgo(user.updatedAt)}</span>
                     </div>
                   </div>
 
-                  <div className="relative z-10 flex items-center gap-2 flex-shrink-0">
-                    <div className="text-right">
-                      <div className="text-xs sm:text-sm font-black text-slate-900">{minutes} dk</div>
-                      <div className="text-[9.5px] font-bold text-slate-800">
+                  <div className="relative z-10 flex items-center gap-1.5 flex-shrink-0">
+                    <div className="text-right leading-none">
+                      <div className="text-[11px] sm:text-xs font-black text-slate-900 leading-none">{minutes} dk</div>
+                      <div className="text-[8.5px] font-bold text-slate-800 leading-none mt-1">
                         {timeInfo.longStr} • {stage}. Kademe
                       </div>
                     </div>
@@ -838,9 +832,9 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                         setUserToReset(user);
                       }}
                       title="Bu e-postayı ve hesabı tamamen sıfırla/sil"
-                      className="p-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-white/50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white/50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -999,52 +993,9 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       >
         <div className="flex items-center gap-2 min-w-0">
           <Building2 className="w-4 h-4 text-rose-600 flex-shrink-0" />
-          {isEditingName ? (
-            <div className="flex items-center gap-1.5 min-w-0">
-              <input
-                type="text"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                className="px-2 py-0.5 rounded-lg bg-white/70 border border-slate-300 text-xs font-black text-slate-900 focus:outline-hidden"
-                placeholder="Kurum Adı"
-              />
-              <button
-                type="button"
-                onClick={handleSaveInstitutionName}
-                disabled={isSavingName}
-                className="px-2 py-0.5 rounded-lg bg-rose-600 text-white font-bold text-[10px] cursor-pointer"
-              >
-                {isSavingName ? '...' : 'Kaydet'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsEditingName(false)}
-                className="px-1.5 py-0.5 rounded-lg bg-slate-200 text-slate-700 text-[10px] cursor-pointer"
-              >
-                İptal
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="font-extrabold text-slate-900 truncate">{currentInstName}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setNameInput(currentInstName);
-                  setIsEditingName(true);
-                }}
-                className="p-1 rounded text-slate-400 hover:text-slate-700 cursor-pointer"
-                title="Kurum Adını Düzenle"
-              >
-                <Edit2 className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="px-2 py-0.5 rounded-lg bg-rose-50/80 text-rose-700 font-bold text-[10px] border border-rose-200/80">
-            Yönetici Paneli
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-extrabold text-slate-900 truncate">{currentInstName}</span>
+          </div>
         </div>
       </div>
 
@@ -1052,12 +1003,12 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       <div
         className="relative z-10 rounded-3xl p-4 sm:p-5 space-y-3 overflow-hidden"
         style={{
-          background: 'rgba(255, 255, 255, 0.25)',
+          backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.55)',
+          border: '1px solid rgba(255, 255, 255, 0.75)',
           boxShadow:
-            '0 8px 32px rgba(0, 0, 0, 0.10), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
+            '0 8px 32px rgba(31, 38, 135, 0.15), 0 0 16px rgba(168, 85, 247, 0.18), 0 0 16px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
         }}
       >
         {/* Üst cam parlama efekti */}
@@ -1179,17 +1130,24 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       type="button"
                       id="btn-copy-inst-code-main"
                       onClick={handleCopyInstCode}
-                      className="btn-3d-rose px-2 py-1.5 rounded-xl text-[11px] sm:text-xs font-black inline-flex items-center justify-center gap-1 cursor-pointer active:scale-95 w-full"
+                      className="px-2 py-1.5 rounded-xl text-[11px] sm:text-xs font-black text-sky-950 inline-flex items-center justify-center gap-1 cursor-pointer active:scale-95 w-full transition-all"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(186,230,253,0.95), rgba(125,211,252,0.75))',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1.5px solid rgba(14, 165, 233, 0.9)',
+                        boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
+                      }}
                       title="Kurum Kodunu Kopyala"
                     >
                       {copiedInstCode ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                          <Check className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
                           <span>Kopyalandı</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <Copy className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
                           <span>Kopyala</span>
                         </>
                       )}
@@ -1275,17 +1233,24 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       type="button"
                       id="btn-copy-admin-code-main"
                       onClick={handleCopyAdminCode}
-                      className="btn-3d-palette-primary px-2 py-1.5 rounded-xl text-[11px] sm:text-xs font-black inline-flex items-center justify-center gap-1 cursor-pointer active:scale-95 w-full"
+                      className="px-2 py-1.5 rounded-xl text-[11px] sm:text-xs font-black text-sky-950 inline-flex items-center justify-center gap-1 cursor-pointer active:scale-95 w-full transition-all"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(186,230,253,0.95), rgba(125,211,252,0.75))',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1.5px solid rgba(14, 165, 233, 0.9)',
+                        boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
+                      }}
                       title="Admin Yetki Kodunu Kopyala"
                     >
                       {copiedAdminCode ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                          <Check className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
                           <span>Kopyalandı</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <Copy className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
                           <span>Kopyala</span>
                         </>
                       )}
@@ -1321,13 +1286,13 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           {/* Öğretmenler İçin Hızlı Davet Paylaşım Butonu (Glass Çubuk) */}
           {currentInstCode && (
             <div
-              className="flex items-center justify-between gap-2 p-2.5 rounded-2xl flex-wrap backdrop-blur-md"
+              className="flex items-center justify-between gap-2 p-2.5 rounded-2xl flex-wrap"
               style={{
-                background: 'rgba(255, 255, 255, 0.32)',
+                backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.45) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.40) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
                 backdropFilter: 'blur(16px)',
                 WebkitBackdropFilter: 'blur(16px)',
-                border: '1px solid rgba(255, 255, 255, 0.55)',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.75)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.06), 0 0 12px rgba(168,85,247,0.15), 0 0 12px rgba(45,212,191,0.14), inset 0 1px 1px rgba(255, 255, 255, 0.7)',
               }}
             >
               <span className="text-[11px] text-slate-700 font-semibold">
@@ -1337,16 +1302,23 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 type="button"
                 id="btn-copy-share-invite"
                 onClick={handleCopyShareText}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black transition-all cursor-pointer active:scale-95 shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-sky-950 transition-all cursor-pointer active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(186,230,253,0.95), rgba(125,211,252,0.75))',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1.5px solid rgba(14, 165, 233, 0.9)',
+                  boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
+                }}
               >
                 {copiedShareText ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                    <Check className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
                     <span>Mesaj Kopyalandı!</span>
                   </>
                 ) : (
                   <>
-                    <Share2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <Share2 className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
                     <span>Öğretmen Davet Metnini Kopyala</span>
                   </>
                 )}
@@ -1463,7 +1435,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           </div>
 
           {/* Öğretmen / Sınıf Listesi */}
-          <div className="space-y-2.5">
+          <div className="space-y-1.5">
             <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5 px-1">
               <GraduationCap className="w-4 h-4 text-indigo-600" />
               <span>Öğretmenler &amp; Sınıflar ({classrooms.length})</span>
@@ -1497,7 +1469,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   <div
                     key={classroom.id}
                     onClick={() => setSelectedClassId(classroom.id)}
-                    className="relative z-10 w-full text-left rounded-3xl p-3.5 sm:p-4 transition-all duration-150 cursor-pointer overflow-hidden backdrop-blur-md hover:scale-[1.01] active:scale-[0.99]"
+                    className="relative z-10 w-full text-left rounded-2xl p-2 sm:p-2.5 transition-all duration-150 cursor-pointer overflow-hidden backdrop-blur-md hover:scale-[1.01] active:scale-[0.99]"
                     style={{
                       background: hasCritical
                         ? 'rgba(255, 241, 242, 0.32)'
@@ -1508,38 +1480,52 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                         ? '1.5px solid rgba(244, 63, 94, 0.45)'
                         : '1px solid rgba(255, 255, 255, 0.55)',
                       boxShadow:
-                        '0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
+                        '0 4px 14px rgba(0, 0, 0, 0.06), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
                     }}
                   >
                     {/* Üst cam parlama efekti */}
                     <div
-                      className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-3xl"
+                      className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
                       style={{
                         background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent)',
                       }}
                     />
 
-                    <div className="relative z-10 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative z-10 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div
-                          className={`w-11 h-11 rounded-2xl flex items-center justify-center border flex-shrink-0 backdrop-blur-xs ${
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center border flex-shrink-0 backdrop-blur-xs ${
                             hasCritical
                               ? 'bg-rose-100/60 text-rose-600 border-rose-200/70'
                               : 'bg-emerald-100/60 text-emerald-700 border-emerald-200/70'
                           }`}
                         >
-                          <School className="w-5 h-5" />
+                          <School className="w-4 h-4" />
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-sm font-black text-slate-900 truncate">{classroom.name}</h4>
-                          <p className="text-[11px] text-slate-800 truncate mt-0.5 font-semibold">
+                        <div className="min-w-0 leading-none">
+                          <h4 className="text-[11px] sm:text-xs font-black text-slate-900 truncate leading-none">{classroom.name}</h4>
+                          <p className="text-[9.5px] text-slate-800 truncate font-semibold leading-none mt-1">
                             Öğretmen: {classroom.teacherName} • {stats.totalStudents}/
-                            {classroom.studentTargetCount || 25} öğrenci
+                            {classroom.studentTargetCount || 25} öğr.
                           </p>
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-white/60 text-slate-800 border border-white/70 leading-none">
+                              Ort: {stats.avgMinutes} dk
+                            </span>
+                            {hasCritical && (
+                              <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-rose-100/60 text-rose-800 border border-rose-200/70 leading-none flex items-center gap-0.5">
+                                <Flame className="w-2 h-2 text-rose-600" />
+                                <span>{stats.criticalCount} Kırmızı</span>
+                              </span>
+                            )}
+                            <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-emerald-100/60 text-emerald-800 border border-emerald-200/70 leading-none">
+                              {stats.safeCount} Güvenli
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           type="button"
                           id={`btn-export-class-${classroom.id}`}
@@ -1549,10 +1535,9 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             setIsStatsExportModalOpen(true);
                           }}
                           title="Bu sınıfın haftalık istatistik ve ekran süresi raporunu al"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/50 hover:bg-emerald-100 text-emerald-800 border border-white/70 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
+                          className="p-1.5 rounded-lg bg-white/50 hover:bg-emerald-100 text-emerald-800 border border-white/70 transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Rapor</span>
                         </button>
                         {onSwitchToTeacherMode && (
                           <button
@@ -1563,10 +1548,9 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                               onSwitchToTeacherMode(classroom);
                             }}
                             title="Bu sınıfı öğretmen hesabıyla incele"
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/50 hover:bg-indigo-100 text-indigo-800 border border-white/70 text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
+                            className="p-1.5 rounded-lg bg-white/50 hover:bg-indigo-100 text-indigo-800 border border-white/70 transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
                           >
                             <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
-                            <span className="hidden sm:inline">Öğretmen Modu</span>
                           </button>
                         )}
                         <button
@@ -1577,27 +1561,12 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             setClassToDelete(classroom);
                           }}
                           title="Sınıfı & Öğretmeni Kurumdan Sil"
-                          className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-white/40 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white/40 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                        <ChevronRight className="w-4 h-4 text-slate-500" />
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                       </div>
-                    </div>
-
-                    <div className="relative z-10 flex items-center gap-2 mt-3 flex-wrap">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white/50 text-slate-800 border border-white/70 backdrop-blur-xs">
-                        Ortalama: {stats.avgMinutes} dk
-                      </span>
-                      {hasCritical && (
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-100/60 text-rose-800 border border-rose-200/70 backdrop-blur-xs flex items-center gap-1">
-                          <Flame className="w-3 h-3 text-rose-600" />
-                          <span>{stats.criticalCount} Kırmızı</span>
-                        </span>
-                      )}
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100/60 text-emerald-800 border border-emerald-200/70 backdrop-blur-xs">
-                        {stats.safeCount} Güvenli
-                      </span>
                     </div>
                   </div>
                 );
@@ -1745,7 +1714,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           </div>
 
           {/* Kayıtlı Kullanıcı ve E-Posta Kartları (Glassmorphic) */}
-          <div className="relative z-10 space-y-2.5">
+          <div className="relative z-10 space-y-1.5">
             {filteredRegisteredUsers.length === 0 ? (
               <div
                 className="rounded-3xl p-8 text-center space-y-2 backdrop-blur-md"
@@ -1775,7 +1744,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 return (
                   <div
                     key={user.uid}
-                    className="relative z-10 rounded-3xl p-3.5 sm:p-4 shadow-sm transition-all duration-150 overflow-hidden backdrop-blur-md hover:scale-[1.005]"
+                    className="relative z-10 rounded-2xl p-2.5 sm:p-3 shadow-sm transition-all duration-150 overflow-hidden backdrop-blur-md hover:scale-[1.005]"
                     style={{
                       background: isCurrentAdminAccount
                         ? 'rgba(238, 242, 255, 0.35)'
@@ -1791,17 +1760,17 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   >
                     {/* Üst cam parlama efekti */}
                     <div
-                      className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-3xl"
+                      className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
                       style={{
                         background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent)',
                       }}
                     />
 
-                    <div className="relative z-10 flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
+                    <div className="relative z-10 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         {/* Rol İkonu */}
                         <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5 border backdrop-blur-xs ${
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border backdrop-blur-xs ${
                             isAdminRole
                               ? 'bg-violet-100/70 text-violet-700 border-violet-200/80'
                               : isTeacherRole
@@ -1810,39 +1779,39 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           }`}
                         >
                           {isAdminRole ? (
-                            <ShieldCheck className="w-5 h-5" />
+                            <ShieldCheck className="w-4 h-4" />
                           ) : isTeacherRole ? (
-                            <GraduationCap className="w-5 h-5" />
+                            <GraduationCap className="w-4 h-4" />
                           ) : (
-                            <Users className="w-5 h-5" />
+                            <Users className="w-4 h-4" />
                           )}
                         </div>
 
                         {/* Bilgiler */}
-                        <div className="min-w-0 space-y-1">
+                        <div className="min-w-0 leading-none">
                           {/* E-Posta Adresi & Kopyalama */}
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono font-black text-xs sm:text-sm text-slate-900 truncate">
+                          <div className="flex items-center gap-1 flex-wrap leading-none">
+                            <span className="font-mono font-black text-[11px] sm:text-xs text-slate-900 truncate leading-none">
                               {user.email || '(E-posta belirtilmemiş)'}
                             </span>
                             {user.email && (
                               <button
                                 type="button"
                                 onClick={() => handleCopyEmail(user.email!)}
-                                className="p-1 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-white/50 transition-colors cursor-pointer"
+                                className="p-0.5 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-white/50 transition-colors cursor-pointer"
                                 title="E-postayı Kopyala"
                               >
                                 {copiedEmail === user.email ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  <Check className="w-3 h-3 text-emerald-600" />
                                 ) : (
-                                  <Copy className="w-3.5 h-3.5" />
+                                  <Copy className="w-3 h-3" />
                                 )}
                               </button>
                             )}
 
                             {/* Rol Rozeti */}
                             <span
-                              className={`text-[9.5px] font-black px-2 py-0.5 rounded-md leading-none border backdrop-blur-xs ${
+                              className={`text-[8px] font-black px-1.5 py-0.5 rounded leading-none border backdrop-blur-xs ${
                                 isAdminRole
                                   ? 'bg-violet-100/60 text-violet-800 border-violet-300/70'
                                   : isTeacherRole
@@ -1854,42 +1823,39 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             </span>
 
                             {isCurrentAdminAccount && (
-                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100/70 text-amber-900 border border-amber-300/80 backdrop-blur-xs">
+                              <span className="text-[8px] font-black px-1 py-0.5 rounded bg-amber-100/70 text-amber-900 border border-amber-300/80 backdrop-blur-xs">
                                 Sizin Hesabınız
                               </span>
                             )}
                           </div>
 
                           {/* İsim & Detaylar */}
-                          <div className="text-[11px] text-slate-800 flex items-center gap-2 flex-wrap font-semibold">
+                          <div className="text-[9.5px] text-slate-800 flex items-center gap-1.5 flex-wrap font-semibold leading-none mt-1">
                             <span>Ad: <strong className="text-slate-900">{user.displayName || 'İsimsiz'}</strong></span>
                             {user.studentName && (
-                              <span>• Öğrenci: <strong className="text-slate-900">{user.studentName}</strong></span>
+                              <span>• Öğr: <strong className="text-slate-900">{user.studentName}</strong></span>
                             )}
                             {user.className ? (
-                              <span className="text-indigo-800 font-bold bg-white/60 px-1.5 py-0.5 rounded border border-white/80 backdrop-blur-xs">
+                              <span className="text-indigo-800 font-bold bg-white/60 px-1 py-0.5 rounded border border-white/80 backdrop-blur-xs leading-none">
                                 {user.className}
                               </span>
                             ) : !isAdminRole ? (
-                              <span className="text-amber-800 font-medium bg-amber-100/50 px-1.5 py-0.5 rounded border border-amber-200/70 text-[10px] backdrop-blur-xs">
-                                Henüz bir sınıfa katılmadı
+                              <span className="text-amber-800 font-medium bg-amber-100/50 px-1 py-0.5 rounded border border-amber-200/70 text-[8.5px] backdrop-blur-xs leading-none">
+                                Sınıfa katılmadı
                               </span>
                             ) : null}
+                            {isParentRole && (user.currentWeekMinutes !== undefined || user.currentWeekStage !== undefined) && (
+                              <>
+                                <span>• {user.currentWeekMinutes ?? (user.currentWeekStage || 0) * 30} dk</span>
+                                <span>• {user.currentWeekStage || 0}. Kademe</span>
+                              </>
+                            )}
                           </div>
-
-                          {/* İlerleme Bilgisi (Veli ise) */}
-                          {isParentRole && (user.currentWeekMinutes !== undefined || user.currentWeekStage !== undefined) && (
-                            <div className="text-[10px] text-slate-800 font-semibold flex items-center gap-1.5">
-                              <span>Haftalık: {user.currentWeekMinutes ?? (user.currentWeekStage || 0) * 30} dk okuma</span>
-                              <span>• {user.currentWeekStage || 0}. Kademe</span>
-                              {user.updatedAt && <span>• Son İşlem: {formatTimeAgo(user.updatedAt)}</span>}
-                            </div>
-                          )}
                         </div>
                       </div>
 
                       {/* Sağ Taraf: Admin Aksiyon Butonları */}
-                      <div className="relative z-10 flex items-center gap-1.5 flex-shrink-0">
+                      <div className="relative z-10 flex items-center gap-1 flex-shrink-0">
                         {/* Uygulama İçi Mesaj Gönder */}
                         <button
                           type="button"
@@ -1899,11 +1865,10 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             setMessagingTargetClass(null);
                             setIsSendMessageModalOpen(true);
                           }}
-                          className="p-2 rounded-xl text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-xs font-bold backdrop-blur-xs shadow-2xs"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-xs font-bold backdrop-blur-xs shadow-2xs"
                           title="Kullanıcıya / Veliye Uygulama İçi Mesaj Gönder"
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
-                          <span className="hidden sm:inline text-[10px]">Mesaj</span>
                         </button>
 
                         {/* Şifre Sıfırlama Gönder Butonu */}
@@ -1913,11 +1878,10 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             id={`btn-send-reset-${user.uid}`}
                             onClick={() => handleSendPasswordReset(user.email, user.uid)}
                             disabled={sendingResetForUid === user.uid}
-                            className="p-2 rounded-xl text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-xs font-bold backdrop-blur-xs shadow-2xs"
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-xs font-bold backdrop-blur-xs shadow-2xs"
                             title="Kullanıcıya Şifre Sıfırlama Bağlantısı Gönder"
                           >
                             <Send className={`w-3.5 h-3.5 ${sendingResetForUid === user.uid ? 'animate-bounce text-indigo-600' : ''}`} />
-                            <span className="hidden sm:inline text-[10px]">Şifre Sıfırla</span>
                           </button>
                         )}
 
@@ -1927,7 +1891,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             type="button"
                             id={`btn-change-role-${user.uid}`}
                             onClick={() => setRoleChangingUser(user)}
-                            className="p-2 rounded-xl text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 backdrop-blur-xs shadow-2xs"
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 backdrop-blur-xs shadow-2xs"
                             title="Kullanıcı Rolünü Değiştir (Veli / Öğretmen)"
                           >
                             <UserCheck className="w-3.5 h-3.5" />
@@ -1940,7 +1904,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           id={`btn-reset-and-delete-${user.uid}`}
                           onClick={() => setUserToReset(user)}
                           disabled={isCurrentAdminAccount}
-                          className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 backdrop-blur-xs ${
+                          className={`p-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 backdrop-blur-xs ${
                             isCurrentAdminAccount
                               ? 'opacity-30 cursor-not-allowed bg-white/20 text-slate-400 border border-white/30'
                               : 'bg-rose-50/70 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 shadow-2xs'
@@ -1952,7 +1916,6 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           }
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline text-[11px]">Sıfırla &amp; Sil</span>
                         </button>
                       </div>
                     </div>

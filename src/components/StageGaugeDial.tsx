@@ -291,7 +291,7 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
           >
             {/* Title: güvenli alan / dengeli süre / dikkat sınırı / kırmızı sınır */}
             <span
-              className="text-lg sm:text-[21px] font-black tracking-tight leading-none capitalize whitespace-nowrap truncate"
+              className="text-lg sm:text-[21px] font-bold leading-none capitalize whitespace-nowrap truncate"
               style={{ color: zoneTextColor }}
             >
               {zoneName}
@@ -300,7 +300,7 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
             {/* Subline: Harcanan süre / Kademe bilgisi */}
             <div className="flex items-center gap-1.5 mt-1 text-[10px] sm:text-[11px] font-bold text-slate-500 whitespace-nowrap">
               <span
-                className="font-extrabold px-1.5 py-0.5 rounded-md text-white text-[9.5px] leading-none transition-colors duration-300"
+                className="font-bold px-1.5 py-0.5 rounded-md text-white text-[9.5px] leading-none transition-colors duration-300"
                 style={{ backgroundColor: zoneColor }}
               >
                 Kademe {currentStage}
@@ -329,12 +329,12 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
             />
 
             {/* Time range: 0-2 / 2-4 / 4-6 / 7+ */}
-            <span className="relative z-10 text-2xl sm:text-[26px] font-black tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+            <span className="relative z-10 text-2xl sm:text-[26px] font-bold leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
               {zoneTimeRange}
             </span>
 
             {/* Unit: saat */}
-            <span className="relative z-10 text-[11px] sm:text-xs font-black tracking-wider uppercase opacity-95 leading-tight mt-0.5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
+            <span className="relative z-10 text-[11px] sm:text-xs font-bold tracking-wider uppercase opacity-95 leading-tight mt-0.5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
               saat
             </span>
           </div>

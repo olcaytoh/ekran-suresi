@@ -50,12 +50,12 @@ export const Header: React.FC<HeaderProps> = ({
       <div
         className="relative overflow-hidden rounded-2xl sm:rounded-3xl px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between select-none"
         style={{
-          background: 'rgba(255, 255, 255, 0.20)',
+          backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.35)',
+          border: '1px solid rgba(255, 255, 255, 0.75)',
           boxShadow:
-            '0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.5), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
+            '0 8px 32px rgba(31, 38, 135, 0.15), 0 0 16px rgba(168, 85, 247, 0.18), 0 0 16px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(255, 255, 255, 0.2)',
         }}
       >
         {/* Üstteki hafif parlama efekti */}
@@ -91,11 +91,20 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {isSuperAdmin && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-bold shadow-2xs">
+            <div
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-rose-800 text-xs sm:text-sm font-bold"
+              style={{
+                background: 'rgba(255, 228, 230, 0.45)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: '1px solid rgba(251, 113, 133, 0.55)',
+                boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.6)',
+              }}
+            >
               <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-600" />
               <span>Yönetici</span>
               {currentUser?.institutionName && (
-                <span className="hidden sm:inline-block text-[11px] text-rose-600/80 ml-1">
+                <span className="hidden sm:inline-block text-[11px] text-rose-700/80 ml-1">
                   ({currentUser.institutionName})
                 </span>
               )}

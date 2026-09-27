@@ -650,12 +650,6 @@ export function printStatisticsReport({
       ? 'Öğrenci Adı (A-Z)'
       : 'Öğrenci Adı (Z-A)';
 
-  const printWindow = window.open('', '_blank', 'width=1100,height=850');
-  if (!printWindow) {
-    alert('Yazdırma penceresi açılamadı. Lütfen tarayıcı açılır pencere (pop-up) engelleyicisini kontrol ediniz.');
-    return;
-  }
-
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="tr">
@@ -769,7 +763,27 @@ export function printStatisticsReport({
     }
     .print-actions {
       margin-bottom: 14px;
-      text-align: right;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: #f1f5f9;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-back {
+      background: #334155;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-back:hover {
+      background: #1e293b;
     }
     .btn-print {
       background: #4f46e5;
@@ -781,6 +795,9 @@ export function printStatisticsReport({
       font-size: 12px;
       cursor: pointer;
     }
+    .btn-print:hover {
+      background: #4338ca;
+    }
     @media print {
       .print-actions { display: none !important; }
     }
@@ -788,7 +805,8 @@ export function printStatisticsReport({
 </head>
 <body>
   <div class="print-actions">
-    <button class="btn-print" onclick="window.print()">🖨️ Yazdır / PDF Olarak Kaydet</button>
+    <button type="button" class="btn-back" onclick="if(window.opener){window.close();}else if(window.parent&&window.parent!==window){window.parent.focus();}else{history.back();}">← Uygulamaya Geri Dön</button>
+    <button type="button" class="btn-print" onclick="window.print()">🖨️ Yazdır / PDF Olarak Kaydet</button>
   </div>
 
   <div class="header">
@@ -906,7 +924,54 @@ export function printStatisticsReport({
 </html>
   `;
 
-  printWindow.document.open();
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
+  // Güvenli yazdırma: Gizli iframe kullanarak uygulamadan ayrılmadan yazdırma diyaloğu açılır
+  try {
+    let iframe = document.getElementById('report-print-iframe') as HTMLIFrameElement;
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'report-print-iframe';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (doc) {
+      doc.open();
+      doc.write(htmlContent);
+      doc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (e) {
+          console.warn('Iframe print error, falling back to window:', e);
+          fallbackWindowPrint(htmlContent);
+        }
+      }, 400);
+      return;
+    }
+  } catch (err) {
+    console.warn('Hidden iframe print failed, falling back to window:', err);
+  }
+
+  fallbackWindowPrint(htmlContent);
+}
+
+function fallbackWindowPrint(htmlContent: string) {
+  const printWindow = window.open('', '_blank', 'width=1100,height=850');
+  if (printWindow) {
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  } else {
+    alert('Yazdırma penceresi açılamadı. Lütfen tarayıcı açılır pencere (pop-up) izinlerini kontrol ediniz.');
+  }
 }

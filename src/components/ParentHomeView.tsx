@@ -79,10 +79,10 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
               />
             </div>
             <div className="flex flex-col items-center w-full leading-none px-0.5">
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight">
+              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold text-slate-900 leading-tight whitespace-nowrap tracking-tight">
                 Güvenli Alan
               </span>
-              <span className="text-[9px] sm:text-[10px] font-black text-emerald-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
+              <span className="text-[9px] sm:text-[10px] font-bold text-emerald-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
                 0-2s
               </span>
             </div>
@@ -108,10 +108,10 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
               />
             </div>
             <div className="flex flex-col items-center w-full leading-none px-0.5">
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight">
+              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold text-slate-900 leading-tight whitespace-nowrap tracking-tight">
                 Dengeli Süre
               </span>
-              <span className="text-[9px] sm:text-[10px] font-black text-amber-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
+              <span className="text-[9px] sm:text-[10px] font-bold text-amber-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
                 2-4s
               </span>
             </div>
@@ -137,10 +137,10 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
               />
             </div>
             <div className="flex flex-col items-center w-full leading-none px-0.5">
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight">
+              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold text-slate-900 leading-tight whitespace-nowrap tracking-tight">
                 Dikkat Sınırı
               </span>
-              <span className="text-[9px] sm:text-[10px] font-black text-orange-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
+              <span className="text-[9px] sm:text-[10px] font-bold text-orange-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
                 4-6s
               </span>
             </div>
@@ -166,10 +166,10 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
               />
             </div>
             <div className="flex flex-col items-center w-full leading-none px-0.5">
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight">
+              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold text-slate-900 leading-tight whitespace-nowrap tracking-tight">
                 Kırmızı Sınır
               </span>
-              <span className="text-[9px] sm:text-[10px] font-black text-rose-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
+              <span className="text-[9px] sm:text-[10px] font-bold text-rose-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
                 7+s
               </span>
             </div>

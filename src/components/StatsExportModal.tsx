@@ -136,12 +136,12 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         institutionName,
         className: currentClassName,
       });
-      setExportFeedback('Excel (.xlsx) dosyası başarıyla indirildi!');
-      setTimeout(() => setExportFeedback(null), 3500);
+      setExportFeedback('✅ Excel (.xlsx) dosyası cihazınızın "İndirilenler" (Downloads) klasörüne kaydedildi!');
+      setTimeout(() => setExportFeedback(null), 5000);
     } catch (err: any) {
       console.error('Excel export error:', err);
       setExportFeedback('Excel oluşturulurken bir hata oluştu.');
-      setTimeout(() => setExportFeedback(null), 3500);
+      setTimeout(() => setExportFeedback(null), 4000);
     } finally {
       setIsExporting(false);
     }
@@ -159,12 +159,12 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         institutionName,
         className: currentClassName,
       });
-      setExportFeedback('PDF raporu başarıyla oluşturuldu ve indirildi!');
-      setTimeout(() => setExportFeedback(null), 3500);
+      setExportFeedback('✅ PDF raporu cihazınızın "İndirilenler" (Downloads) klasörüne kaydedildi!');
+      setTimeout(() => setExportFeedback(null), 5000);
     } catch (err: any) {
       console.error('PDF export error:', err);
       setExportFeedback('PDF oluşturulurken bir hata oluştu.');
-      setTimeout(() => setExportFeedback(null), 3500);
+      setTimeout(() => setExportFeedback(null), 4000);
     } finally {
       setIsExporting(false);
     }
@@ -752,9 +752,12 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
               '0 -4px 20px rgba(31, 38, 135, 0.06), inset 0 1.5px 1px rgba(255, 255, 255, 0.9)',
           }}
         >
-          <div className="text-xs text-slate-500 flex items-center gap-1.5">
+          <div className="text-xs text-slate-600 flex items-center gap-1.5 flex-wrap">
             <span className="font-bold text-slate-800">{summary.totalStudents} Öğrenci</span>
-            <span>analiz edildi • İstenilen formatı seçerek anında indirin.</span>
+            <span>analiz edildi •</span>
+            <span className="font-semibold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-lg border border-indigo-200/60">
+              📁 İndirilen dosyalar cihazınızın &quot;İndirilenler&quot; (Downloads) klasörüne kaydedilir.
+            </span>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">

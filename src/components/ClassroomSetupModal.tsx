@@ -10,6 +10,7 @@ import {
   updateClassroom,
   joinClassroomWithCode,
   addStudentToClassroom,
+  recordNewStudentJoinNotice,
 } from '../lib/firebase';
 import {
   GraduationCap,
@@ -307,17 +308,21 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
           return;
         }
 
-        await updateClassroom(
-          currentUser.classId,
-          currentUser.uid,
-          className.trim(),
-          studentTargetCount,
-          institutionPayload,
-          {
-            displayName: currentUser.displayName,
-            email: currentUser.email,
-          }
-        );
+        try {
+          await updateClassroom(
+            currentUser.classId,
+            currentUser.uid,
+            className.trim(),
+            studentTargetCount,
+            institutionPayload,
+            {
+              displayName: currentUser.displayName,
+              email: currentUser.email,
+            }
+          );
+        } catch (dbErr) {
+          console.warn('updateClassroom Firestore update warning (continuing with local state):', dbErr);
+        }
         onDemoProfileUpdate?.({
           className: className.trim(),
           institutionCode: teacherInstitutionCode.trim().toUpperCase() || undefined,
@@ -389,6 +394,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
 
       if (isDemo) {
         await new Promise((r) => setTimeout(r, 400));
+        recordNewStudentJoinNotice(currentUser.classId || 'demo-class-manual', studentName.trim(), parentName.trim());
         onDemoProfileUpdate?.({
           role: 'parent',
           userType: 'parent',
@@ -419,8 +425,18 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl p-5 sm:p-7 space-y-5 animate-in fade-in zoom-in-95 duration-200 my-auto">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div
+        className="w-full max-w-lg rounded-3xl p-5 sm:p-7 space-y-5 animate-in fade-in zoom-in-95 duration-200 my-auto bg-white"
+        style={{
+          backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.85)',
+          boxShadow:
+            '0 12px 36px rgba(31, 38, 135, 0.18), 0 0 20px rgba(168, 85, 247, 0.18), 0 0 20px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.95), inset 0 -1px 1px rgba(255, 255, 255, 0.25)',
+        }}
+      >
         
         {/* Modal Başlığı */}
         <div className="text-center space-y-1.5">

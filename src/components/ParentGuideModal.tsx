@@ -25,11 +25,19 @@ export const ParentGuideModal: React.FC<ParentGuideModalProps> = ({
   return (
     <div
       id="parent-guide-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
     >
       <div
         id="parent-guide-modal"
-        className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-md max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+        className="rounded-3xl w-full max-w-md max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 bg-white"
+        style={{
+          backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.85)',
+          boxShadow:
+            '0 12px 36px rgba(31, 38, 135, 0.18), 0 0 20px rgba(168, 85, 247, 0.18), 0 0 20px rgba(45, 212, 191, 0.16), inset 0 1.5px 1px rgba(255, 255, 255, 0.95), inset 0 -1px 1px rgba(255, 255, 255, 0.25)',
+        }}
       >
         {/* Header with Visual Banner */}
         <div className="relative bg-gradient-to-br from-emerald-600 via-teal-600 to-indigo-700 p-4 sm:p-5 text-white flex-shrink-0">
@@ -65,7 +73,14 @@ export const ParentGuideModal: React.FC<ParentGuideModalProps> = ({
         {/* Scrollable Content */}
         <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-slate-800 text-xs sm:text-[13px] leading-relaxed">
           {/* Section 1: Ne Amaçla Kullanılır? */}
-          <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-3.5 space-y-2">
+          <div
+            className="rounded-2xl p-3.5 space-y-2 backdrop-blur-md"
+            style={{
+              background: 'rgba(255, 255, 255, 0.70)',
+              border: '1px solid rgba(255, 255, 255, 0.90)',
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.85)',
+            }}
+          >
             <div className="flex items-center gap-2">
               <span className="w-6 h-6 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xs font-black shrink-0 shadow-xs">
                 🎯
@@ -101,8 +116,15 @@ export const ParentGuideModal: React.FC<ParentGuideModalProps> = ({
             </div>
 
             {/* Step 1 */}
-            <div className="flex gap-2.5 p-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl items-start">
-              <div className="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+            <div
+              className="flex gap-2.5 p-3 rounded-2xl items-start backdrop-blur-md"
+              style={{
+                background: 'rgba(255, 255, 255, 0.70)',
+                border: '1px solid rgba(255, 255, 255, 0.90)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.85)',
+              }}
+            >
+              <div className="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                 <Clock className="w-4 h-4 text-indigo-600" />
               </div>
               <div>
@@ -116,8 +138,15 @@ export const ParentGuideModal: React.FC<ParentGuideModalProps> = ({
             </div>
 
             {/* Step 2 */}
-            <div className="flex gap-2.5 p-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl items-start">
-              <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+            <div
+              className="flex gap-2.5 p-3 rounded-2xl items-start backdrop-blur-md"
+              style={{
+                background: 'rgba(255, 255, 255, 0.70)',
+                border: '1px solid rgba(255, 255, 255, 0.90)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.85)',
+              }}
+            >
+              <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                 <Award className="w-4 h-4 text-emerald-600" />
               </div>
               <div>
@@ -142,8 +171,15 @@ export const ParentGuideModal: React.FC<ParentGuideModalProps> = ({
             </div>
 
             {/* Step 3 */}
-            <div className="flex gap-2.5 p-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl items-start">
-              <div className="w-7 h-7 rounded-xl bg-violet-100 text-violet-700 font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+            <div
+              className="flex gap-2.5 p-3 rounded-2xl items-start backdrop-blur-md"
+              style={{
+                background: 'rgba(255, 255, 255, 0.70)',
+                border: '1px solid rgba(255, 255, 255, 0.90)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.85)',
+              }}
+            >
+              <div className="w-7 h-7 rounded-xl bg-violet-100 text-violet-700 font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                 <Users className="w-4 h-4 text-violet-600" />
               </div>
               <div>
@@ -158,8 +194,15 @@ export const ParentGuideModal: React.FC<ParentGuideModalProps> = ({
           </div>
 
           {/* Quick Tip Box */}
-          <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-start gap-2 text-[11px] text-amber-900">
-            <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div
+            className="p-3 rounded-2xl flex items-start gap-2 text-[11px] text-amber-950 backdrop-blur-md"
+            style={{
+              background: 'rgba(254, 243, 199, 0.65)',
+              border: '1px solid rgba(251, 191, 36, 0.60)',
+              boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)',
+            }}
+          >
+            <HelpCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
             <p>
               <strong>İpucu:</strong> Bu bilgilendirme rehberine dilediğiniz zaman üst menüdeki veya "Sınıfım" sekmesindeki <strong>"Nasıl Kullanılır?"</strong> butonundan tekrar ulaşabilirsiniz.
             </p>
@@ -167,12 +210,18 @@ export const ParentGuideModal: React.FC<ParentGuideModalProps> = ({
         </div>
 
         {/* Footer Button */}
-        <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-100 flex-shrink-0">
+        <div
+          className="p-3 sm:p-4 border-t flex-shrink-0"
+          style={{
+            borderTop: '1px solid rgba(255, 255, 255, 0.80)',
+            background: 'rgba(255, 255, 255, 0.50)',
+          }}
+        >
           <button
             type="button"
             id="btn-parent-guide-understood"
             onClick={onClose}
-            className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="btn-3d-palette-primary w-full py-2.5 px-4 font-black text-xs sm:text-sm rounded-2xl shadow-md active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <span>Anladım, Haydi Başlayalım! 🚀</span>
           </button>

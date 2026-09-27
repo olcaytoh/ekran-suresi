@@ -536,6 +536,13 @@ export async function signInAsGuest(
       : 'veli.ornek@aile.com');
 
   try {
+    // KRİTİK: signInAnonymously çağrısı App.tsx'teki genel onAuthStateChanged
+    // dinleyicisini de AYRICA tetikler; o dinleyici syncUserProfile'ı rol
+    // bilgisi olmadan çağırır. Bu yarış durumunda doğru rolün kaybolmaması
+    // (ör. admin -> parent'a düşmesi) için rolü önce localStorage'a yazıyoruz.
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pendingUserRole', role);
+    }
     const result = await signInAnonymously(auth);
     if (name) {
       try {
@@ -730,6 +737,7 @@ export async function syncUserProfile(
     };
 
     const updatePayload: any = {
+      uid: user.uid,
       displayName: userProfile.displayName,
       email: userProfile.email,
       role: userProfile.role,
@@ -789,7 +797,10 @@ export function subscribeUserProfile(
     userRef,
     (snap) => {
       if (snap.exists()) {
-        onUpdate(snap.data() as UserProfile);
+        onUpdate({
+          uid: snap.id,
+          ...(snap.data() as Partial<UserProfile>),
+        } as UserProfile);
       } else {
         onUpdate(null);
       }
@@ -938,7 +949,12 @@ export async function setUserRole(
 }
 
 export async function updateUserProfile(targetUid: string, data: Partial<UserProfile>): Promise<void> {
-  const userRef = doc(db, 'users', targetUid);
+  const cleanUid = (targetUid || '').trim();
+  if (!cleanUid) {
+    console.warn('updateUserProfile skipped: targetUid is invalid or empty');
+    return;
+  }
+  const userRef = doc(db, 'users', cleanUid);
   await setDoc(
     userRef,
     removeUndefined({
@@ -1031,25 +1047,27 @@ export async function createInstitution(
 
 export async function ensureInstitutionAdminCode(
   institutionId: string,
-  adminUid: string
+  adminUid?: string
 ): Promise<string> {
+  const effectiveUid = adminUid || auth.currentUser?.uid;
   let targetInstRef = institutionId ? doc(db, 'institutions', institutionId) : null;
   let snap = targetInstRef ? await getDoc(targetInstRef) : null;
 
   if (!snap || !snap.exists()) {
-    // Kurum adminUid ile kayıtlı mı kontrol et
-    const instCol = collection(db, 'institutions');
-    const q = query(instCol, where('adminUid', '==', adminUid));
-    const querySnap = await getDocs(q);
-    if (!querySnap.empty) {
-      targetInstRef = querySnap.docs[0].ref;
-      snap = querySnap.docs[0];
+    if (effectiveUid) {
+      const instCol = collection(db, 'institutions');
+      const q = query(instCol, where('adminUid', '==', effectiveUid));
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        targetInstRef = querySnap.docs[0].ref;
+        snap = querySnap.docs[0];
+      }
     }
   }
 
   if (snap && snap.exists()) {
     const data = snap.data();
-    if (data.adminCode) {
+    if (data?.adminCode) {
       return data.adminCode as string;
     }
   }
@@ -1065,70 +1083,77 @@ export async function ensureInstitutionAdminCode(
     targetInstRef = doc(collection(db, 'institutions'));
   }
 
-  await setDoc(
-    targetInstRef,
-    {
-      id: targetInstRef.id,
-      adminCode,
-      adminUid,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const instPayload: Record<string, any> = {
+    id: targetInstRef.id,
+    adminCode,
+    updatedAt: serverTimestamp(),
+  };
+  if (effectiveUid) {
+    instPayload.adminUid = effectiveUid;
+  }
 
-  await setDoc(
-    doc(db, 'users', adminUid),
-    {
-      institutionId: targetInstRef.id,
-      institutionAdminCode: adminCode,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await setDoc(targetInstRef, instPayload, { merge: true });
+
+  if (effectiveUid) {
+    await setDoc(
+      doc(db, 'users', effectiveUid),
+      {
+        institutionId: targetInstRef.id,
+        institutionAdminCode: adminCode,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
 
   return adminCode;
 }
 
 export async function updateInstitutionName(
   institutionId: string,
-  adminUid: string,
-  newName: string
+  adminUid?: string,
+  newName?: string
 ): Promise<{ id: string; name: string }> {
-  const trimmed = newName.trim();
+  const trimmed = (newName || '').trim();
   if (!trimmed) {
     throw new Error('Lütfen geçerli bir kurum / okul adı girin.');
   }
 
+  const effectiveUid = adminUid || auth.currentUser?.uid;
   let instRef = institutionId ? doc(db, 'institutions', institutionId) : doc(collection(db, 'institutions'));
-  await setDoc(
-    instRef,
-    {
-      id: instRef.id,
-      name: trimmed,
-      adminUid,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
 
-  const adminRef = doc(db, 'users', adminUid);
-  await setDoc(
-    adminRef,
-    {
-      institutionId: instRef.id,
-      institutionName: trimmed,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const instPayload: Record<string, any> = {
+    id: instRef.id,
+    name: trimmed,
+    updatedAt: serverTimestamp(),
+  };
+  if (effectiveUid) {
+    instPayload.adminUid = effectiveUid;
+  }
+
+  await setDoc(instRef, instPayload, { merge: true });
+
+  if (effectiveUid) {
+    const adminRef = doc(db, 'users', effectiveUid);
+    await setDoc(
+      adminRef,
+      {
+        institutionId: instRef.id,
+        institutionName: trimmed,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
 
   return { id: instRef.id, name: trimmed };
 }
 
 export async function regenerateInstitutionCode(
   institutionId: string,
-  adminUid: string
+  adminUid?: string
 ): Promise<string> {
+  const effectiveUid = adminUid || auth.currentUser?.uid;
   let code = generateInstitutionCode();
   let tries = 0;
   while ((await isCodeTaken('code', code)) && tries < 5) {
@@ -1145,45 +1170,51 @@ export async function regenerateInstitutionCode(
   }
 
   if (!instRef) {
-    const instCol = collection(db, 'institutions');
-    const q = query(instCol, where('adminUid', '==', adminUid));
-    const querySnap = await getDocs(q);
-    if (!querySnap.empty) {
-      instRef = querySnap.docs[0].ref;
-    } else {
+    if (effectiveUid) {
+      const instCol = collection(db, 'institutions');
+      const q = query(instCol, where('adminUid', '==', effectiveUid));
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        instRef = querySnap.docs[0].ref;
+      }
+    }
+    if (!instRef) {
       instRef = doc(collection(db, 'institutions'));
     }
   }
 
-  await setDoc(
-    instRef,
-    {
-      id: instRef.id,
-      code,
-      adminUid,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const instPayload: Record<string, any> = {
+    id: instRef.id,
+    code,
+    updatedAt: serverTimestamp(),
+  };
+  if (effectiveUid) {
+    instPayload.adminUid = effectiveUid;
+  }
 
-  const adminRef = doc(db, 'users', adminUid);
-  await setDoc(
-    adminRef,
-    {
-      institutionId: instRef.id,
-      institutionCode: code,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await setDoc(instRef, instPayload, { merge: true });
+
+  if (effectiveUid) {
+    const adminRef = doc(db, 'users', effectiveUid);
+    await setDoc(
+      adminRef,
+      {
+        institutionId: instRef.id,
+        institutionCode: code,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
 
   return code;
 }
 
 export async function regenerateInstitutionAdminCode(
   institutionId: string,
-  adminUid: string
+  adminUid?: string
 ): Promise<string> {
+  const effectiveUid = adminUid || auth.currentUser?.uid;
   let adminCode = generateAdminCode();
   let tries = 0;
   while ((await isCodeTaken('adminCode', adminCode)) && tries < 5) {
@@ -1200,37 +1231,42 @@ export async function regenerateInstitutionAdminCode(
   }
 
   if (!instRef) {
-    const instCol = collection(db, 'institutions');
-    const q = query(instCol, where('adminUid', '==', adminUid));
-    const querySnap = await getDocs(q);
-    if (!querySnap.empty) {
-      instRef = querySnap.docs[0].ref;
-    } else {
+    if (effectiveUid) {
+      const instCol = collection(db, 'institutions');
+      const q = query(instCol, where('adminUid', '==', effectiveUid));
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        instRef = querySnap.docs[0].ref;
+      }
+    }
+    if (!instRef) {
       instRef = doc(collection(db, 'institutions'));
     }
   }
 
-  await setDoc(
-    instRef,
-    {
-      id: instRef.id,
-      adminCode,
-      adminUid,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const instPayload: Record<string, any> = {
+    id: instRef.id,
+    adminCode,
+    updatedAt: serverTimestamp(),
+  };
+  if (effectiveUid) {
+    instPayload.adminUid = effectiveUid;
+  }
 
-  const adminRef = doc(db, 'users', adminUid);
-  await setDoc(
-    adminRef,
-    {
-      institutionId: instRef.id,
-      institutionAdminCode: adminCode,
-      updatedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await setDoc(instRef, instPayload, { merge: true });
+
+  if (effectiveUid) {
+    const adminRef = doc(db, 'users', effectiveUid);
+    await setDoc(
+      adminRef,
+      {
+        institutionId: instRef.id,
+        institutionAdminCode: adminCode,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
 
   return adminCode;
 }
@@ -1910,6 +1946,13 @@ export async function joinClassroomWithCode(
     { merge: true }
   );
 
+  // Öğretmene ilk katılım bilgi mesajı kutucuğu bildirimini kaydet
+  try {
+    await recordNewStudentJoinNotice(classDoc.id, studentName.trim(), parentName.trim(), userUid);
+  } catch (noticeErr) {
+    console.warn('Could not record student join notice:', noticeErr);
+  }
+
   return classData;
 }
 
@@ -1972,7 +2015,12 @@ export async function updateStudentName(
   studentName: string,
   parentName?: string
 ): Promise<void> {
-  const userRef = doc(db, 'users', uid);
+  const cleanUid = (uid || '').trim();
+  if (!cleanUid) {
+    console.warn('updateStudentName skipped: uid is invalid or empty');
+    return;
+  }
+  const userRef = doc(db, 'users', cleanUid);
   const payload: any = {
     studentName: studentName.trim(),
     displayName: studentName.trim(),
@@ -2093,6 +2141,95 @@ export function subscribeClassroomStudents(
     (err) => {
       console.error('Error subscribing classroom students:', err);
       if (onError) onError(err);
+    }
+  );
+}
+
+export interface StudentJoinNotice {
+  id: string;
+  classId: string;
+  studentName: string;
+  parentName?: string;
+  timestamp: number;
+}
+
+export async function recordNewStudentJoinNotice(
+  classId: string,
+  studentName: string,
+  parentName?: string,
+  studentUid?: string
+): Promise<void> {
+  const cleanStudent = (studentName || '').trim();
+  const cleanClassId = (classId || '').trim();
+  if (!cleanStudent || !cleanClassId) return;
+
+  const noticeId = `join_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const notice: StudentJoinNotice = {
+    id: noticeId,
+    classId: cleanClassId,
+    studentName: cleanStudent,
+    parentName: (parentName || '').trim() || undefined,
+    timestamp: Date.now(),
+  };
+
+  // 1. Yerel kuyruğa yaz (anında ve offline güvenli)
+  try {
+    const queueKey = `pending_student_joins_${cleanClassId}`;
+    const existing: StudentJoinNotice[] = JSON.parse(localStorage.getItem(queueKey) || '[]');
+    existing.push(notice);
+    localStorage.setItem(queueKey, JSON.stringify(existing));
+  } catch (e) {
+    console.warn('LocalStorage queue notice error:', e);
+  }
+
+  // 2. Firestore'a yaz
+  try {
+    const alertRef = doc(db, 'classes', cleanClassId, 'student_joins', noticeId);
+    await setDoc(alertRef, {
+      ...notice,
+      studentUid: studentUid || '',
+      createdAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.warn('Firestore recordNewStudentJoinNotice error:', e);
+  }
+}
+
+export function subscribeNewStudentJoins(
+  classId: string,
+  onNotice: (notices: StudentJoinNotice[]) => void
+) {
+  if (!classId) return () => {};
+
+  // Önce yerel kuyruğu oku
+  const queueKey = `pending_student_joins_${classId}`;
+  let localNotices: StudentJoinNotice[] = [];
+  try {
+    localNotices = JSON.parse(localStorage.getItem(queueKey) || '[]');
+  } catch (e) {
+    localNotices = [];
+  }
+  if (localNotices.length > 0) {
+    onNotice(localNotices);
+  }
+
+  const joinsRef = collection(db, 'classes', classId, 'student_joins');
+  return onSnapshot(
+    joinsRef,
+    (snap) => {
+      const list: StudentJoinNotice[] = [];
+      snap.forEach((d) => {
+        list.push({ id: d.id, ...d.data() } as StudentJoinNotice);
+      });
+      // Birleştir
+      const map = new Map<string, StudentJoinNotice>();
+      localNotices.forEach((n) => map.set(n.id, n));
+      list.forEach((n) => map.set(n.id, n));
+      onNotice(Array.from(map.values()));
+    },
+    (err) => {
+      console.warn('Error subscribing student joins:', err);
+      onNotice(localNotices);
     }
   );
 }

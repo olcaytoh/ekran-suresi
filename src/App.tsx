@@ -1003,15 +1003,49 @@ export default function App() {
 
   return (
     <div
-      className="h-screen max-h-screen w-full flex flex-col justify-between overflow-hidden select-none bg-slate-800"
+      className="h-[100dvh] max-h-[100dvh] w-full flex flex-col justify-between overflow-hidden select-none"
       style={{
-        backgroundImage: 'url(/arkaplan.jpg)',
+        fontFamily:
+          "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        backgroundColor: '#1a0b2e',
+        backgroundImage:
+          'radial-gradient(1.5px 1.5px at 8% 18%, rgba(255,255,255,0.95), transparent), ' +
+          'radial-gradient(1px 1px at 22% 62%, rgba(255,255,255,0.8), transparent), ' +
+          'radial-gradient(2px 2px at 38% 12%, rgba(255,255,255,1), transparent), ' +
+          'radial-gradient(1px 1px at 52% 78%, rgba(255,255,255,0.7), transparent), ' +
+          'radial-gradient(1.5px 1.5px at 68% 32%, rgba(255,255,255,0.9), transparent), ' +
+          'radial-gradient(1px 1px at 82% 58%, rgba(255,255,255,0.8), transparent), ' +
+          'radial-gradient(2px 2px at 93% 14%, rgba(255,255,255,1), transparent), ' +
+          'radial-gradient(1px 1px at 14% 84%, rgba(255,255,255,0.65), transparent), ' +
+          'radial-gradient(1.5px 1.5px at 58% 52%, rgba(255,255,255,0.9), transparent), ' +
+          'radial-gradient(1px 1px at 78% 88%, rgba(255,255,255,0.7), transparent), ' +
+          'radial-gradient(1.5px 1.5px at 30% 42%, rgba(255,255,255,0.9), transparent), ' +
+          'radial-gradient(1px 1px at 4% 52%, rgba(255,255,255,0.7), transparent), ' +
+          'radial-gradient(1.5px 1.5px at 46% 92%, rgba(255,255,255,0.85), transparent), ' +
+          'radial-gradient(1px 1px at 90% 76%, rgba(255,255,255,0.75), transparent), ' +
+          'radial-gradient(2px 2px at 65% 8%, rgba(255,255,255,0.95), transparent), ' +
+          'radial-gradient(140% 110% at 12% 8%, rgba(217,70,239,0.60) 0%, transparent 55%), ' +
+          'radial-gradient(140% 110% at 88% 12%, rgba(56,189,248,0.55) 0%, transparent 55%), ' +
+          'radial-gradient(150% 130% at 50% 105%, rgba(147,51,234,0.70) 0%, transparent 60%), ' +
+          'radial-gradient(110% 90% at 92% 88%, rgba(236,72,153,0.50) 0%, transparent 55%), ' +
+          'radial-gradient(90% 70% at 5% 90%, rgba(99,102,241,0.45) 0%, transparent 55%), ' +
+          'linear-gradient(160deg, #1e0a3c 0%, #3b0764 28%, #581c87 52%, #86198f 74%, #be185d 100%)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         backgroundAttachment: 'fixed',
       }}
     >
+      {/* Profesyonel font: Inter (Google Fonts) + body/html arka plan düzeltmesi (mobil viewport beyaz boşluk fix'i) */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        html, body {
+          background-color: #1a0b2e;
+          margin: 0;
+          padding: 0;
+        }
+      `}</style>
+
       {/* 1. Slim Top Navigation Header */}
       <Header
         currentUser={effectiveProfile}

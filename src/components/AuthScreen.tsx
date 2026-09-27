@@ -286,9 +286,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
           : 'veli@example.com';
       const guestProfile = await signInAsGuest(guestName, guestEmail, targetRole);
       onLoginSuccess?.(guestProfile, false);
-      if (onDemoLogin) {
-        onDemoLogin(targetRole);
-      }
+      // NOT: onDemoLogin'i burada da çağırmıyoruz — signInAsGuest zaten
+      // gerçek (anonim) bir oturum ve doğru rolle Firestore profili oluşturdu.
+      // Aynı anda hem activeLocalProfile hem demoProfile'ı set etmek,
+      // effectiveProfile hesaplamasında çakışmaya ve rolün beklenmedik şekilde
+      // "veli"ye düşmesine yol açıyordu.
     } catch (err: any) {
       console.warn('Test login error:', err);
       if (onDemoLogin) {

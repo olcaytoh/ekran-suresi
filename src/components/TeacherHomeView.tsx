@@ -765,7 +765,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         </div>
 
         {/* Öğrenci Kartları Listesi */}
-        <div className="space-y-2 pt-1">
+        <div className="space-y-1.5 pt-1">
           {sortedStudents.length === 0 ? (
             <div className="p-6 text-center rounded-2xl bg-white/60 backdrop-blur-md border border-white space-y-2">
               <Users className="w-8 h-8 text-slate-400 mx-auto" />
@@ -814,7 +814,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                 <div
                   key={user.uid}
                   id={`teacher-student-card-${user.uid}`}
-                  className={`relative backdrop-blur-md rounded-2xl border p-2.5 sm:p-3 transition-all hover:bg-white/40 flex items-center justify-between gap-2.5 ${cardTint}`}
+                  className={`relative backdrop-blur-md rounded-xl border p-1.5 sm:p-2 transition-all hover:bg-white/40 flex items-center justify-between gap-2 ${cardTint}`}
                   style={{
                     background: 'rgba(255, 255, 255, 0.32)',
                     borderColor: 'rgba(255, 255, 255, 0.55)',
@@ -822,8 +822,8 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                   }}
                 >
                   {/* Sol: Maskot ve İsim Bilgileri */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl overflow-hidden bg-white border border-white flex-shrink-0 flex items-center justify-center shadow-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden bg-white border border-white flex-shrink-0 flex items-center justify-center shadow-sm">
                       <img
                         src={mascotSrc}
                         alt="Öğrenci Maskotu"
@@ -832,29 +832,29 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                       />
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-tight truncate">
+                    <div className="min-w-0 leading-none">
+                      <div className="flex items-center gap-1.5 flex-wrap leading-none">
+                        <h4 className="text-[11px] sm:text-xs font-black text-slate-900 leading-none truncate">
                           {sName}
                         </h4>
-                        <span className={`text-[8.5px] font-black px-1.5 py-0.5 rounded-md leading-none ${badgeColorClass}`}>
+                        <span className={`text-[8px] font-black px-1 py-0.5 rounded leading-none ${badgeColorClass}`}>
                           {category.name}
                         </span>
                       </div>
 
-                      <div className="text-[10px] font-bold text-slate-500 truncate mt-0.5">
+                      <div className="text-[9px] font-bold text-slate-500 truncate leading-none mt-1">
                         Veli: <span className="text-slate-700">{pName}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Sağ: Süre, Kademe, Düzenleme ve Silme Butonu */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="text-right">
-                      <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="text-right leading-none">
+                      <div className="text-[11px] sm:text-xs font-black text-slate-900 leading-none">
                         {minutes} dk
                       </div>
-                      <div className="text-[9.5px] font-bold text-slate-500">
+                      <div className="text-[8.5px] font-bold text-slate-500 leading-none mt-1">
                         {timeInfo.longStr} • {stage}. Kademe
                       </div>
                     </div>
@@ -865,9 +865,9 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                         id={`btn-teacher-edit-student-${user.uid}`}
                         onClick={() => handleOpenEditStudent(user)}
                         title="Öğrenci & Veli Bilgilerini Düzenle"
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-3 h-3" />
                       </button>
                     )}
 
@@ -877,9 +877,9 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                         id={`btn-teacher-delete-student-${user.uid}`}
                         onClick={() => setStudentToDelete(user)}
                         title="Öğrenciyi Sınıftan Sil"
-                        className="p-1.5 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     )}
                   </div>
