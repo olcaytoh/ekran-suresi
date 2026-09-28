@@ -407,7 +407,51 @@ export function exportStatisticsToExcel({
   const dateSuffix = new Date().toISOString().slice(0, 10);
   const fileName = `${cleanFileBase}_${dateSuffix}.xlsx`;
 
-  XLSX.writeFile(wb, fileName);
+  // ArrayBuffer formatında Excel ikili verisi üretip Blob oluşturma
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([wbout], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+
+  const url = triggerFileDownload(blob, fileName);
+  return { blob, fileName, url };
+}
+
+export function triggerFileDownload(blob: Blob, fileName: string): string {
+  const url = URL.createObjectURL(blob);
+  try {
+    // If browser supports msSaveOrOpenBlob (legacy Edge/IE)
+    if (typeof window !== 'undefined' && (window.navigator as any)?.msSaveOrOpenBlob) {
+      (window.navigator as any).msSaveOrOpenBlob(blob, fileName);
+      return url;
+    }
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    // CRITICAL: Do NOT set target="_blank".
+    // Setting target="_blank" on a blob download causes modern browsers and sandboxed iframes
+    // to classify the action as a popup window, triggering popup blockers and canceling the download.
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+
+    // Direct programmatic click
+    a.click();
+
+    setTimeout(() => {
+      try {
+        if (document.body.contains(a)) {
+          document.body.removeChild(a);
+        }
+      } catch (e) {
+        console.warn('Error cleaning up anchor:', e);
+      }
+    }, 4000);
+  } catch (err) {
+    console.warn('Programmatic download trigger notice:', err);
+  }
+  return url;
 }
 
 /**
@@ -613,7 +657,9 @@ export function exportStatisticsToPdf({
   const dateSuffix = new Date().toISOString().slice(0, 10);
   const fileName = `${cleanFileBase}_${dateSuffix}.pdf`;
 
-  doc.save(fileName);
+  const blob = doc.output('blob');
+  const url = triggerFileDownload(blob, fileName);
+  return { blob, fileName, url, doc };
 }
 
 /**

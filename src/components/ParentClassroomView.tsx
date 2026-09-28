@@ -369,7 +369,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
             )}
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
+            <h3 className="text-sm sm:text-base font-black tracking-tight text-slate-900 leading-none">
               {isSuperAdmin ? 'Kurum & Profil Ayarları' : isTeacher ? 'Sınıfım & Öğretmen Profili' : 'Sınıfım & Öğrenci Bilgileri'}
             </h3>
             <span className="text-[10px] font-bold text-slate-800">{roleLabel}</span>
@@ -504,7 +504,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
 
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
-                <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                <h4 className="text-sm sm:text-base font-black tracking-tight text-slate-900 leading-none">
                   {isSuperAdmin
                     ? userProfile?.institutionName || 'Kurum Yöneticisi'
                     : userProfile?.className || classroom?.name || 'Bağlı Sınıf Yok'}
@@ -800,7 +800,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                   <KeyRound className="w-4 h-4 stroke-[2.5]" />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-950 leading-tight flex items-center gap-1.5">
+                  <h4 className="text-xs sm:text-sm font-black tracking-tight text-slate-950 leading-none flex items-center gap-1.5">
                     <span>Sınıfa Bağlan (Sınıf Kodu)</span>
                     {(userProfile?.className || classroom?.name) && (
                       <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded-md flex items-center gap-1">

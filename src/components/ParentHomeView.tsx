@@ -39,7 +39,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
     <div className="relative flex flex-col items-center justify-between gap-2.5 w-full flex-1 min-h-0 select-none">
       {/* Durum Dashboard Ana Cam Kartı (Glassmorphism Kart Efekti) */}
       <div
-        className="relative w-full rounded-[24px] sm:rounded-[28px] p-3 sm:p-4 pt-3.5 sm:pt-4 pb-3 sm:pb-4 select-none flex flex-col items-center flex-1 justify-between min-h-0 overflow-hidden"
+        className="relative w-full rounded-[24px] sm:rounded-[28px] px-2.5 sm:px-3.5 pt-1 sm:pt-1.5 pb-2 sm:pb-2.5 select-none flex flex-col items-center flex-1 justify-between min-h-0 overflow-hidden"
         style={{
           background: 'rgba(255, 255, 255, 0.20)',
           backdropFilter: 'blur(20px)',
@@ -57,137 +57,99 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
           }}
         />
 
-        {/* 4 Detay Kartı (Güvenli Alan, Dengeli Süre, Dikkat Sınırı, Kırmızı Sınır - Kompakt Yükseklik, Sıfır Boşluk, Büyük İkonlar) */}
-        <div className="relative z-10 grid grid-cols-4 gap-1.5 sm:gap-2 w-full mt-0.5 flex-shrink-0">
-          {/* 1. Güvenli Alan */}
-          <button
-            type="button"
-            onClick={onNavigateToStages}
-            className={`rounded-2xl py-1.5 px-0.5 sm:py-2 sm:px-1.5 flex flex-col items-center justify-center gap-0.5 sm:gap-1 text-center min-h-[76px] sm:min-h-[86px] transition-all duration-150 active:scale-95 cursor-pointer shadow-none backdrop-blur-md overflow-hidden ${
-              currentStage <= 4
-                ? 'bg-emerald-200/40 border-2 border-emerald-400 scale-[1.03]'
-                : 'bg-emerald-100/25 hover:bg-emerald-100/35 border border-white/50'
-            }`}
-            title="Güvenli Alan (0-2s)"
-          >
-            <div className="flex items-center justify-center h-11 sm:h-13 w-full my-0">
-              <img
-                src="/ta.png"
-                alt="Güvenli Alan"
-                className="h-11 sm:h-13 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
-                draggable={false}
-              />
-            </div>
-            <div className="flex flex-col items-center w-full leading-none px-0.5">
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold text-slate-900 leading-tight whitespace-nowrap tracking-tight">
-                Güvenli Alan
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-emerald-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
-                0-2s
-              </span>
-            </div>
-          </button>
-
-          {/* 2. Dengeli Süre */}
-          <button
-            type="button"
-            onClick={onNavigateToStages}
-            className={`rounded-2xl py-1.5 px-0.5 sm:py-2 sm:px-1.5 flex flex-col items-center justify-center gap-0.5 sm:gap-1 text-center min-h-[76px] sm:min-h-[86px] transition-all duration-150 active:scale-95 cursor-pointer shadow-none backdrop-blur-md overflow-hidden ${
-              currentStage >= 5 && currentStage <= 8
-                ? 'bg-amber-200/40 border-2 border-amber-400 scale-[1.03]'
-                : 'bg-amber-100/25 hover:bg-amber-100/35 border border-white/50'
-            }`}
-            title="Dengeli Süre (2-4s)"
-          >
-            <div className="flex items-center justify-center h-11 sm:h-13 w-full my-0">
-              <img
-                src="/ro.png"
-                alt="Dengeli Süre"
-                className="h-11 sm:h-13 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
-                draggable={false}
-              />
-            </div>
-            <div className="flex flex-col items-center w-full leading-none px-0.5">
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold text-slate-900 leading-tight whitespace-nowrap tracking-tight">
-                Dengeli Süre
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-amber-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
-                2-4s
-              </span>
-            </div>
-          </button>
-
-          {/* 3. Dikkat Sınırı */}
-          <button
-            type="button"
-            onClick={onNavigateToStages}
-            className={`rounded-2xl py-1.5 px-0.5 sm:py-2 sm:px-1.5 flex flex-col items-center justify-center gap-0.5 sm:gap-1 text-center min-h-[76px] sm:min-h-[86px] transition-all duration-150 active:scale-95 cursor-pointer shadow-none backdrop-blur-md overflow-hidden ${
-              currentStage >= 9 && currentStage <= 13
-                ? 'bg-orange-200/40 border-2 border-orange-400 scale-[1.03]'
-                : 'bg-orange-100/25 hover:bg-orange-100/35 border border-white/50'
-            }`}
-            title="Dikkat Sınırı (4-6s)"
-          >
-            <div className="flex items-center justify-center h-11 sm:h-13 w-full my-0">
-              <img
-                src="/sa.png"
-                alt="Dikkat Sınırı"
-                className="h-11 sm:h-13 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
-                draggable={false}
-              />
-            </div>
-            <div className="flex flex-col items-center w-full leading-none px-0.5">
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold text-slate-900 leading-tight whitespace-nowrap tracking-tight">
-                Dikkat Sınırı
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-orange-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
-                4-6s
-              </span>
-            </div>
-          </button>
-
-          {/* 4. Kırmızı Sınır */}
-          <button
-            type="button"
-            onClick={onNavigateToStages}
-            className={`rounded-2xl py-1.5 px-0.5 sm:py-2 sm:px-1.5 flex flex-col items-center justify-center gap-0.5 sm:gap-1 text-center min-h-[76px] sm:min-h-[86px] transition-all duration-150 active:scale-95 cursor-pointer shadow-none backdrop-blur-md overflow-hidden ${
-              currentStage >= 14
-                ? 'bg-rose-200/40 border-2 border-rose-400 scale-[1.03]'
-                : 'bg-rose-100/25 hover:bg-rose-100/35 border border-white/50'
-            }`}
-            title="Kırmızı Sınır (7+s)"
-          >
-            <div className="flex items-center justify-center h-11 sm:h-13 w-full my-0">
-              <img
-                src="/me.png"
-                alt="Kırmızı Sınır"
-                className="h-11 sm:h-13 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
-                draggable={false}
-              />
-            </div>
-            <div className="flex flex-col items-center w-full leading-none px-0.5">
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-bold text-slate-900 leading-tight whitespace-nowrap tracking-tight">
-                Kırmızı Sınır
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-rose-900 leading-tight mt-0.5 px-1 py-0.5 rounded bg-white/70 whitespace-nowrap">
-                7+s
-              </span>
-            </div>
-          </button>
-        </div>
-
-        {/* İnce Cam Ayırıcı Çizgi */}
-        <div className="relative z-10 w-full flex items-center justify-center my-0.5 sm:my-1 px-3 flex-shrink-0">
-          <div className="w-full h-[1px] bg-white/25" />
-        </div>
-
-        {/* 4 Kademeli Speedometer/Gauge Kadran Göstergesi (4lu.png yerine modern kavisli kadran tasarımı) */}
+        {/* 4 Kademeli Speedometer/Gauge Kadran Göstergesi (Üst Bölüm) */}
         <StageGaugeDial
           currentStage={currentStage}
           totalMinutes={totalMinutes}
           onNavigateToStages={onNavigateToStages}
           className="my-auto flex-shrink-0"
         />
+
+        {/* İnce Cam Ayırıcı Çizgi */}
+        <div className="relative z-10 w-full flex items-center justify-center my-0 sm:my-0.5 px-3 flex-shrink-0">
+          <div className="w-full h-[1px] bg-white/25" />
+        </div>
+
+        {/* 4 Renk Bölgesi Butonları: 11.png (kodlanmış), 11a.png, 11b.png, 11c.png (Alt Bölüm) */}
+        <div className="relative z-10 w-full mb-0.5 flex-shrink-0 select-none">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[360px] sm:max-w-[390px] mx-auto select-none">
+            {/* 1. Güvenli Alan (11.png ve hemen dışındaki yeşil çizgi) */}
+            <button
+              type="button"
+              onClick={onNavigateToStages}
+              aria-label="Güvenli Alan (0-2s)"
+              className={`relative flex items-center justify-center rounded-2xl p-0.5 cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ring-2 ring-emerald-500 ${
+                currentStage <= 4
+                  ? 'scale-[1.04] drop-shadow-md shadow-md shadow-emerald-500/30'
+                  : 'hover:scale-[1.03] opacity-90 hover:opacity-100'
+              }`}
+            >
+              <img
+                src="/11.png"
+                alt="Güvenli Alan"
+                className="w-full h-auto object-contain pointer-events-none drop-shadow-sm"
+                draggable={false}
+              />
+            </button>
+
+            {/* 2. Dengeli Süre */}
+            <button
+              type="button"
+              onClick={onNavigateToStages}
+              aria-label="Dengeli Süre (2-4s)"
+              className={`relative flex items-center justify-center rounded-2xl p-0.5 cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ${
+                currentStage >= 5 && currentStage <= 8
+                  ? 'scale-[1.04] drop-shadow-md'
+                  : 'hover:scale-[1.03] opacity-90 hover:opacity-100'
+              }`}
+            >
+              <img
+                src="/11a.png"
+                alt="Dengeli Süre"
+                className="w-full h-auto object-contain pointer-events-none drop-shadow-sm"
+                draggable={false}
+              />
+            </button>
+
+            {/* 3. Dikkat Sınırı */}
+            <button
+              type="button"
+              onClick={onNavigateToStages}
+              aria-label="Dikkat Sınırı (4-6s)"
+              className={`relative flex items-center justify-center rounded-2xl p-0.5 cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ${
+                currentStage >= 9 && currentStage <= 13
+                  ? 'scale-[1.04] drop-shadow-md'
+                  : 'hover:scale-[1.03] opacity-90 hover:opacity-100'
+              }`}
+            >
+              <img
+                src="/11b.png"
+                alt="Dikkat Sınırı"
+                className="w-full h-auto object-contain pointer-events-none drop-shadow-sm"
+                draggable={false}
+              />
+            </button>
+
+            {/* 4. Kırmızı Sınır */}
+            <button
+              type="button"
+              onClick={onNavigateToStages}
+              aria-label="Kırmızı Sınır (7+s)"
+              className={`relative flex items-center justify-center rounded-2xl p-0.5 cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ${
+                currentStage >= 14
+                  ? 'scale-[1.04] drop-shadow-md'
+                  : 'hover:scale-[1.03] opacity-90 hover:opacity-100'
+              }`}
+            >
+              <img
+                src="/11c.png"
+                alt="Kırmızı Sınır"
+                className="w-full h-auto object-contain pointer-events-none drop-shadow-sm"
+                draggable={false}
+              />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Alt Butonlar: Ek Süre (30 dk) & Ebeveyn Rehberi */}

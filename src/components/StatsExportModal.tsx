@@ -29,6 +29,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   Award,
+  Download,
+  ExternalLink,
 } from 'lucide-react';
 
 interface StatsExportModalProps {
@@ -71,6 +73,11 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
   // İndirme / işlem durumları
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
+  const [downloadedFile, setDownloadedFile] = useState<{
+    url: string;
+    fileName: string;
+    type: 'excel' | 'pdf';
+  } | null>(null);
 
   // Modal açıldığında varsayılan sınıfı güncelle
   React.useEffect(() => {
@@ -128,7 +135,7 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
   const handleExportExcel = () => {
     try {
       setIsExporting(true);
-      exportStatisticsToExcel({
+      const res = exportStatisticsToExcel({
         students: filteredByClassStudents,
         calendarConfig,
         sortOption,
@@ -136,8 +143,12 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         institutionName,
         className: currentClassName,
       });
-      setExportFeedback('✅ Excel (.xlsx) dosyası cihazınızın "İndirilenler" (Downloads) klasörüne kaydedildi!');
-      setTimeout(() => setExportFeedback(null), 5000);
+      setDownloadedFile({
+        url: res.url,
+        fileName: res.fileName,
+        type: 'excel',
+      });
+      setExportFeedback(`Excel dosyası oluşturuldu: ${res.fileName}`);
     } catch (err: any) {
       console.error('Excel export error:', err);
       setExportFeedback('Excel oluşturulurken bir hata oluştu.');
@@ -151,7 +162,7 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
   const handleExportPdf = () => {
     try {
       setIsExporting(true);
-      exportStatisticsToPdf({
+      const res = exportStatisticsToPdf({
         students: filteredByClassStudents,
         calendarConfig,
         sortOption,
@@ -159,8 +170,12 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         institutionName,
         className: currentClassName,
       });
-      setExportFeedback('✅ PDF raporu cihazınızın "İndirilenler" (Downloads) klasörüne kaydedildi!');
-      setTimeout(() => setExportFeedback(null), 5000);
+      setDownloadedFile({
+        url: res.url,
+        fileName: res.fileName,
+        type: 'pdf',
+      });
+      setExportFeedback(`PDF raporu oluşturuldu: ${res.fileName}`);
     } catch (err: any) {
       console.error('PDF export error:', err);
       setExportFeedback('PDF oluşturulurken bir hata oluştu.');
@@ -335,16 +350,76 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
           </button>
         </div>
 
-        {/* 2. GERİ BİLDİRİM BİLDİRİMİ */}
+        {/* 2. GERİ BİLDİRİM VE DOĞRUDAN DOSYA İNDİRME ALANI */}
         {exportFeedback && (
-          <div className="px-6 py-2.5 bg-emerald-500 text-white text-xs font-black flex items-center justify-center gap-2 shadow-inner">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{exportFeedback}</span>
+          <div className="px-4 sm:px-6 py-2.5 bg-emerald-500 text-white text-xs font-black flex items-center justify-between gap-2 shadow-inner flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span className="truncate">{exportFeedback}</span>
+            </div>
+            {downloadedFile && (
+              <a
+                href={downloadedFile.url}
+                download={downloadedFile.fileName}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white text-emerald-900 font-extrabold text-xs shadow-xs hover:bg-emerald-50 active:scale-95 transition-all cursor-pointer shrink-0"
+                title="Dosyayı cihazınıza indirmek için tıklayın"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Dosyayı Hemen İndir</span>
+              </a>
+            )}
           </div>
         )}
 
         {/* 3. MODAL İÇERİĞİ (KAYDIRILABİLİR) */}
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 custom-scrollbar">
+          {/* İndirilen Dosya Bilgi & Doğrudan İndirme Kartı */}
+          {downloadedFile && (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-400 text-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
+              <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
+                <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0 shadow-2xs">
+                  <Download className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-black text-slate-900 truncate">
+                      {downloadedFile.fileName}
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-200/70 text-emerald-900 border border-emerald-300 uppercase">
+                      {downloadedFile.type}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-semibold mt-0.5">
+                    İndirme otomatik başlamadıysa sağdaki butona basarak dosyanızı doğrudan cihazınıza kaydedebilirsiniz.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                <a
+                  href={downloadedFile.url}
+                  download={downloadedFile.fileName}
+                  className="btn-3d-emerald px-3.5 py-2 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 text-white"
+                  title="Dosyayı şimdi indirin"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Dosyayı İndir</span>
+                </a>
+                {downloadedFile.type === 'pdf' && (
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                    title="Yazıcıdan veya PDF olarak kaydet"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Yazdır / PDF</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* FİLTRE VE YAPILANDIRMA BARLARI — Sınıfım Cam Çerçevesi */}
           <div
             className="rounded-3xl p-3.5 sm:p-4 space-y-3"
@@ -799,6 +874,19 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
               <Printer className="w-4 h-4" />
               <span>Yazdır / PDF Kaydet</span>
             </button>
+
+            {/* DOĞRUDAN DOSYA İNDİR BUTONU (HAZIR OLUNCA) */}
+            {downloadedFile && (
+              <a
+                href={downloadedFile.url}
+                download={downloadedFile.fileName}
+                className="btn-3d-emerald px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-2 cursor-pointer active:scale-95 text-white ring-2 ring-emerald-300 ring-offset-1 animate-pulse"
+                title="Hazırlanan dosyayı hemen bilgisayarınıza/cihazınıza indirin"
+              >
+                <Download className="w-4 h-4 stroke-[2.5]" />
+                <span>Dosyayı İndir</span>
+              </a>
+            )}
 
             {/* KAPAT BUTONU */}
             <button

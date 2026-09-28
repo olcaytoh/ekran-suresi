@@ -291,114 +291,58 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
 
             {/* Sol İçerik: İstatistikler ve İlerleme Çubuğu */}
             <div className="relative z-10 flex-1 min-w-0 flex flex-col justify-center gap-1.5 sm:gap-2">
-              <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                {/* 1. Buton (Sol): ist.png - Cam Efektli Çerçeve */}
+              {/* 2'li Buton Görseli: Haftalık Ortalama (yeşil) + Kritik Süre (turuncu) - kullanıcı görseli, üzerine sadece değerler bindiriliyor */}
+              <div className="relative w-full select-none transition-all duration-150 active:scale-[0.99]">
+                <img
+                  src="/2li.png"
+                  alt="Haftalık Ortalama ve Kritik Süre"
+                  className="w-full h-auto object-contain block drop-shadow-sm pointer-events-none"
+                  draggable={false}
+                />
+                {/* 2li.webp (2048x810): iç kanal yaklaşık x=105..1960, y=688..753 */}
                 <div
-                  className="relative rounded-2xl p-1 sm:p-1.5 overflow-hidden flex flex-col items-center justify-center select-none transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.22)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255, 255, 255, 0.55)',
-                    boxShadow:
-                      '0 6px 20px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
-                  }}
+                  aria-label={`14 kademede haftalık ortalama: ${avgStage}/14`}
+                  className="absolute left-[5.1%] right-[4.3%] top-[84.94%] h-[8.02%] overflow-hidden rounded-full pointer-events-none"
                 >
-                  {/* Üst cam ışıma efekti */}
-                  <div
-                    className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl z-20"
-                    style={{
-                      background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
-                    }}
-                  />
-
-                  <div className="relative z-10 w-full rounded-xl overflow-hidden flex items-end justify-center">
-                    <img
-                      src="/ist.png"
-                      alt="Haftalık Ortalama"
-                      className="w-full h-auto object-contain block drop-shadow-sm"
-                      draggable={false}
-                    />
-                    <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 z-10 flex flex-col items-center justify-center text-center px-1">
-                      <span className="text-[8.5px] sm:text-[10px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
-                        Haftalık Ortalama
-                      </span>
-                      <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
-                        {avgMinutes} dk
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Buton (Sağ): saf.png - Cam Efektli Çerçeve */}
-                <div
-                  className="relative rounded-2xl p-1 sm:p-1.5 overflow-hidden flex flex-col items-center justify-center select-none transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.22)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255, 255, 255, 0.55)',
-                    boxShadow:
-                      '0 6px 20px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
-                  }}
-                >
-                  {/* Üst cam ışıma efekti */}
-                  <div
-                    className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl z-20"
-                    style={{
-                      background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
-                    }}
-                  />
-
-                  <div className="relative z-10 w-full rounded-xl overflow-hidden flex items-end justify-center">
-                    <img
-                      src="/saf.png"
-                      alt="Sınıf Durumu"
-                      className="w-full h-auto object-contain block drop-shadow-sm"
-                      draggable={false}
-                    />
-                    <div className="absolute inset-x-0 bottom-1 sm:bottom-1.5 z-10 flex flex-col items-center justify-center text-center px-1">
-                      <span className="text-[8.5px] sm:text-[10px] font-black tracking-wide uppercase text-white leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
-                        {hasCritical ? 'Kritik Süre' : 'Sınıf Güvende'}
-                      </span>
-                      <span className="text-xs sm:text-sm font-black text-white tracking-tight leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.75)]">
-                        {avgStage}. Kademe
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 14-Kademe Spektrum İlerleme Çubuğu */}
-              <div className="space-y-0.5">
-                <div className="w-full h-2.5 sm:h-3 bg-slate-200/60 rounded-full p-0.5 border border-white shadow-inner overflow-hidden">
                   <div
                     className={`relative h-full rounded-full transition-all duration-500 overflow-hidden ${progressFillClass}`}
                     style={{ width: `${Math.max(6, progressPercent)}%` }}
                   >
-                    {/* Glossy top highlight, matching the pill button sheen */}
                     <div
                       className="absolute inset-x-0 top-0 h-1/2 rounded-full pointer-events-none"
-                      style={{
-                        background:
-                          'linear-gradient(to bottom, rgba(255,255,255,0.65), rgba(255,255,255,0))',
-                      }}
+                      style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.65), rgba(255,255,255,0))' }}
                     />
-                    {/* Soft bottom shadow for depth */}
                     <div
                       className="absolute inset-x-0 bottom-0 h-1/3 rounded-full pointer-events-none"
-                      style={{
-                        background:
-                          'linear-gradient(to top, rgba(0,0,0,0.12), rgba(0,0,0,0))',
-                      }}
+                      style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.12), rgba(0,0,0,0))' }}
                     />
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-[8.5px] sm:text-[9.5px] font-black text-slate-500 leading-tight">
-                  <span>0 dk</span>
-                  <span>{avgStage}/14 Kademe Ortalaması</span>
-                  <span>420+ dk</span>
+                {/* Sol (yeşil) hapın üzerine: Haftalık Ortalama değeri */}
+                <div
+                  className="absolute flex items-center justify-center pointer-events-none"
+                  style={{ left: '17.5%', width: '20.5%', top: '57.5%', height: '11%' }}
+                >
+                  <span className="text-[11px] sm:text-sm md:text-base font-black text-white tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
+                    {avgMinutes} dk
+                  </span>
                 </div>
+                {/* Sağ (turuncu) hapın üzerine: Kritik Süre / kademe değeri */}
+                <div
+                  className="absolute flex items-center justify-center pointer-events-none"
+                  style={{ left: '61%', width: '29%', top: '55.5%', height: '12%' }}
+                >
+                  <span className="text-[11px] sm:text-sm md:text-base font-black text-white tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
+                    {avgStage}. Kademe
+                  </span>
+                </div>
+              </div>
+
+              {/* İlerleme ölçeği: Eski alt çubuk kaldırıldı; etiketler korunuyor */}
+              <div className="flex items-center justify-between text-[10px] sm:text-xs font-black text-slate-950 leading-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.75)]">
+                <span>0 dk</span>
+                <span>{avgStage}/14 Kademe Ortalaması</span>
+                <span>420+ dk</span>
               </div>
             </div>
 
@@ -449,207 +393,89 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
           )}
         </div>
 
-        {/* 4 Renk Bölgesi Çerçevesi (Veli Sayfasındaki Birebir Glass Efekti: /ta.png, /ro.png, /sa.png, /me.png) */}
-        <div className="relative z-10 grid grid-cols-4 gap-1.5 sm:gap-2.5">
-          {/* 1. Güvenli Alan (Yeşil) */}
-          <button
-            type="button"
-            onClick={() => setFilterCategory(filterCategory === 'safe' ? 'all' : 'safe')}
-            className={`rounded-2xl py-2 px-0.5 sm:py-2.5 sm:px-1.5 flex flex-col items-center justify-between gap-1 text-center min-h-[92px] sm:min-h-[102px] transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md overflow-hidden select-none relative ${
-              filterCategory === 'safe'
-                ? 'bg-emerald-200/40 border-2 border-emerald-400 scale-[1.03]'
-                : `bg-emerald-100/25 hover:bg-emerald-100/35 border border-white/50 ${
-                    filterCategory !== 'all' ? 'opacity-60 hover:opacity-100' : ''
-                  }`
-            }`}
-            style={{
-              boxShadow:
+        {/* 4 Renk Bölgesi Çerçevesi (11.png, 11a.png, 11b.png, 11c.png Görselleri ile Eşit Büyüklükte Filtre Butonları) */}
+        <div className="relative z-10 w-full mt-0.5 select-none">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 w-full max-w-[420px] mx-auto select-none">
+            {/* 1. Güvenli Alan */}
+            <button
+              type="button"
+              onClick={() => setFilterCategory(filterCategory === 'safe' ? 'all' : 'safe')}
+              aria-label="Güvenli Alan (0-210 dk) - Filtrele"
+              className={`relative flex items-center justify-center rounded-[28%] cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ${
                 filterCategory === 'safe'
-                  ? '0 8px 24px rgba(16, 185, 129, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)'
-                  : '0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
-            }}
-            title="Güvenli Alan (0-210 dk) - Filtrelemek için tıklayın"
-          >
-            {/* Üst cam ışıma efekti */}
-            <div
-              className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
-              }}
-            />
+                  ? 'ring-2 ring-emerald-500 scale-[1.04] drop-shadow-md shadow-emerald-500/30'
+                  : `hover:scale-[1.03] ${filterCategory !== 'all' ? 'opacity-50 hover:opacity-100' : ''}`
+              }`}
+            >
+                <img
+                  src="/11.png"
+                  alt="Güvenli Alan"
+                  className="w-full h-auto object-contain pointer-events-none drop-shadow-sm"
+                  draggable={false}
+                />
+                <span aria-hidden="true" className="pointer-events-none absolute inset-[-1px] rounded-[28%] border-[3px] border-emerald-500 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.95),inset_0_0_0_5px_rgba(34,197,94,0.9),0_0_8px_rgba(16,185,129,0.42)]" />
+              </button>
 
-            <div className="relative z-10 flex items-center justify-center h-10 sm:h-12 w-full my-0">
-              <img
-                src="/ta.png"
-                alt="Güvenli Alan"
-                className="h-10 sm:h-12 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
-                draggable={false}
-              />
-            </div>
-
-            <div className="relative z-10 flex flex-col items-center w-full leading-none px-0.5">
-              <div className="text-base sm:text-lg font-black text-slate-900 leading-none">
-                {safeStudents.length}
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 ml-0.5">öğr</span>
-              </div>
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight mt-0.5">
-                Güvenli Alan
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-black text-emerald-900 leading-tight mt-1 px-1.5 py-0.5 rounded bg-white/70 whitespace-nowrap border border-white/60">
-                0-210 dk
-              </span>
-            </div>
-          </button>
-
-          {/* 2. Dengeli Süre (Mavi/Sarı) */}
-          <button
-            type="button"
-            onClick={() => setFilterCategory(filterCategory === 'moderate' ? 'all' : 'moderate')}
-            className={`rounded-2xl py-2 px-0.5 sm:py-2.5 sm:px-1.5 flex flex-col items-center justify-between gap-1 text-center min-h-[92px] sm:min-h-[102px] transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md overflow-hidden select-none relative ${
-              filterCategory === 'moderate'
-                ? 'bg-amber-200/40 border-2 border-amber-400 scale-[1.03]'
-                : `bg-amber-100/25 hover:bg-amber-100/35 border border-white/50 ${
-                    filterCategory !== 'all' ? 'opacity-60 hover:opacity-100' : ''
-                  }`
-            }`}
-            style={{
-              boxShadow:
+            {/* 2. Dengeli Süre */}
+            <button
+              type="button"
+              onClick={() => setFilterCategory(filterCategory === 'moderate' ? 'all' : 'moderate')}
+              aria-label="Dengeli Süre (240-300 dk) - Filtrele"
+              className={`relative flex items-center justify-center rounded-[28%] cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ${
                 filterCategory === 'moderate'
-                  ? '0 8px 24px rgba(245, 158, 11, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)'
-                  : '0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
-            }}
-            title="Dengeli Süre (240-300 dk) - Filtrelemek için tıklayın"
-          >
-            {/* Üst cam ışıma efekti */}
-            <div
-              className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
-              }}
-            />
+                  ? 'ring-2 ring-amber-500 scale-[1.04] drop-shadow-md shadow-amber-500/30'
+                  : `hover:scale-[1.03] ${filterCategory !== 'all' ? 'opacity-50 hover:opacity-100' : ''}`
+              }`}
+            >
+                <img
+                  src="/11a.png"
+                  alt="Dengeli Süre"
+                  className="w-full h-auto object-contain pointer-events-none drop-shadow-sm"
+                  draggable={false}
+                />
+                <span aria-hidden="true" className="pointer-events-none absolute inset-[-2px] rounded-[28%] border-2 border-amber-400/90 shadow-[0_0_0_1px_rgba(245,158,11,0.35),0_0_10px_rgba(245,158,11,0.22)]" />
+              </button>
 
-            <div className="relative z-10 flex items-center justify-center h-10 sm:h-12 w-full my-0">
-              <img
-                src="/ro.png"
-                alt="Dengeli Süre"
-                className="h-10 sm:h-12 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
-                draggable={false}
-              />
-            </div>
-
-            <div className="relative z-10 flex flex-col items-center w-full leading-none px-0.5">
-              <div className="text-base sm:text-lg font-black text-slate-900 leading-none">
-                {moderateStudents.length}
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 ml-0.5">öğr</span>
-              </div>
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight mt-0.5">
-                Dengeli Süre
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-black text-amber-900 leading-tight mt-1 px-1.5 py-0.5 rounded bg-white/70 whitespace-nowrap border border-white/60">
-                240-300 dk
-              </span>
-            </div>
-          </button>
-
-          {/* 3. Dikkat Sınırı (Turuncu) */}
-          <button
-            type="button"
-            onClick={() => setFilterCategory(filterCategory === 'warning' ? 'all' : 'warning')}
-            className={`rounded-2xl py-2 px-0.5 sm:py-2.5 sm:px-1.5 flex flex-col items-center justify-between gap-1 text-center min-h-[92px] sm:min-h-[102px] transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md overflow-hidden select-none relative ${
-              filterCategory === 'warning'
-                ? 'bg-orange-200/40 border-2 border-orange-400 scale-[1.03]'
-                : `bg-orange-100/25 hover:bg-orange-100/35 border border-white/50 ${
-                    filterCategory !== 'all' ? 'opacity-60 hover:opacity-100' : ''
-                  }`
-            }`}
-            style={{
-              boxShadow:
+            {/* 3. Dikkat Sınırı */}
+            <button
+              type="button"
+              onClick={() => setFilterCategory(filterCategory === 'warning' ? 'all' : 'warning')}
+              aria-label="Dikkat Sınırı (330-390 dk) - Filtrele"
+              className={`relative flex items-center justify-center rounded-[28%] cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ${
                 filterCategory === 'warning'
-                  ? '0 8px 24px rgba(249, 115, 22, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)'
-                  : '0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
-            }}
-            title="Dikkat Sınırı (330-390 dk) - Filtrelemek için tıklayın"
-          >
-            {/* Üst cam ışıma efekti */}
-            <div
-              className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
-              }}
-            />
+                  ? 'ring-2 ring-orange-500 scale-[1.04] drop-shadow-md shadow-orange-500/30'
+                  : `hover:scale-[1.03] ${filterCategory !== 'all' ? 'opacity-50 hover:opacity-100' : ''}`
+              }`}
+            >
+                <img
+                  src="/11b.png"
+                  alt="Dikkat Sınırı"
+                  className="w-full h-auto object-contain pointer-events-none drop-shadow-sm"
+                  draggable={false}
+                />
+                <span aria-hidden="true" className="pointer-events-none absolute inset-[-2px] rounded-[28%] border-2 border-orange-500/90 shadow-[0_0_0_1px_rgba(249,115,22,0.35),0_0_10px_rgba(249,115,22,0.22)]" />
+              </button>
 
-            <div className="relative z-10 flex items-center justify-center h-10 sm:h-12 w-full my-0">
-              <img
-                src="/sa.png"
-                alt="Dikkat Sınırı"
-                className="h-10 sm:h-12 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
-                draggable={false}
-              />
-            </div>
-
-            <div className="relative z-10 flex flex-col items-center w-full leading-none px-0.5">
-              <div className="text-base sm:text-lg font-black text-slate-900 leading-none">
-                {warningStudents.length}
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 ml-0.5">öğr</span>
-              </div>
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight mt-0.5">
-                Dikkat Sınırı
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-black text-orange-900 leading-tight mt-1 px-1.5 py-0.5 rounded bg-white/70 whitespace-nowrap border border-white/60">
-                330-390 dk
-              </span>
-            </div>
-          </button>
-
-          {/* 4. Kırmızı Sınır (Kırmızı) */}
-          <button
-            type="button"
-            onClick={() => setFilterCategory(filterCategory === 'critical' ? 'all' : 'critical')}
-            className={`rounded-2xl py-2 px-0.5 sm:py-2.5 sm:px-1.5 flex flex-col items-center justify-between gap-1 text-center min-h-[92px] sm:min-h-[102px] transition-all duration-150 active:scale-95 cursor-pointer backdrop-blur-md overflow-hidden select-none relative ${
-              filterCategory === 'critical'
-                ? 'bg-rose-200/40 border-2 border-rose-400 scale-[1.03]'
-                : `bg-rose-100/25 hover:bg-rose-100/35 border border-white/50 ${
-                    filterCategory !== 'all' ? 'opacity-60 hover:opacity-100' : ''
-                  }`
-            }`}
-            style={{
-              boxShadow:
+            {/* 4. Kırmızı Sınır */}
+            <button
+              type="button"
+              onClick={() => setFilterCategory(filterCategory === 'critical' ? 'all' : 'critical')}
+              aria-label="Kırmızı Sınır (420+ dk) - Filtrele"
+              className={`relative flex items-center justify-center rounded-[28%] cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ${
                 filterCategory === 'critical'
-                  ? '0 8px 24px rgba(244, 63, 94, 0.35), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)'
-                  : '0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(255, 255, 255, 0.1)',
-            }}
-            title="Kırmızı Sınır (420+ dk) - Filtrelemek için tıklayın"
-          >
-            {/* Üst cam ışıma efekti */}
-            <div
-              className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.40), transparent)',
-              }}
-            />
-
-            <div className="relative z-10 flex items-center justify-center h-10 sm:h-12 w-full my-0">
-              <img
-                src="/me.png"
-                alt="Kırmızı Sınır"
-                className="h-10 sm:h-12 w-auto max-w-full object-contain pointer-events-none drop-shadow-none"
-                draggable={false}
-              />
-            </div>
-
-            <div className="relative z-10 flex flex-col items-center w-full leading-none px-0.5">
-              <div className="text-base sm:text-lg font-black text-slate-900 leading-none">
-                {criticalStudents.length}
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 ml-0.5">öğr</span>
-              </div>
-              <span className="text-[10px] min-[380px]:text-[11px] sm:text-xs font-black text-slate-900 leading-tight whitespace-nowrap tracking-tight mt-0.5">
-                Kırmızı Sınır
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-black text-rose-900 leading-tight mt-1 px-1.5 py-0.5 rounded bg-white/70 whitespace-nowrap border border-white/60">
-                420+ dk
-              </span>
-            </div>
-          </button>
+                  ? 'ring-2 ring-rose-500 scale-[1.04] drop-shadow-md shadow-rose-500/30'
+                  : `hover:scale-[1.03] ${filterCategory !== 'all' ? 'opacity-50 hover:opacity-100' : ''}`
+              }`}
+            >
+                <img
+                  src="/11c.png"
+                  alt="Kırmızı Sınır"
+                  className="w-full h-auto object-contain pointer-events-none drop-shadow-sm"
+                  draggable={false}
+                />
+                <span aria-hidden="true" className="pointer-events-none absolute inset-[-1px] rounded-[28%] border-[3px] border-red-600 shadow-[inset_0_0_0_2px_rgba(255,255,255,0.95),inset_0_0_0_5px_rgba(248,113,113,0.9),0_0_8px_rgba(220,38,38,0.42)]" />
+              </button>
+          </div>
         </div>
       </div>
 
