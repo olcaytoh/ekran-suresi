@@ -620,7 +620,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
             </button>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 truncate">
+              <h2 className="text-xs font-black text-slate-900 truncate [font-family:inherit]">
                 {selectedClassroom?.name || 'Sınıf Detayı'}
               </h2>
               <p className="text-xs text-slate-800 truncate font-bold">
@@ -679,7 +679,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           />
 
           <div className="relative z-10 flex items-center justify-between mb-3">
-            <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+            <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5 [font-family:inherit]">
               <BarChart3 className="w-4 h-4 text-indigo-600" />
               <span>Sınıf İlerleme Durumu</span>
             </h3>
@@ -862,7 +862,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               </div>
 
               <div className="text-center space-y-1.5">
-                <h4 className="text-base font-black text-slate-900">
+                <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">
                   E-Postayı &amp; Üyeliği Sıfırla
                 </h4>
                 <p className="text-xs text-slate-600 leading-relaxed">
@@ -931,7 +931,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               </div>
 
               <div className="text-center space-y-1.5">
-                <h4 className="text-base font-black text-slate-900">Sınıfı Sil?</h4>
+                <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">Sınıfı Sil?</h4>
                 <p className="text-xs text-slate-600 leading-relaxed">
                   &quot;{classToDelete.name}&quot; sınıfını ve kurum bağlantısını silmek istediğinize emin misiniz?
                 </p>
@@ -994,7 +994,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         <div className="flex items-center gap-2 min-w-0">
           <Building2 className="w-4 h-4 text-rose-600 flex-shrink-0" />
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-extrabold text-slate-900 truncate">{currentInstName}</span>
+            <span className="text-xs font-black text-slate-900 truncate">{currentInstName}</span>
           </div>
         </div>
       </div>
@@ -1025,7 +1025,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               <KeyRound className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-black text-slate-900 leading-tight flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-xs font-black text-slate-900 leading-tight flex items-center gap-1.5 flex-wrap [font-family:inherit]">
                 <span>Kurum &amp; Admin Yetki Kodları</span>
                 {currentInstCode && (
                   <span className="text-[9.5px] font-black bg-emerald-100/70 text-emerald-800 border border-emerald-300/80 px-1.5 py-0.5 rounded-md flex items-center gap-1 backdrop-blur-xs">
@@ -1098,7 +1098,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <span className="text-[10px] sm:text-xs font-black text-rose-700 uppercase tracking-wider block">
+                  <span className="text-xs font-black text-rose-700 uppercase tracking-wider block">
                     Öğretmen Katılım Kodu
                   </span>
                   {currentInstCode && (
@@ -1201,7 +1201,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
               <div className="relative z-10">
                 <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <span className="text-[10px] sm:text-xs font-black text-indigo-700 uppercase tracking-wider block">
+                  <span className="text-xs font-black text-indigo-700 uppercase tracking-wider block">
                     Admin Yetki Kodu
                   </span>
                   {currentAdminCode && (
@@ -1394,7 +1394,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             />
 
             <div className="relative z-10 flex items-center justify-between gap-2 flex-wrap mb-3">
-              <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+              <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5 [font-family:inherit]">
                 <BarChart3 className="w-4 h-4 text-violet-600" />
                 <span>Kurum Geneli Özet</span>
               </h3>
@@ -1436,7 +1436,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
           {/* Öğretmen / Sınıf Listesi */}
           <div className="space-y-1.5">
-            <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5 px-1">
+            <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5 px-1 [font-family:inherit]">
               <GraduationCap className="w-4 h-4 text-indigo-600" />
               <span>Öğretmenler &amp; Sınıflar ({classrooms.length})</span>
             </h3>
@@ -1503,7 +1503,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           <School className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 leading-none">
-                          <h4 className="text-[11px] sm:text-xs font-black text-slate-900 truncate leading-none">{classroom.name}</h4>
+                          <h4 className="text-xs font-black text-slate-900 truncate leading-none [font-family:inherit]">{classroom.name}</h4>
                           <p className="text-[9.5px] text-slate-800 truncate font-semibold leading-none mt-1">
                             Öğretmen: {classroom.teacherName} • {stats.totalStudents}/
                             {classroom.studentTargetCount || 25} öğr.
@@ -1601,7 +1601,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               }}
             />
 
-            <div className="relative z-10 flex items-center gap-2 text-rose-700 font-black text-xs sm:text-sm">
+            <div className="relative z-10 flex items-center gap-2 text-rose-700 font-black text-xs">
               <Mail className="w-4 h-4" />
               <span>Kayıtlı E-Postalar &amp; Hesap Sıfırlama Merkezi</span>
             </div>
@@ -1948,7 +1948,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             </div>
 
             <div className="text-center space-y-1.5">
-              <h4 className="text-base sm:text-lg font-black text-slate-900">
+              <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">
                 E-Postayı ve Hesabı Sıfırla &amp; Sil
               </h4>
               <p className="text-xs text-slate-600 leading-relaxed">
@@ -2029,7 +2029,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             </div>
 
             <div className="text-center space-y-1">
-              <h4 className="text-base font-black text-slate-900">Kullanıcı Rolünü Değiştir</h4>
+              <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">Kullanıcı Rolünü Değiştir</h4>
               <p className="text-xs text-slate-500">
                 Yanlışlıkla farklı bir rol seçilerek kaydolunmuşsa buradan düzeltebilirsiniz.
               </p>
@@ -2103,7 +2103,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             </div>
 
             <div className="text-center space-y-1.5">
-              <h4 className="text-base font-black text-slate-900">Sınıfı Sil?</h4>
+              <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">Sınıfı Sil?</h4>
               <p className="text-xs text-slate-600 leading-relaxed">
                 &quot;{classToDelete.name}&quot; sınıfını ve kurum bağlantısını silmek istediğinize emin misiniz?
               </p>
@@ -2159,7 +2159,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             </div>
 
             <div className="text-center space-y-1.5">
-              <h4 className="text-base font-black text-slate-900">
+              <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">
                 Kodu değiştirmek istediğinize emin misiniz?
               </h4>
               <p className="text-xs text-slate-600 leading-relaxed">

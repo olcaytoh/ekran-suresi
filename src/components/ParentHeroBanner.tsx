@@ -36,7 +36,7 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
 
   return (
     <div
-      className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 text-slate-900 overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-3.5 select-none h-[136px] sm:h-[148px]"
+      className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 text-slate-900 overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-3.5 select-none h-[162px] sm:h-[168px]"
       style={{
         background: 'rgba(255, 255, 255, 0.20)',
         backdropFilter: 'blur(20px)',
@@ -55,12 +55,9 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
       />
 
       {/* Left Content */}
-      <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-between py-0.5">
-        {/* Üst Boşluk: İleride kazanılan rozetler buraya eklenecek */}
-        <div className="flex items-center min-h-[18px]" />
-
+      <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-between py-1">
         {/* Rozet Etiketi: Haftalık Yıldız Rozeti: Altın (Saat/Kademe bilgisinin hemen üstünde) */}
-        <div className="flex items-center mt-1">
+        <div className="flex items-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-amber-950 border border-amber-300 shadow-2xs select-none">
             <span className="w-4 h-4 rounded-full bg-amber-500/30 flex items-center justify-center text-[10px] font-black text-amber-900 leading-none">
               ★
@@ -72,7 +69,7 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
         </div>
 
         {/* Center: Saat ve Kademe Bilgisi */}
-        <div className="mt-2 text-center">
+        <div className="mt-1.5 text-center">
           <span className="text-xs sm:text-sm font-black text-white drop-shadow-2xs">
             {hours > 0 ? `${hours}. Saat` : `${totalMinutes} dk`}{' '}
             <span className="font-semibold text-white/80 text-[11px] sm:text-xs">
@@ -92,7 +89,7 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
         </div>
 
         {/* Bottom: Günlük Ekran Süresi: X dk & Beyaz/Turkuaz Çizgi */}
-        <div className="mt-1.5 flex flex-col items-start">
+        <div className="mt-1.5 flex flex-col items-start pb-0.5">
           <span className="text-[11px] sm:text-xs font-black text-white/95 tracking-tight drop-shadow-2xs">
             Günlük Ekran Süresi: {totalMinutes} dk
           </span>

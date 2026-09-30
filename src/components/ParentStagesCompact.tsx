@@ -64,23 +64,8 @@ export const ParentStagesCompact: React.FC<ParentStagesCompactProps> = ({
     <div className="flex-1 flex flex-col justify-between gap-2">
       {/* Top Header */}
       <div className="flex items-center justify-between px-1">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm sm:text-base font-black text-slate-900">
-            {isTeacher ? 'Sınıf Ortalaması Kademeleri' : '14 Kademeli Dokunmatik Tuşlar'}
-          </span>
-          <span className="text-[11px] font-bold text-slate-500">
-            ({isTeacher ? `${classAverageMinutes} dk • ${teacherAvgStage}. Kademe` : `${currentStage}. Kademe`})
-          </span>
-        </div>
-
-        <span
-          className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
-            isTeacher
-              ? 'text-indigo-700 bg-indigo-50 border-indigo-200'
-              : 'text-sky-600 bg-sky-50 border-sky-200'
-          }`}
-        >
-          {isTeacher ? 'Sınıf Ortalaması' : 'Dokunarak Seç'}
+        <span className="text-sm sm:text-base font-black text-slate-900 px-3 py-1 rounded-2xl border border-white/70 bg-white/40 backdrop-blur-md shadow-2xs">
+          {isTeacher ? 'Sınıf Ortalaması Kademeleri' : 'Kademeler'}
         </span>
       </div>
 
@@ -191,7 +176,7 @@ export const ParentStagesCompact: React.FC<ParentStagesCompactProps> = ({
 
         {/* 4x4 Grid Slot 15 & 16: Summary Status Tile */}
         <div className="col-span-2 flex flex-col items-center justify-center p-2 rounded-2xl bg-gradient-to-br from-sky-50/80 to-indigo-50/60 border border-sky-100 text-center select-none pointer-events-none">
-          <span className="text-[10px] font-bold text-sky-700">
+          <span className="text-[10px] font-black text-sky-700">
             {isTeacher ? 'Sınıf Ortalaması' : 'Toplam Süre'}
           </span>
           <span className="text-xs sm:text-sm font-black text-sky-950 mt-0.5">

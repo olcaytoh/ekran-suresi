@@ -1148,13 +1148,15 @@ export default function App() {
         ) : (
           /* PARENT / VELİ VIEW (Responsive scrolling with rich 3D aesthetic) */
           <div className={`flex flex-col ${parentTab === 'home' ? 'h-full justify-between pb-0 flex-1 min-h-0' : 'gap-2.5 sm:gap-3 pb-8'}`}>
-            {/* Top Hero Banner (Always fully visible with large yesil.png & progress bar) */}
-            <div className="flex-shrink-0 mb-3 sm:mb-4">
-              <ParentHeroBanner
-                currentStage={currentStage}
-                studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
-              />
-            </div>
+            {/* Top Hero Banner (yalnızca veli ana sayfasında görünür) */}
+            {parentTab === 'home' && (
+              <div className="flex-shrink-0 mb-1.5 sm:mb-2">
+                <ParentHeroBanner
+                  currentStage={currentStage}
+                  studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
+                />
+              </div>
+            )}
 
             {/* Center Dynamic Tab Content (Switched by bottom dock) */}
             <div className={`w-full ${parentTab === 'home' ? 'flex-1 min-h-0 flex flex-col justify-between' : ''}`}>

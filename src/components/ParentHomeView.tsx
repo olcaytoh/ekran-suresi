@@ -38,10 +38,10 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-between gap-2.5 w-full flex-1 min-h-0 select-none">
+    <div className="relative flex flex-col items-center justify-between gap-2 sm:gap-2.5 w-full flex-1 min-h-0 select-none">
       {/* Durum Dashboard Ana Cam Kartı (Glassmorphism Kart Efekti) */}
       <div
-        className="relative w-full rounded-[24px] sm:rounded-[28px] px-2.5 sm:px-3.5 pt-1 sm:pt-1.5 pb-2 sm:pb-2.5 select-none flex flex-col items-center flex-1 justify-between min-h-0 overflow-hidden"
+        className="relative w-full rounded-[24px] sm:rounded-[28px] px-2.5 sm:px-3.5 pt-0.5 sm:pt-1 pb-1.5 sm:pb-2 select-none flex flex-col items-center flex-1 justify-between min-h-0 overflow-hidden"
         style={{
           background: 'rgba(255, 255, 255, 0.20)',
           backdropFilter: 'blur(20px)',
@@ -65,17 +65,17 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
           totalMinutes={totalMinutes}
           onNavigateToStages={onNavigateToStages}
           studentName={studentName}
-          className="my-auto flex-shrink-0"
+          className="mt-0 mb-auto flex-shrink-0 max-w-[430px] sm:max-w-[490px] max-h-[170px] sm:max-h-[195px] w-full"
         />
 
         {/* İnce Cam Ayırıcı Çizgi */}
-        <div className="relative z-10 w-full flex items-center justify-center my-0 sm:my-0.5 px-3 flex-shrink-0">
+        <div className="relative z-10 w-full flex items-center justify-center my-0 px-3 flex-shrink-0">
           <div className="w-full h-[1px] bg-white/25" />
         </div>
 
         {/* 4 Renk Bölgesi Butonları: 11.png (kodlanmış), 11a.png, 11b.png, 11c.png (Alt Bölüm) */}
         <div className="relative z-10 w-full mb-0.5 flex-shrink-0 select-none">
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[360px] sm:max-w-[390px] mx-auto select-none">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[335px] sm:max-w-[370px] mx-auto select-none">
             {/* 1. Güvenli Alan (11.png ve hemen dışındaki yeşil çizgi) */}
             <button
               type="button"
@@ -102,7 +102,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
               aria-label="Dengeli Süre (2-4s)"
               className={`relative flex items-center justify-center rounded-2xl p-0.5 cursor-pointer focus:outline-hidden transition-all duration-150 active:scale-95 ${
                 currentStage >= 5 && currentStage <= 8
-                  ? 'scale-[1.04] drop-shadow-md'
+                  ? 'ring-2 ring-yellow-400 scale-[1.04] drop-shadow-md shadow-md shadow-yellow-400/30'
                   : 'hover:scale-[1.03] opacity-90 hover:opacity-100'
               }`}
             >

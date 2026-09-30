@@ -43,6 +43,17 @@ export const Header: React.FC<HeaderProps> = ({
   const isStudentOnly = !isSuperAdmin && !isTeacher && (currentUser?.role === 'student' || currentUser?.userType === 'student');
   const isParent = !isSuperAdmin && !isTeacher && !isStudentOnly;
 
+  // Veli Adı Belirleme: En üstteki "Merhaba" mesajında Veli Adı yer alacak
+  const parentDisplayName =
+    currentUser?.parentName ||
+    (currentUser?.displayName?.includes('(')
+      ? currentUser.displayName.match(/\((.*?)\)/)?.[1]
+      : undefined) ||
+    (currentUser?.displayName && currentUser.displayName !== currentUser.studentName
+      ? currentUser.displayName
+      : undefined) ||
+    'Değerli Velimiz';
+
   return (
     <header className="flex-shrink-0 z-40 px-2.5 sm:px-4 pt-2 sm:pt-2.5 pb-1 max-w-lg sm:max-w-xl md:max-w-2xl mx-auto w-full select-none">
       {/* Frosted Glass Top Bar */}
@@ -77,9 +88,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Orta Alan: Logo ile İlk Buton (Mesaj) Arasında Ortalanmış Veli / Rol Başlığı */}
         <div className="relative z-10 flex-1 flex items-center justify-center min-w-0 px-1 sm:px-2">
-          {isParent && (currentUser?.studentName || currentUser?.displayName) && (
+          {isParent && (
             <span className="px-2.5 py-0.5 rounded-full bg-white/60 backdrop-blur-sm border border-white/70 shadow-[0_4px_14px_rgba(0,0,0,0.18)] text-[10px] sm:text-[11px] font-bold text-slate-800 tracking-tight truncate max-w-[160px] sm:max-w-[200px]">
-              Merhaba, {currentUser?.studentName || currentUser?.displayName}
+              Merhaba, {parentDisplayName}
               {currentUser?.className ? ` (${currentUser.className})` : ''}!
             </span>
           )}

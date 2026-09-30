@@ -37,26 +37,26 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
   const minutes = totalMinutes % 60;
   const spentText = `${hours > 0 ? `${hours}s ` : ''}${minutes > 0 || hours === 0 ? `${minutes}dk` : ''} harcandı`;
 
-  // Öğrenci İsmi & Cam Çerçeve Hesaplamaları ("Kırmızı Sınır"dan %50 daha büyük: 38 * 1.5 = 57px)
+  // Öğrenci İsmi & Cam Çerçeve Hesaplamaları (%10 küçültülmüş: 51px, üst çerçeveye yaklaştırılmış: frameY = 4)
   const cleanStudentName =
     (studentName || 'Ali Yılmaz')
       .replace(/\s*\(.*?\)\s*/g, '')
       .trim() || 'Ali Yılmaz';
 
-  let studentFontSize = 57;
+  let studentFontSize = 51;
   if (cleanStudentName.length > 18) {
-    studentFontSize = 42;
+    studentFontSize = 38;
   } else if (cleanStudentName.length > 13) {
-    studentFontSize = 48;
+    studentFontSize = 43;
   }
 
   const frameWidth = Math.min(
-    425,
-    Math.max(260, cleanStudentName.length * (studentFontSize * 0.58) + 64)
+    400,
+    Math.max(240, cleanStudentName.length * (studentFontSize * 0.58) + 56)
   );
   const frameX = 54;
-  const frameY = 14;
-  const frameHeight = 92;
+  const frameY = 4;
+  const frameHeight = 82;
 
   // Zone Configurations matching exact design specifications
   let zoneName = 'Güvenli Alan';
@@ -89,12 +89,12 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
   } else if (stage >= 5) {
     zoneName = 'Dengeli Süre';
     zoneRange = '2-4';
-    zoneTitleColor = '#b45309';
-    zonePrimary = '#d97706';
-    zoneGradStart = '#f59e0b';
-    zoneGradMid = '#b45309';
-    zoneGradEnd = '#78350f';
-    zoneGlowColor = 'rgba(217, 119, 6, 0.55)';
+    zoneTitleColor = '#a16207';
+    zonePrimary = '#eab308';
+    zoneGradStart = '#fde047';
+    zoneGradMid = '#eab308';
+    zoneGradEnd = '#a16207';
+    zoneGlowColor = 'rgba(234, 179, 8, 0.65)';
   }
 
   // Dial Geometry Parameters in 780 x 400 coordinate space
@@ -159,16 +159,24 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
         aria-hidden="true"
       >
         <defs>
-          {/* Student Name Glass Card Shadow */}
-          <filter id="student-glass-shadow" x="-20%" y="-20%" width="140%" height="150%">
-            <feDropShadow dx="0" dy="6" stdDeviation="8" floodOpacity="0.25" floodColor="#000000" />
+          {/* Student Name Zone Frame Shadow with Zone Color Glow */}
+          <filter id="student-zone-shadow" x="-25%" y="-25%" width="150%" height="160%">
+            <feDropShadow dx="0" dy="8" stdDeviation="10" floodOpacity="0.45" floodColor={zoneGlowColor || zonePrimary} />
+            <feDropShadow dx="0" dy="4" stdDeviation="5" floodOpacity="0.25" floodColor="#000000" />
           </filter>
 
-          {/* Student Name Glass Card Background Gradient */}
-          <linearGradient id="student-glass-bg" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32" />
-            <stop offset="60%" stopColor="#ffffff" stopOpacity="0.16" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.08" />
+          {/* Student Name Zone Badge Gradient (Active Zone: Green / Amber / Orange / Red) */}
+          <linearGradient id="student-zone-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={zoneGradStart} />
+            <stop offset="45%" stopColor={zoneGradMid} />
+            <stop offset="100%" stopColor={zoneGradEnd} />
+          </linearGradient>
+
+          {/* Student Name Specular Gel Highlight */}
+          <linearGradient id="student-zone-specular" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.75" />
+            <stop offset="45%" stopColor="#ffffff" stopOpacity="0.20" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
           </linearGradient>
 
           {/* Main Card Drop Shadow */}
@@ -576,30 +584,48 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
           </text>
         </g>
 
-        {/* ÖĞRENCİ İSMİ & CAM ÇERÇEVE (Kırmızı işaretli alanda, "Kırmızı Sınır"dan %50 daha büyük, buzlu cam kart arkasında) */}
+        {/* ÖĞRENCİ İSMİ & SINIR RENKLİ ÇERÇEVE (Bulunduğu sınıra göre: Yeşil, Amber, Turuncu, Kırmızı) */}
         {cleanStudentName && (
-          <g filter="url(#student-glass-shadow)">
-            {/* Buzlu Cam Çerçeve Gövdesi */}
+          <g filter="url(#student-zone-shadow)">
+            {/* Dış Beyaz / Yarı Saydam Parlak Kenarlık */}
+            <rect
+              x={frameX - 1.5}
+              y={frameY - 1.5}
+              width={frameWidth + 3}
+              height={frameHeight + 3}
+              rx="25.5"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="2"
+              strokeOpacity="0.75"
+            />
+
+            {/* Sınır Rengi Gövdesi (Aktif kademe/sınır rengiyle 3D gradyan) */}
             <rect
               x={frameX}
               y={frameY}
               width={frameWidth}
               height={frameHeight}
               rx="24"
-              fill="url(#student-glass-bg)"
-              stroke="rgba(255, 255, 255, 0.55)"
-              strokeWidth="2.2"
+              fill="url(#student-zone-bg)"
             />
 
-            {/* Üst Cam Parlama Çizgisi (Specular Shine) */}
+            {/* Üst Cam Parlama Alanı (Specular Gel Highlight) */}
             <path
-              d={`M ${frameX + 24} ${frameY + 3} H ${frameX + frameWidth - 24}`}
-              stroke="rgba(255, 255, 255, 0.85)"
-              strokeWidth="2"
-              strokeLinecap="round"
+              d={`M ${frameX + 4} ${frameY + frameHeight * 0.45} C ${frameX + 4} ${frameY + 6} ${frameX + 24} ${frameY + 3} ${frameX + frameWidth / 2} ${frameY + 3} C ${frameX + frameWidth - 24} ${frameY + 3} ${frameX + frameWidth - 4} ${frameY + 6} ${frameX + frameWidth - 4} ${frameY + frameHeight * 0.45} Q ${frameX + frameWidth / 2} ${frameY + frameHeight * 0.22} ${frameX + 4} ${frameY + frameHeight * 0.45} Z`}
+              fill="url(#student-zone-specular)"
             />
 
-            {/* Öğrenci İsmi - %50 Daha Büyük (~57px), Kalın ve Net */}
+            {/* Alt İç Ambiyans Yansıma Çizgisi */}
+            <path
+              d={`M ${frameX + 20} ${frameY + frameHeight - 4} H ${frameX + frameWidth - 20}`}
+              stroke="#ffffff"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              opacity="0.3"
+            />
+
+            {/* Öğrenci İsmi - Kalın, Net Beyaz Yazı */}
             <text
               x={frameX + frameWidth / 2}
               y={frameY + frameHeight / 2 + 1}
@@ -611,7 +637,7 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
               fontFamily="Nunito, system-ui, -apple-system, sans-serif"
               letterSpacing="-0.02em"
               style={{
-                filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45))',
+                filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.65))',
               }}
             >
               {cleanStudentName}

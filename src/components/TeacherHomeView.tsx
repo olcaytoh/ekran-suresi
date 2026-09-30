@@ -222,7 +222,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   const instName = classroom?.institutionName || teacherProfile?.institutionName;
 
   return (
-    <div className="relative flex-1 flex flex-col gap-3 pb-8 select-none">
+    <div className="relative flex-1 flex flex-col gap-3 pb-8 select-none antialiased">
       {/* Bağlı Kurum Bilgisi (Zarif Cam Çubuk) */}
       {instCode && (
         <div
@@ -237,13 +237,13 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         >
           <div className="flex items-center gap-1.5 min-w-0">
             <Building2 className="w-4 h-4 text-rose-600 flex-shrink-0" />
-            <span className="font-extrabold text-slate-900 truncate">
+            <span className="font-black text-slate-900 truncate">
               {instName || 'Bağlı Kurum'}
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-[10px] text-slate-500 font-medium">Kurum Kodu:</span>
-            <span className="px-2 py-0.5 rounded-lg bg-rose-50/80 text-rose-700 font-mono font-black text-[11px] border border-rose-200">
+            <span className="px-2 py-0.5 rounded-lg bg-rose-50/80 text-rose-700 font-mono font-semibold tracking-wider text-[11px] border border-rose-200">
               {instCode}
             </span>
           </div>
@@ -323,7 +323,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                   className="absolute flex items-center justify-center pointer-events-none"
                   style={{ left: '17.5%', width: '20.5%', top: '57.5%', height: '11%' }}
                 >
-                  <span className="text-[11px] sm:text-sm md:text-base font-black text-white tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
+                  <span className="text-[11px] sm:text-sm md:text-base font-bold text-white tabular-nums leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
                     {avgMinutes} dk
                   </span>
                 </div>
@@ -332,25 +332,18 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                   className="absolute flex items-center justify-center pointer-events-none"
                   style={{ left: '61%', width: '29%', top: '55.5%', height: '12%' }}
                 >
-                  <span className="text-[11px] sm:text-sm md:text-base font-black text-white tracking-tight leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
+                  <span className="text-[11px] sm:text-sm md:text-base font-bold text-white tabular-nums leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">
                     {avgStage}. Kademe
                   </span>
                 </div>
               </div>
-
-              {/* İlerleme ölçeği: Eski alt çubuk kaldırıldı; etiketler korunuyor */}
-              <div className="flex items-center justify-between text-[10px] sm:text-xs font-black text-slate-950 leading-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.75)]">
-                <span>0 dk</span>
-                <span>{avgStage}/14 Kademe Ortalaması</span>
-                <span>420+ dk</span>
-              </div>
             </div>
 
-            {/* Sağ Taraf: Kedi Maskotu */}
+            {/* Sağ Taraf: Maskot (kss.mp4) */}
             <div className="relative z-10 flex-shrink-0 self-stretch flex items-end justify-center w-[100px] sm:w-[124px] md:w-[140px] -mb-3 sm:-mb-3.5 pointer-events-none select-none">
               <TransparentMascotVideo
-                src="/mascot.mp4"
-                className="h-auto w-full max-h-[126px] sm:max-h-[140px] md:max-h-[150px] drop-shadow-[0_8px_16px_rgba(124,58,237,0.18)] transition-all duration-300"
+                src="/kss.mp4"
+                className="h-auto w-full max-h-[126px] sm:max-h-[140px] md:max-h-[150px] object-contain drop-shadow-[0_8px_16px_rgba(124,58,237,0.18)] transition-all duration-300"
               />
             </div>
           </div>
@@ -500,7 +493,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         />
 
         <div className="relative z-10 flex items-center justify-between gap-2 flex-wrap">
-          <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+          <h3 className="text-sm font-black tracking-tight text-slate-900 flex items-center gap-1.5 [font-family:inherit]">
             <Users className="w-4 h-4 text-violet-500" />
             <span>Öğrenci Bilgileri ({sortedStudents.length} / {totalStudents})</span>
           </h3>
@@ -509,7 +502,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             type="button"
             id="btn-teacher-export-stats"
             onClick={() => setIsExportModalOpen(true)}
-            className="btn-3d-emerald px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+            className="btn-3d-emerald px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
             title="Sınıf istatistiklerini ve tüm öğrencilerin hafta hafta sürelerini PDF veya Excel olarak dışa aktar"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -535,7 +528,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             <button
               type="button"
               onClick={() => setFilterCategory('all')}
-              className={`px-2.5 py-1 rounded-full text-xs font-black cursor-pointer transition-all active:scale-95 border ${
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'all'
                   ? 'bg-slate-900 text-white border-slate-900'
                   : 'bg-white/70 border-slate-200 text-slate-600 hover:text-slate-900'
@@ -546,7 +539,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             <button
               type="button"
               onClick={() => setFilterCategory('critical')}
-              className={`px-2.5 py-1 rounded-full text-xs font-black cursor-pointer transition-all active:scale-95 border ${
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'critical'
                   ? 'bg-rose-500 text-white border-rose-500'
                   : 'bg-rose-50/80 border-rose-100 text-rose-600 hover:bg-rose-100'
@@ -557,7 +550,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             <button
               type="button"
               onClick={() => setFilterCategory('warning')}
-              className={`px-2.5 py-1 rounded-full text-xs font-black cursor-pointer transition-all active:scale-95 border ${
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'warning'
                   ? 'bg-orange-500 text-white border-orange-500'
                   : 'bg-orange-50/80 border-orange-100 text-orange-600 hover:bg-orange-100'
@@ -568,7 +561,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             <button
               type="button"
               onClick={() => setFilterCategory('safe')}
-              className={`px-2.5 py-1 rounded-full text-xs font-black cursor-pointer transition-all active:scale-95 border ${
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'safe'
                   ? 'bg-emerald-500 text-white border-emerald-500'
                   : 'bg-emerald-50/80 border-emerald-100 text-emerald-600 hover:bg-emerald-100'
@@ -602,7 +595,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                 <button
                   type="button"
                   onClick={handleSeedDemoStudents}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black text-cyan-700 bg-cyan-50 border border-cyan-100 cursor-pointer hover:bg-cyan-100"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-cyan-700 bg-cyan-50 border border-cyan-100 cursor-pointer hover:bg-cyan-100"
                 >
                   <UserPlus className="w-3.5 h-3.5 stroke-[3]" />
                   <span>Örnek 25 Öğrenci Yükle</span>
@@ -660,15 +653,15 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
 
                     <div className="min-w-0 leading-none">
                       <div className="flex items-center gap-1.5 flex-wrap leading-none">
-                        <h4 className="text-[11px] sm:text-xs font-black text-slate-900 leading-none truncate">
+                        <h4 className="text-xs sm:text-[13px] font-black tracking-tight text-slate-900 leading-tight truncate [font-family:inherit]">
                           {sName}
                         </h4>
-                        <span className={`text-[8px] font-black px-1 py-0.5 rounded leading-none ${badgeColorClass}`}>
+                        <span className={`text-[10px] font-semibold tracking-wide px-1.5 py-0.5 rounded-md leading-none ${badgeColorClass}`}>
                           {category.name}
                         </span>
                       </div>
 
-                      <div className="text-[9px] font-bold text-slate-500 truncate leading-none mt-1">
+                      <div className="text-[11px] font-medium text-slate-500 truncate leading-tight mt-1">
                         Veli: <span className="text-slate-700">{pName}</span>
                       </div>
                     </div>
@@ -677,10 +670,10 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                   {/* Sağ: Süre, Kademe, Düzenleme ve Silme Butonu */}
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <div className="text-right leading-none">
-                      <div className="text-[11px] sm:text-xs font-black text-slate-900 leading-none">
+                      <div className="text-xs sm:text-[13px] font-semibold text-slate-900 leading-tight tabular-nums">
                         {minutes} dk
                       </div>
-                      <div className="text-[8.5px] font-bold text-slate-500 leading-none mt-1">
+                      <div className="text-[10px] font-medium text-slate-500 leading-tight mt-1 tabular-nums">
                         {timeInfo.longStr} • {stage}. Kademe
                       </div>
                     </div>
@@ -743,7 +736,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             </div>
 
             <div className="text-center space-y-1">
-              <h4 className="text-base font-black text-slate-900">
+              <h4 className="text-base font-black tracking-tight text-slate-900 [font-family:inherit]">
                 Öğrenci & Veli Düzenle
               </h4>
               <p className="text-xs text-slate-500 leading-relaxed">
@@ -797,7 +790,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                 <button
                   type="submit"
                   disabled={isSavingEdit || !editStudentName.trim()}
-                  className="btn-3d-indigo py-2.5 px-4 rounded-2xl text-xs font-black text-white cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  className="btn-3d-indigo py-2.5 px-4 rounded-2xl text-xs font-semibold text-white cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
                 >
                   {isSavingEdit ? (
                     <span>Kaydediliyor...</span>
@@ -833,7 +826,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             </div>
 
             <div className="text-center space-y-1.5">
-              <h4 className="text-base font-black text-slate-900">
+              <h4 className="text-base font-black tracking-tight text-slate-900 [font-family:inherit]">
                 Öğrenciyi Sınıftan Sil?
               </h4>
               <p className="text-xs text-slate-600 leading-relaxed">
@@ -842,7 +835,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             </div>
 
             <div className="p-3 bg-white/50 backdrop-blur-md rounded-2xl border border-white/70 text-[11px] text-slate-600 space-y-1">
-              <div className="font-bold text-slate-900 flex items-center gap-1">
+              <div className="font-black text-slate-900 flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                 <span>Öğrenci: {studentToDelete.studentName || studentToDelete.displayName || 'Öğrenci'}</span>
               </div>
@@ -864,7 +857,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                 type="button"
                 onClick={handleConfirmDeleteStudent}
                 disabled={isDeleting}
-                className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                className="py-2.5 px-4 rounded-2xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{isDeleting ? 'Siliniyor...' : 'Evet, Sil'}</span>
