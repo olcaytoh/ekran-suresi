@@ -36,7 +36,7 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
 
   return (
     <div
-      className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 text-slate-900 overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-3.5 select-none min-h-[136px] sm:min-h-[148px]"
+      className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 text-slate-900 overflow-hidden flex items-stretch justify-between gap-2.5 sm:gap-3.5 select-none h-[136px] sm:h-[148px]"
       style={{
         background: 'rgba(255, 255, 255, 0.20)',
         backdropFilter: 'blur(20px)',
@@ -56,8 +56,11 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
 
       {/* Left Content */}
       <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-between py-0.5">
-        {/* Top Status Tag: Haftalık Yıldız Rozeti: Altın */}
-        <div className="flex items-center">
+        {/* Üst Boşluk: İleride kazanılan rozetler buraya eklenecek */}
+        <div className="flex items-center min-h-[18px]" />
+
+        {/* Rozet Etiketi: Haftalık Yıldız Rozeti: Altın (Saat/Kademe bilgisinin hemen üstünde) */}
+        <div className="flex items-center mt-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-amber-950 border border-amber-300 shadow-2xs select-none">
             <span className="w-4 h-4 rounded-full bg-amber-500/30 flex items-center justify-center text-[10px] font-black text-amber-900 leading-none">
               ★
@@ -97,22 +100,16 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
         </div>
       </div>
 
-      {/* Right Side: Merhaba Mesajı ve Sevimli Öğretmen Kedi Video Maskotu */}
-      <div className="relative z-10 flex-shrink-0 self-stretch flex flex-col items-center justify-between select-none pl-1 min-w-[105px] sm:min-w-[125px] max-w-[140px]">
-        {/* Karşılama Balonu */}
-        <div className="px-2.5 py-0.5 sm:px-3 sm:py-0.5 rounded-full bg-white/75 backdrop-blur-md text-slate-800 border border-white/80 shadow-2xs z-20">
-          <span className="text-[10px] sm:text-[11px] font-bold tracking-tight whitespace-nowrap text-slate-800">
-            Merhaba, {studentName || 'Ali Yılmaz'}!
-          </span>
-        </div>
-
-        {/* Öğretmen Kedi Video Maskotu - Üst ve alt tarafı tam sığdırılmış ve kesilmeden görüntülenir */}
-        <div className="relative z-10 flex-1 min-h-0 w-full flex items-end justify-center pointer-events-none select-none pt-1">
+      {/* Right Side: Sevimli Salıncaktaki Renkli Kuşlar Video Maskotu (kss.mp4) */}
+      <div className="relative z-10 flex-shrink-0 self-stretch overflow-hidden flex flex-col items-center justify-start select-none pl-1 -mt-3 sm:-mt-3.5 min-w-[120px] sm:min-w-[145px] max-w-[165px]">
+        {/* Maskot Video: Salıncaktaki Renkli Kuşlar - arka planı silinmiş ve alt boşluğu kırpılmıştır */}
+        <div className="relative z-10 flex-1 min-h-0 w-full flex items-start justify-center pointer-events-none select-none">
           <TransparentMascotVideo
-            src="/mascot.mp4"
-            cropTop={0.08}
-            cropBottom={0.08}
-            className="w-auto h-full max-h-[102px] sm:max-h-[116px] drop-shadow-[0_6px_14px_rgba(124,58,237,0.18)] transition-all duration-300"
+            src="/kss.mp4"
+            chromaKeyType="blue"
+            cropTop={0}
+            cropBottom={0.36}
+            className="w-auto h-full max-h-none max-w-full drop-shadow-[0_6px_14px_rgba(124,58,237,0.18)] transition-all duration-300"
           />
         </div>
       </div>

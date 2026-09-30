@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 interface TransparentMascotVideoProps {
-  /** Yeşil ekran (chroma key) zeminli mp4 dosyasının yolu */
+  /** Yeşil veya mavi ekran zeminli mp4 dosyasının yolu */
   src?: string;
   className?: string;
   autoPlay?: boolean;
@@ -17,15 +17,17 @@ interface TransparentMascotVideoProps {
   cropTop?: number;
   /** Alttan kırpma oranı (0-1). Kedinin ayakları kesilmemesi için güvenli default 0.08 */
   cropBottom?: number;
+  /** Silinecek arka plan rengi türü ('blue' | 'green' | 'auto') */
+  chromaKeyType?: 'blue' | 'green' | 'auto';
 }
 
 /**
  * TransparentMascotVideo
  *
- * Yeşil ekran (chroma key) zeminli bir mp4 videosunu şeffaf arka planlı
+ * Yeşil veya mavi ekran zeminli bir mp4 videosunu şeffaf arka planlı
  * gibi gösterir. MP4/H.264 tarayıcıda gerçek alfa kanalı taşımadığı için
  * (WebM+VP9 alfa da iOS Safari'de güvenilir çalışmıyor), video gizlice
- * oynatılır ve her kare bir <canvas> üzerine çizilip yeşil pikseller
+ * oynatılır ve her kare bir <canvas> üzerine çizilip arka plan pikselleri
  * client-side olarak şeffaflaştırılır. Bu yöntem tüm modern tarayıcılarda
  * (Safari/iOS dahil) çalışır.
  */
@@ -38,7 +40,9 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
   renderWidth = 360,
   cropTop = 0.08,
   cropBottom = 0.08,
+  chromaKeyType = 'auto',
 }) => {
+  const isBlueKey = chromaKeyType === 'blue' || (chromaKeyType !== 'green' && src.includes('kss'));
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafIdRef = useRef<number | null>(null);
@@ -68,7 +72,7 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
       if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         // Üst ve alt güvenli oranla kırpılarak kedinin kepi (üst) ve ayakları (alt) hiçbir zaman kesilmez
         const topRatio = Math.max(0, Math.min(0.4, cropTop));
-        const bottomRatio = Math.max(0, Math.min(0.4, cropBottom));
+        const bottomRatio = Math.max(0, Math.min(0.5, cropBottom));
         const sy = Math.round(video.videoHeight * topRatio);
         const sh = Math.max(1, Math.round(video.videoHeight * (1 - topRatio - bottomRatio)));
         const sx = 0;
@@ -87,20 +91,35 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
         const frame = ctx.getImageData(0, 0, w, h);
         const data = frame.data;
 
-        // Yeşil zemini şeffaflaştır + kenarlarda yeşil sızıntısını (spill) azalt
+        // Zemin şeffaflaştırma: Mavi zeminli (kss.mp4) videolarda YEŞİL renklere KESİNLİKLE dokunulmaz!
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
-          const maxRB = r > b ? r : b;
-          const greenDominance = g - maxRB;
 
-          if (greenDominance > 33) {
-            data[i + 3] = 0;
-          } else if (greenDominance > 16) {
-            const alpha = 1 - (greenDominance - 16) / (33 - 16);
-            data[i + 3] = Math.max(0, Math.min(255, Math.round(alpha * 255)));
-            data[i + 1] = Math.min(g, maxRB + 10);
+          if (isBlueKey) {
+            // YALNIZCA MAVİ ZEMİN SİLİNİR (Yeşil kuş ve tüm yeşil tonlar tamamen korunur)
+            const blueOverGreen = b - g;
+            const blueOverRed = b - r;
+            if (blueOverGreen >= 14 && blueOverRed >= 48 && b >= 180 && g >= 160) {
+              data[i + 3] = 0;
+            } else if (blueOverGreen >= 8 && blueOverRed >= 34 && b >= 170 && g >= 150) {
+              const alpha = 1 - (blueOverGreen - 8) / (14 - 8);
+              data[i + 3] = Math.max(0, Math.min(255, Math.round(alpha * 255)));
+              data[i + 2] = Math.max(r, g); // Mavi yansımasını azalt
+            }
+          } else {
+            // YEŞİL EKRAN SİLME (Yeşil perdeli videolar için)
+            const maxRB = r > b ? r : b;
+            const greenDominance = g - maxRB;
+
+            if (greenDominance > 33) {
+              data[i + 3] = 0;
+            } else if (greenDominance > 16) {
+              const alpha = 1 - (greenDominance - 16) / (33 - 16);
+              data[i + 3] = Math.max(0, Math.min(255, Math.round(alpha * 255)));
+              data[i + 1] = Math.min(g, maxRB + 10);
+            }
           }
         }
 

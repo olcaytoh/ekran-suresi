@@ -417,6 +417,197 @@ export function exportStatisticsToExcel({
   return { blob, fileName, url };
 }
 
+/**
+ * CİHAZ VE MOBİL TARAYICI TESPİTİ
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const isTouch = (navigator.maxTouchPoints || 0) > 1;
+  return (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
+    (isTouch && /Macintosh/i.test(ua))
+  );
+}
+
+export function isIOS(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const isTouch = (navigator.maxTouchPoints || 0) > 1;
+  return /iPhone|iPad|iPod/i.test(ua) || (isTouch && /Macintosh/i.test(ua));
+}
+
+/**
+ * Web Share API (Dosya Paylaşımı / Telefona Kaydetme Desteği)
+ */
+export function canShareFiles(): boolean {
+  if (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare) return false;
+  try {
+    const testFile = new File([''], 'test.pdf', { type: 'application/pdf' });
+    return navigator.canShare({ files: [testFile] });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Telefonda yerel sistem paylaşım/kaydet menüsünü açar (iOS "Dosyalara Kaydet", Android "İndirilenler/Drive" vb.)
+ */
+export async function shareFileNative(blob: Blob, fileName: string): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.share) return false;
+  try {
+    const mimeType = blob.type || 'application/octet-stream';
+    const file = new File([blob], fileName, {
+      type: mimeType,
+      lastModified: Date.now(),
+    });
+    if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+      return false;
+    }
+    await navigator.share({
+      files: [file],
+      title: fileName,
+      text: `${fileName} raporu`,
+    });
+    return true;
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      // Kullanıcı paylaşım menüsünü bilerek kapattı, hata değil
+      return false;
+    }
+    console.warn('Native share notice:', err);
+    return false;
+  }
+}
+
+/**
+ * Blob verisini base64 Data URL'e çevirir (iOS Safari download özniteliği blob: protokolünde çalışmadığı için data URL şarttır)
+ */
+export function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('FileReader result is not a string'));
+      }
+    };
+    reader.onerror = () => reject(reader.error || new Error('FileReader failed'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * Data URL üzerinden indirme (Özellikle iOS Safari için native indirme diyaloğunu tetikler)
+ */
+export async function downloadViaDataUrl(blob: Blob, fileName: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const dataUrl = await blobToDataUrl(blob);
+    // Safari'nin indirme diyaloğunu zorlamak için octet-stream MIME kullanılır
+    const forcedOctet = dataUrl.replace(/^data:[^;]+;/, 'data:application/octet-stream;');
+    const a = document.createElement('a');
+    a.href = forcedOctet;
+    a.download = fileName;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        if (document.body.contains(a)) document.body.removeChild(a);
+      } catch {
+        // ignore
+      }
+    }, 4000);
+    return true;
+  } catch (err) {
+    console.warn('downloadViaDataUrl notice:', err);
+    return false;
+  }
+}
+
+/**
+ * PDF veya dökümanı mobilde yeni sekmede açar (iOS Safari ve Android Chrome'un yerleşik PDF okuyucusunu açar)
+ */
+export function openBlobInNewTab(blob: Blob): Window | null {
+  try {
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (!win) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          if (document.body.contains(a)) document.body.removeChild(a);
+        } catch {
+          // ignore
+        }
+      }, 3000);
+    }
+    return win;
+  } catch (err) {
+    console.warn('openBlobInNewTab error:', err);
+    return null;
+  }
+}
+
+/**
+ * Masaüstü ve Mobil için Evrensel İndirme Yöntemi
+ */
+export async function downloadBlobUniversal(blob: Blob, fileName: string): Promise<string> {
+  const url = URL.createObjectURL(blob);
+  if (typeof window === 'undefined') return url;
+
+  // 1. IE / Eski Edge
+  if ((window.navigator as any)?.msSaveOrOpenBlob) {
+    (window.navigator as any).msSaveOrOpenBlob(blob, fileName);
+    return url;
+  }
+
+  // 2. iOS Safari: WebKit, blob: URL'lerde a.download'ı yok sayar.
+  // Data URL'e çevrildiğinde Safari yerel "İndir" penceresini gösterir.
+  if (isIOS()) {
+    try {
+      const ok = await downloadViaDataUrl(blob, fileName);
+      if (ok) return url;
+    } catch {
+      // devam et
+    }
+  }
+
+  // 3. Android & Masaüstü standart bağlantı tıklaması
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+
+    setTimeout(() => {
+      try {
+        if (document.body.contains(a)) {
+          document.body.removeChild(a);
+        }
+      } catch {
+        // ignore
+      }
+    }, 4000);
+  } catch (err) {
+    console.warn('downloadBlobUniversal standard click failed, trying data-url:', err);
+    await downloadViaDataUrl(blob, fileName);
+  }
+
+  return url;
+}
+
 export function triggerFileDownload(blob: Blob, fileName: string): string {
   const url = URL.createObjectURL(blob);
   try {
@@ -426,12 +617,15 @@ export function triggerFileDownload(blob: Blob, fileName: string): string {
       return url;
     }
 
+    // iOS cihazlarda Safari'nin indirme diyaloğunu tetiklemek için Data URL fallback
+    if (isIOS()) {
+      downloadViaDataUrl(blob, fileName).catch(() => {});
+      return url;
+    }
+
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
-    // CRITICAL: Do NOT set target="_blank".
-    // Setting target="_blank" on a blob download causes modern browsers and sandboxed iframes
-    // to classify the action as a popup window, triggering popup blockers and canceling the download.
     a.rel = 'noopener noreferrer';
     a.style.display = 'none';
     document.body.appendChild(a);
@@ -1018,6 +1212,6 @@ function fallbackWindowPrint(htmlContent: string) {
     printWindow.document.write(htmlContent);
     printWindow.document.close();
   } else {
-    alert('Yazdırma penceresi açılamadı. Lütfen tarayıcı açılır pencere (pop-up) izinlerini kontrol ediniz.');
+    console.warn('Yazdırma penceresi açılamadı. Lütfen tarayıcı açılır pencere (pop-up) izinlerini kontrol ediniz.');
   }
 }

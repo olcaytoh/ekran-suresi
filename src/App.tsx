@@ -1165,6 +1165,7 @@ export default function App() {
                   isUpdating={isUpdatingStage}
                   onNavigateToStages={() => setParentTab('stages')}
                   onOpenParentGuide={() => setShowParentGuide(true)}
+                  studentName={effectiveProfile?.studentName || effectiveProfile?.displayName || undefined}
                 />
               )}
 

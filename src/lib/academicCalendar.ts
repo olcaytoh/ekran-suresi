@@ -46,9 +46,21 @@ export function formatDateRangeLabel(startDateStr: string, endDateStr: string): 
  * Pre-populates typical MEB school holidays (Ara tatiller & Sömestr)
  */
 export function generateDefaultAcademicCalendar(
-  startMondayStr: string = '2026-09-07'
+  startMondayInput: string | number | Date = '2026-09-07'
 ): AcademicCalendarConfig {
-  const [y, m, d] = startMondayStr.split('-').map(Number);
+  let startMondayStr = '2026-09-07';
+  if (typeof startMondayInput === 'string' && startMondayInput.includes('-')) {
+    startMondayStr = startMondayInput;
+  } else if (typeof startMondayInput === 'number') {
+    startMondayStr = `${startMondayInput}-09-08`;
+  } else if (startMondayInput instanceof Date && !isNaN(startMondayInput.getTime())) {
+    startMondayStr = toDateInputValue(startMondayInput);
+  }
+
+  const parts = startMondayStr.split('-').map(Number);
+  const y = parts[0] || 2026;
+  const m = parts[1] || 9;
+  const d = parts[2] || 7;
   const baseDate = new Date(y, m - 1, d);
 
   const TOTAL_WEEKS = 35;
@@ -110,9 +122,13 @@ export function generateDefaultAcademicCalendar(
  * Find which week is currently active according to real calendar dates
  */
 export function getActiveWeekNumber(
-  weeks: AcademicWeekConfig[],
+  weeksOrConfig?: AcademicWeekConfig[] | AcademicCalendarConfig | null,
   targetDate: Date = new Date()
 ): number {
+  if (!weeksOrConfig) return 1;
+  const weeks: AcademicWeekConfig[] = Array.isArray(weeksOrConfig)
+    ? weeksOrConfig
+    : (weeksOrConfig as AcademicCalendarConfig).weeks || [];
   if (!weeks || weeks.length === 0) return 1;
 
   const todayStr = toDateInputValue(targetDate);

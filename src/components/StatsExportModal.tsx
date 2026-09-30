@@ -11,6 +11,11 @@ import {
   exportStatisticsToExcel,
   exportStatisticsToPdf,
   printStatisticsReport,
+  downloadBlobUniversal,
+  shareFileNative,
+  openBlobInNewTab,
+  isMobileDevice,
+  canShareFiles,
 } from '../lib/reportExport';
 import {
   X,
@@ -31,6 +36,9 @@ import {
   Award,
   Download,
   ExternalLink,
+  Share2,
+  Smartphone,
+  Eye,
 } from 'lucide-react';
 
 interface StatsExportModalProps {
@@ -77,7 +85,12 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
     url: string;
     fileName: string;
     type: 'excel' | 'pdf';
+    blob: Blob;
   } | null>(null);
+
+  // Mobil cihaz ve Web Share yetenek tespiti
+  const isMobile = useMemo(() => isMobileDevice(), []);
+  const hasShareApi = useMemo(() => canShareFiles(), []);
 
   // Modal açıldığında varsayılan sınıfı güncelle
   React.useEffect(() => {
@@ -131,8 +144,8 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
 
   if (!isOpen) return null;
 
-  // EXCEL İNDİRME
-  const handleExportExcel = () => {
+  // EXCEL İNDİRME / TELEFONA KAYDETME
+  const handleExportExcel = async () => {
     try {
       setIsExporting(true);
       const res = exportStatisticsToExcel({
@@ -147,8 +160,19 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         url: res.url,
         fileName: res.fileName,
         type: 'excel',
+        blob: res.blob,
       });
-      setExportFeedback(`Excel dosyası oluşturuldu: ${res.fileName}`);
+
+      // Mobilde canShare varsa doğrudan sistem paylaşım/kaydet penceresini aç
+      if (isMobile && hasShareApi) {
+        const shared = await shareFileNative(res.blob, res.fileName);
+        if (shared) {
+          setExportFeedback(`Excel dosyası cihaza aktarıldı: ${res.fileName}`);
+          return;
+        }
+      }
+
+      setExportFeedback(`Excel dosyası hazırlandı: ${res.fileName}`);
     } catch (err: any) {
       console.error('Excel export error:', err);
       setExportFeedback('Excel oluşturulurken bir hata oluştu.');
@@ -158,8 +182,8 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
     }
   };
 
-  // PDF İNDİRME
-  const handleExportPdf = () => {
+  // PDF İNDİRME / TELEFONA KAYDETME
+  const handleExportPdf = async () => {
     try {
       setIsExporting(true);
       const res = exportStatisticsToPdf({
@@ -174,8 +198,19 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         url: res.url,
         fileName: res.fileName,
         type: 'pdf',
+        blob: res.blob,
       });
-      setExportFeedback(`PDF raporu oluşturuldu: ${res.fileName}`);
+
+      // Mobilde canShare varsa doğrudan sistem paylaşım/kaydet penceresini aç
+      if (isMobile && hasShareApi) {
+        const shared = await shareFileNative(res.blob, res.fileName);
+        if (shared) {
+          setExportFeedback(`PDF raporu cihaza aktarıldı: ${res.fileName}`);
+          return;
+        }
+      }
+
+      setExportFeedback(`PDF raporu hazırlandı: ${res.fileName}`);
     } catch (err: any) {
       console.error('PDF export error:', err);
       setExportFeedback('PDF oluşturulurken bir hata oluştu.');
@@ -183,6 +218,38 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
     } finally {
       setIsExporting(false);
     }
+  };
+
+  // DOĞRUDAN CİHAZA İNDİR (EVRENSEL - MOBİL & MASAÜSTÜ)
+  const handleDirectDownload = async (file?: { blob: Blob; fileName: string } | null) => {
+    const target = file || downloadedFile;
+    if (!target) return;
+    try {
+      await downloadBlobUniversal(target.blob, target.fileName);
+    } catch (e) {
+      console.warn('Direct download error:', e);
+    }
+  };
+
+  // TELEFONA KAYDET / PAYLAŞ (SİSTEM DİYALOĞU)
+  const handleShareFile = async (file?: { blob: Blob; fileName: string } | null) => {
+    const target = file || downloadedFile;
+    if (!target) return;
+    try {
+      const shared = await shareFileNative(target.blob, target.fileName);
+      if (shared) {
+        setExportFeedback(`Dosya başarıyla paylaşıldı / kaydedildi: ${target.fileName}`);
+      }
+    } catch (e) {
+      console.warn('Share error:', e);
+    }
+  };
+
+  // PDF'İ YENİ SEKMEDE GÖRÜNTÜLE
+  const handleViewPdf = (file?: { blob: Blob } | null) => {
+    const target = file || downloadedFile;
+    if (!target) return;
+    openBlobInNewTab(target.blob);
   };
 
   // YAZDIR / TARAYICI PDF DİYALOĞU
@@ -358,15 +425,39 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
               <span className="truncate">{exportFeedback}</span>
             </div>
             {downloadedFile && (
-              <a
-                href={downloadedFile.url}
-                download={downloadedFile.fileName}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white text-emerald-900 font-extrabold text-xs shadow-xs hover:bg-emerald-50 active:scale-95 transition-all cursor-pointer shrink-0"
-                title="Dosyayı cihazınıza indirmek için tıklayın"
-              >
-                <Download className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Dosyayı Hemen İndir</span>
-              </a>
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                {(isMobile || hasShareApi) && (
+                  <button
+                    type="button"
+                    onClick={() => handleShareFile()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white text-emerald-950 font-black text-xs shadow-xs hover:bg-emerald-50 active:scale-95 transition-all cursor-pointer"
+                    title="Telefona Kaydet veya Paylaş"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Telefona Kaydet</span>
+                  </button>
+                )}
+                {downloadedFile.type === 'pdf' && (
+                  <button
+                    type="button"
+                    onClick={() => handleViewPdf()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-950 font-black text-xs shadow-xs hover:bg-indigo-100 active:scale-95 transition-all cursor-pointer"
+                    title="PDF'i Yeni Sekmede Görüntüle"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-indigo-700" />
+                    <span>PDF'i Aç</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDirectDownload()}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100/90 text-emerald-950 font-black text-xs shadow-xs hover:bg-white active:scale-95 transition-all cursor-pointer"
+                  title="Dosyayı cihazınıza indirin"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-800" />
+                  <span>İndir</span>
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -375,47 +466,82 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 custom-scrollbar">
           {/* İndirilen Dosya Bilgi & Doğrudan İndirme Kartı */}
           {downloadedFile && (
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-400 text-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
-              <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
-                <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0 shadow-2xs">
-                  <Download className="w-4 h-4 stroke-[2.5]" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-black text-slate-900 truncate">
-                      {downloadedFile.fileName}
-                    </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-200/70 text-emerald-900 border border-emerald-300 uppercase">
-                      {downloadedFile.type}
-                    </span>
+            <div className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-400 text-slate-800 shadow-md flex flex-col gap-3 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shrink-0 shadow-md">
+                    <Download className="w-5 h-5 stroke-[2.5]" />
                   </div>
-                  <p className="text-[11px] text-slate-600 font-semibold mt-0.5">
-                    İndirme otomatik başlamadıysa sağdaki butona basarak dosyanızı doğrudan cihazınıza kaydedebilirsiniz.
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                        {downloadedFile.fileName}
+                      </span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 border border-emerald-300 uppercase shadow-2xs">
+                        {downloadedFile.type}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-semibold mt-0.5">
+                      Rapor dosyanız başarıyla oluşturuldu. Telefon veya bilgisayarınıza hemen kaydedebilirsiniz.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end flex-wrap">
+                  {(isMobile || hasShareApi) && (
+                    <button
+                      type="button"
+                      onClick={() => handleShareFile()}
+                      className="btn-3d-emerald px-3.5 py-2 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 text-white ring-2 ring-emerald-300 ring-offset-1"
+                      title="Dosyayı telefona kaydet veya paylaş (iOS Dosyalar, Drive, WhatsApp)"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>Telefona Kaydet / Paylaş</span>
+                    </button>
+                  )}
+
+                  {downloadedFile.type === 'pdf' && (
+                    <button
+                      type="button"
+                      onClick={() => handleViewPdf()}
+                      className="btn-3d-cyan px-3.5 py-2 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 text-white"
+                      title="PDF'i yeni sekmede görüntüleyin ve inceleyin"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Önizle / Aç</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleDirectDownload()}
+                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 border-2 border-emerald-300 text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                    title="Dosyayı cihazınıza doğrudan indirin"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Doğrudan İndir</span>
+                  </button>
+
+                  {downloadedFile.type === 'pdf' && (
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                      title="Yazıcıdan veya PDF olarak kaydet"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Yazdır</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
-                <a
-                  href={downloadedFile.url}
-                  download={downloadedFile.fileName}
-                  className="btn-3d-emerald px-3.5 py-2 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 text-white"
-                  title="Dosyayı şimdi indirin"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Dosyayı İndir</span>
-                </a>
-                {downloadedFile.type === 'pdf' && (
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-                    title="Yazıcıdan veya PDF olarak kaydet"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Yazdır / PDF</span>
-                  </button>
-                )}
+              {/* Mobil kullanıcılar için pratik rehber kutusu */}
+              <div className="bg-white/80 rounded-2xl p-2.5 border border-emerald-200/80 text-[11px] text-slate-700 font-medium flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  <strong>Telefon kullanıcıları için:</strong> iPhone ve iPad&apos;de <strong>&quot;Telefona Kaydet / Paylaş&quot;</strong> butonuna dokunup <strong>&quot;Dosyalara Kaydet&quot;</strong>i seçebilir veya doğrudan WhatsApp / Drive ile paylaşabilirsiniz. PDF raporlarını <strong>&quot;Önizle / Aç&quot;</strong> diyerek tam ekran inceleyebilirsiniz.
+                </span>
               </div>
             </div>
           )}
@@ -830,8 +956,9 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
           <div className="text-xs text-slate-600 flex items-center gap-1.5 flex-wrap">
             <span className="font-bold text-slate-800">{summary.totalStudents} Öğrenci</span>
             <span>analiz edildi •</span>
-            <span className="font-semibold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-lg border border-indigo-200/60">
-              📁 İndirilen dosyalar cihazınızın &quot;İndirilenler&quot; (Downloads) klasörüne kaydedilir.
+            <span className="font-semibold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-lg border border-indigo-200/60 flex items-center gap-1">
+              <Smartphone className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>Telefonda &quot;Telefona Kaydet / Paylaş&quot; ile Dosyalar veya Drive&apos;a kaydedebilirsiniz.</span>
             </span>
           </div>
 
@@ -875,17 +1002,43 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
               <span>Yazdır / PDF Kaydet</span>
             </button>
 
-            {/* DOĞRUDAN DOSYA İNDİR BUTONU (HAZIR OLUNCA) */}
+            {/* DOĞRUDAN DOSYA İNDİR / TELEFONA KAYDET BUTONLARI */}
             {downloadedFile && (
-              <a
-                href={downloadedFile.url}
-                download={downloadedFile.fileName}
-                className="btn-3d-emerald px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-2 cursor-pointer active:scale-95 text-white ring-2 ring-emerald-300 ring-offset-1 animate-pulse"
-                title="Hazırlanan dosyayı hemen bilgisayarınıza/cihazınıza indirin"
-              >
-                <Download className="w-4 h-4 stroke-[2.5]" />
-                <span>Dosyayı İndir</span>
-              </a>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(isMobile || hasShareApi) && (
+                  <button
+                    type="button"
+                    onClick={() => handleShareFile()}
+                    className="btn-3d-emerald px-3 sm:px-3.5 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 text-white ring-2 ring-emerald-300 ring-offset-1 animate-pulse"
+                    title="Dosyayı telefona kaydet veya paylaş"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Telefona Kaydet</span>
+                  </button>
+                )}
+
+                {downloadedFile.type === 'pdf' && (
+                  <button
+                    type="button"
+                    onClick={() => handleViewPdf()}
+                    className="btn-3d-cyan px-3 sm:px-3.5 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 text-white"
+                    title="PDF'i Görüntüle"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>Önizle</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleDirectDownload()}
+                  className="btn-3d-emerald px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-2 cursor-pointer active:scale-95 text-white shadow-md"
+                  title="Dosyayı hemen cihazınıza indirin"
+                >
+                  <Download className="w-4 h-4 stroke-[2.5]" />
+                  <span>Dosyayı İndir</span>
+                </button>
+              </div>
             )}
 
             {/* KAPAT BUTONU */}

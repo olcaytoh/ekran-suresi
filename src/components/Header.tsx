@@ -2,7 +2,6 @@ import React from 'react';
 import { UserProfile } from '../types';
 import { signOutUser } from '../lib/firebase';
 import {
-  Check,
   Mail,
   HelpCircle,
   Settings,
@@ -71,23 +70,18 @@ export const Header: React.FC<HeaderProps> = ({
           <img
             src="/logo-header.png"
             alt="Haftalık Ekran Süresi"
-            className="h-7 sm:h-8 w-auto max-w-[110px] sm:max-w-[130px] object-contain select-none transition-transform hover:scale-105 drop-shadow-2xs"
+            className="h-[35px] sm:h-10 w-auto max-w-[138px] sm:max-w-[163px] object-contain select-none transition-transform hover:scale-105 drop-shadow-2xs"
             draggable={false}
           />
         </div>
 
         {/* Orta Alan: Logo ile İlk Buton (Mesaj) Arasında Ortalanmış Veli / Rol Başlığı */}
         <div className="relative z-10 flex-1 flex items-center justify-center min-w-0 px-1 sm:px-2">
-          {isParent && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/70 backdrop-blur-md hover:bg-white/90 border border-white/80 text-emerald-800 shadow-2xs transition-colors">
-              <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[2.8]" />
-              <span className="font-bold text-xs sm:text-sm tracking-tight text-emerald-800">Veli</span>
-              {currentUser?.className && (
-                <span className="hidden sm:inline-block text-[11px] font-semibold text-emerald-700 ml-0.5">
-                  ({currentUser.className})
-                </span>
-              )}
-            </div>
+          {isParent && (currentUser?.studentName || currentUser?.displayName) && (
+            <span className="px-2.5 py-0.5 rounded-full bg-white/60 backdrop-blur-sm border border-white/70 shadow-[0_4px_14px_rgba(0,0,0,0.18)] text-[10px] sm:text-[11px] font-bold text-slate-800 tracking-tight truncate max-w-[160px] sm:max-w-[200px]">
+              Merhaba, {currentUser?.studentName || currentUser?.displayName}
+              {currentUser?.className ? ` (${currentUser.className})` : ''}!
+            </span>
           )}
 
           {isSuperAdmin && (
@@ -162,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Sağ Taraf: Kapsül İçinde 3 Buton (Mesaj, Rehber, Ayarlar) ve Dışında Çıkış Butonu */}
         <div className="relative z-10 flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
           {/* Kapsül: 3 İkon (Buzlu cam kapsül) */}
-          <div className="flex items-center gap-3 sm:gap-3.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-white/60 hover:bg-white/75 border border-white/80 shadow-2xs backdrop-blur-md">
+          <div className="flex items-center gap-3 sm:gap-3.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-white/60 hover:bg-white/75 border border-white/80 shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-md">
             {/* 1. Mesajlar / Bildirimler */}
             {onOpenInbox && (
               <button

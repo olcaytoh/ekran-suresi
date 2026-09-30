@@ -50,8 +50,9 @@ export function formatMinutes(minutes: number): {
   hours: number;
   remainingMinutes: number;
 } {
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
+  const safeMinutes = Math.max(0, Math.round(Number(minutes) || 0));
+  const hours = Math.floor(safeMinutes / 60);
+  const remainingMinutes = safeMinutes % 60;
 
   let longStr = '';
   if (hours > 0 && remainingMinutes > 0) {

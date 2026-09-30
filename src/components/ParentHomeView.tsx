@@ -8,6 +8,7 @@ interface ParentHomeViewProps {
   isUpdating: boolean;
   onNavigateToStages?: () => void;
   onOpenParentGuide?: () => void;
+  studentName?: string;
 }
 
 export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
@@ -16,6 +17,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
   isUpdating,
   onNavigateToStages,
   onOpenParentGuide,
+  studentName,
 }) => {
   const totalMinutes = currentStage * 30;
 
@@ -62,6 +64,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
           currentStage={currentStage}
           totalMinutes={totalMinutes}
           onNavigateToStages={onNavigateToStages}
+          studentName={studentName}
           className="my-auto flex-shrink-0"
         />
 

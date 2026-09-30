@@ -4,6 +4,7 @@ interface StageGaugeDialProps {
   currentStage: number; // 0 to 14
   totalMinutes: number;
   onNavigateToStages?: () => void;
+  studentName?: string;
   className?: string;
 }
 
@@ -28,12 +29,34 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
   currentStage,
   totalMinutes,
   onNavigateToStages,
+  studentName,
   className = '',
 }) => {
   const stage = Math.max(1, Math.min(14, currentStage || 1));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   const spentText = `${hours > 0 ? `${hours}s ` : ''}${minutes > 0 || hours === 0 ? `${minutes}dk` : ''} harcandı`;
+
+  // Öğrenci İsmi & Cam Çerçeve Hesaplamaları ("Kırmızı Sınır"dan %50 daha büyük: 38 * 1.5 = 57px)
+  const cleanStudentName =
+    (studentName || 'Ali Yılmaz')
+      .replace(/\s*\(.*?\)\s*/g, '')
+      .trim() || 'Ali Yılmaz';
+
+  let studentFontSize = 57;
+  if (cleanStudentName.length > 18) {
+    studentFontSize = 42;
+  } else if (cleanStudentName.length > 13) {
+    studentFontSize = 48;
+  }
+
+  const frameWidth = Math.min(
+    425,
+    Math.max(260, cleanStudentName.length * (studentFontSize * 0.58) + 64)
+  );
+  const frameX = 54;
+  const frameY = 14;
+  const frameHeight = 92;
 
   // Zone Configurations matching exact design specifications
   let zoneName = 'Güvenli Alan';
@@ -136,6 +159,18 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
         aria-hidden="true"
       >
         <defs>
+          {/* Student Name Glass Card Shadow */}
+          <filter id="student-glass-shadow" x="-20%" y="-20%" width="140%" height="150%">
+            <feDropShadow dx="0" dy="6" stdDeviation="8" floodOpacity="0.25" floodColor="#000000" />
+          </filter>
+
+          {/* Student Name Glass Card Background Gradient */}
+          <linearGradient id="student-glass-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.32" />
+            <stop offset="60%" stopColor="#ffffff" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.08" />
+          </linearGradient>
+
           {/* Main Card Drop Shadow */}
           <filter id="card-soft-shadow" x="-10%" y="-10%" width="120%" height="130%">
             <feDropShadow dx="0" dy="10" stdDeviation="12" floodOpacity="0.22" floodColor="#000000" />
@@ -540,6 +575,49 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
             SAAT
           </text>
         </g>
+
+        {/* ÖĞRENCİ İSMİ & CAM ÇERÇEVE (Kırmızı işaretli alanda, "Kırmızı Sınır"dan %50 daha büyük, buzlu cam kart arkasında) */}
+        {cleanStudentName && (
+          <g filter="url(#student-glass-shadow)">
+            {/* Buzlu Cam Çerçeve Gövdesi */}
+            <rect
+              x={frameX}
+              y={frameY}
+              width={frameWidth}
+              height={frameHeight}
+              rx="24"
+              fill="url(#student-glass-bg)"
+              stroke="rgba(255, 255, 255, 0.55)"
+              strokeWidth="2.2"
+            />
+
+            {/* Üst Cam Parlama Çizgisi (Specular Shine) */}
+            <path
+              d={`M ${frameX + 24} ${frameY + 3} H ${frameX + frameWidth - 24}`}
+              stroke="rgba(255, 255, 255, 0.85)"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+
+            {/* Öğrenci İsmi - %50 Daha Büyük (~57px), Kalın ve Net */}
+            <text
+              x={frameX + frameWidth / 2}
+              y={frameY + frameHeight / 2 + 1}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="#ffffff"
+              fontSize={studentFontSize}
+              fontWeight="900"
+              fontFamily="Nunito, system-ui, -apple-system, sans-serif"
+              letterSpacing="-0.02em"
+              style={{
+                filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45))',
+              }}
+            >
+              {cleanStudentName}
+            </text>
+          </g>
+        )}
 
         {/* 9. LEFT BANNER SECTION CONTENT */}
         <g>
