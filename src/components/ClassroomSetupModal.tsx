@@ -11,7 +11,10 @@ import {
   joinClassroomWithCode,
   addStudentToClassroom,
   recordNewStudentJoinNotice,
+  saveProfileUpdates,
+  updateTeacherNameInClasses,
 } from '../lib/firebase';
+import { ProfileNameFields } from './ProfileNameFields';
 import {
   GraduationCap,
   Users,
@@ -93,10 +96,45 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
   const [studentName, setStudentName] = useState(currentUser.studentName || '');
   const [parentName, setParentName] = useState(currentUser.parentName || currentUser.displayName || '');
 
+  // ÖĞRETMEN / ADMİN: Ad Soyad (ayarlardaki "Değişiklikleri Kaydet" ile kaydedilir)
+  const [fullName, setFullName] = useState(currentUser.displayName || '');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [generatingAdminCode, setGeneratingAdminCode] = useState(false);
+
+  /**
+   * Ad / soyad değişikliklerini kaydeder (ayarlardaki ana kaydet düğmesi çağırır).
+   * Değişiklik yoksa hiçbir şey yazmaz. Hata olursa fırlatır; çağıran handler hata mesajını gösterir.
+   */
+  const persistNames = async (): Promise<void> => {
+    let updates: Partial<UserProfile>;
+    if (isParentUser) {
+      const s = studentName.trim();
+      const p = parentName.trim();
+      if (!s) throw new Error('Lütfen öğrencinin adını ve soyadını girin.');
+      if (s === (currentUser.studentName || '') && p === (currentUser.parentName || '')) return;
+      updates = { studentName: s, parentName: p, displayName: `${s} (${p || 'Velisi'})` };
+    } else {
+      const n = fullName.trim();
+      if (!n) throw new Error('Lütfen adınızı ve soyadınızı girin.');
+      if (n === (currentUser.displayName || '')) return;
+      updates = { displayName: n };
+    }
+
+    if (!isDemo) {
+      await saveProfileUpdates(currentUser, updates);
+      if (!isParentUser && updates.displayName) {
+        try {
+          await updateTeacherNameInClasses(currentUser.uid, updates.displayName);
+        } catch (err) {
+          console.warn('teacherName sınıf kayıtlarında güncellenemedi:', err);
+        }
+      }
+    }
+    onDemoProfileUpdate?.(updates);
+  };
 
   const activeClassCode = currentUser.classCode || classCode || 'SINIF4A';
 
@@ -142,6 +180,10 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       setLoading(true);
       setError(null);
 
+      if (currentUser.role === 'admin') {
+        await persistNames();
+      }
+
       if (isDemo) {
         await new Promise((r) => setTimeout(r, 400));
         if (currentUser.institutionId) {
@@ -177,7 +219,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       } else {
         const inst = await createInstitution(
           currentUser.uid,
-          currentUser.displayName || 'Admin',
+          fullName.trim() || currentUser.displayName || 'Admin',
           currentUser.email,
           institutionName.trim()
         );
@@ -285,6 +327,10 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       setLoading(true);
       setError(null);
 
+      if (currentUser.role === 'teacher') {
+        await persistNames();
+      }
+
       const institutionPayload =
         isInstitutionConnected && teacherInstitutionCode.trim()
           ? {
@@ -316,7 +362,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
             studentTargetCount,
             institutionPayload,
             {
-              displayName: currentUser.displayName,
+              displayName: fullName.trim() || currentUser.displayName,
               email: currentUser.email,
             }
           );
@@ -351,7 +397,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
 
       const classroom = await createClassroom(
         currentUser.uid,
-        currentUser.displayName || 'Öğretmen',
+        fullName.trim() || currentUser.displayName || 'Öğretmen',
         currentUser.email,
         className.trim(),
         studentTargetCount,
@@ -385,6 +431,28 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
     }
     if (!studentName.trim()) {
       setError('Lütfen öğrencinizin adını ve soyadını girin.');
+      return;
+    }
+
+    // Kayıtlı veli, sınıf kodunu değiştirmeden yalnızca isim bilgilerini düzeltiyorsa: yeniden katılma gerekmez
+    if (
+      isParentUser &&
+      currentUser.classId &&
+      currentUser.classCode &&
+      classCode.trim().toUpperCase() === currentUser.classCode.trim().toUpperCase()
+    ) {
+      try {
+        setLoading(true);
+        setError(null);
+        await persistNames();
+        setSuccessMsg('Bilgileriniz başarıyla kaydedildi.');
+        setTimeout(() => onCompleted(), 1000);
+      } catch (err: any) {
+        console.error('Parent name update error:', err);
+        setError(err?.message || 'Bilgiler kaydedilirken bir hata oluştu.');
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -577,6 +645,8 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
 
               {/* 2. Adım: Sınıf Adı ve Hedef Öğrenci Sayısı */}
               <form onSubmit={handleTeacherSaveClass} className="space-y-3">
+                <ProfileNameFields fullName={fullName} onFullNameChange={setFullName} />
+
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Sınıf Adı / Şube:</label>
                   <input
@@ -618,7 +688,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                     disabled={loading}
                     className="btn-3d-indigo flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black cursor-pointer disabled:opacity-60"
                   >
-                    <span>{loading ? 'Kaydediliyor...' : 'Sınıf Bilgilerini Güncelle'}</span>
+                    <span>{loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -663,6 +733,8 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
             )}
 
             <form onSubmit={handleAdminCreateInstitution} className="space-y-4">
+              <ProfileNameFields fullName={fullName} onFullNameChange={setFullName} accentRingClass="focus:ring-rose-500" />
+
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
                   <Building2 className="w-3.5 h-3.5 text-rose-600" />
@@ -707,7 +779,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                   disabled={loading}
                   className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-700 text-white shadow-md active:scale-95 cursor-pointer disabled:opacity-60 transition-all"
                 >
-                  <span>{loading ? 'Güncelleniyor...' : 'Kurum Adını Güncelle'}</span>
+                  <span>{loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -1014,7 +1086,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                     disabled={loading}
                     className="btn-3d-emerald flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-xs sm:text-sm font-black cursor-pointer disabled:opacity-60"
                   >
-                    <span>{loading ? 'Bağlanıyor...' : isParentUser ? 'Sınıfı Güncelle' : 'Sınıfa Katıl'}</span>
+                    <span>{loading ? 'Bağlanıyor...' : isParentUser ? 'Değişiklikleri Kaydet' : 'Sınıfa Katıl'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>

@@ -4,7 +4,10 @@ import {
   createInstitution,
   updateInstitutionName,
   regenerateInstitutionCode,
+  saveProfileUpdates,
+  updateTeacherNameInClasses,
 } from '../lib/firebase';
+import { ProfileNameFields } from './ProfileNameFields';
 import {
   Building2,
   KeyRound,
@@ -44,6 +47,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
   const [institutionCode, setInstitutionCode] = useState<string | null>(
     currentUser.institutionCode || null
   );
+  const [fullName, setFullName] = useState(currentUser.displayName || '');
   const [loading, setLoading] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -96,7 +100,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
         // Henüz kurum kaydı yoksa yeni kurum ve kod oluştur
         const inst = await createInstitution(
           currentUser.uid,
-          currentUser.displayName || 'Yönetici',
+          fullName.trim() || currentUser.displayName || 'Yönetici',
           currentUser.email || '',
           institutionName.trim()
         );
@@ -115,6 +119,11 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = institutionName.trim();
+    const trimmedFullName = fullName.trim();
+    if (!trimmedFullName) {
+      setError('Lütfen adınızı ve soyadınızı girin.');
+      return;
+    }
     if (!trimmedName) {
       setError('Lütfen geçerli bir okul / kurum adı girin.');
       return;
@@ -124,6 +133,20 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
       setLoading(true);
       setError(null);
       setSuccessMsg(null);
+
+      // Ad Soyad değiştiyse kaydet (gerçek hesapta Firestore, demo/yerel profilde uygulama durumu)
+      const nameChanged = trimmedFullName !== (currentUser.displayName || '');
+      if (nameChanged && !isDemo) {
+        await saveProfileUpdates(currentUser, { displayName: trimmedFullName });
+        try {
+          await updateTeacherNameInClasses(currentUser.uid, trimmedFullName);
+        } catch (err) {
+          console.warn('teacherName sınıf kayıtlarında güncellenemedi:', err);
+        }
+      }
+      if (nameChanged) {
+        onDemoProfileUpdate?.({ displayName: trimmedFullName });
+      }
 
       if (isDemo) {
         await new Promise((r) => setTimeout(r, 300));
@@ -144,7 +167,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
       } else {
         const inst = await createInstitution(
           currentUser.uid,
-          currentUser.displayName || 'Yönetici',
+          trimmedFullName || currentUser.displayName || 'Yönetici',
           currentUser.email || '',
           trimmedName
         );
@@ -244,6 +267,13 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
 
         {/* Form */}
         <form onSubmit={handleSaveSettings} className="relative z-10 space-y-4">
+          {/* Ad Soyad */}
+          <ProfileNameFields
+            fullName={fullName}
+            onFullNameChange={setFullName}
+            accentRingClass="focus:ring-rose-500"
+          />
+
           {/* Okul / Kurum Adı */}
           <div className="space-y-1.5">
             <label className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">

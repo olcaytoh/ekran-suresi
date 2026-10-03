@@ -965,6 +965,56 @@ export async function updateUserProfile(targetUid: string, data: Partial<UserPro
   );
 }
 
+/**
+ * Profil güncellemesini güvenli kaydeder.
+ * Kullanıcı belgesi yoksa ya da "role" alanı eksikse (ör. yerel/anonim profil), yalnızca isim
+ * alanları yazılırsa profil rolsüz kalıp veli ekranına düşer. Bu yüzden böyle durumda tüm profil yazılır.
+ */
+export async function saveProfileUpdates(
+  currentUser: UserProfile,
+  updates: Partial<UserProfile>
+): Promise<void> {
+  const cleanUid = (currentUser?.uid || '').trim();
+  if (!cleanUid) {
+    console.warn('saveProfileUpdates skipped: uid is invalid or empty');
+    return;
+  }
+  const userRef = doc(db, 'users', cleanUid);
+  const snap = await getDoc(userRef);
+  const existing = snap.exists() ? (snap.data() as Partial<UserProfile>) : null;
+
+  if (!existing || !existing.role) {
+    const { createdAt, updatedAt, ...rest } = currentUser as any;
+    await updateUserProfile(cleanUid, { ...rest, ...updates });
+  } else {
+    await updateUserProfile(cleanUid, updates);
+  }
+}
+
+/**
+ * Öğretmen/yönetici adı değişince, kendisine ait sınıf kayıtlarındaki teacherName alanını da günceller.
+ */
+export async function updateTeacherNameInClasses(
+  teacherUid: string,
+  teacherName: string
+): Promise<void> {
+  const cleanUid = (teacherUid || '').trim();
+  const cleanName = (teacherName || '').trim();
+  if (!cleanUid || !cleanName) return;
+
+  const classesRef = collection(db, 'classes');
+  const snap = await getDocs(query(classesRef, where('teacherUid', '==', cleanUid)));
+  await Promise.all(
+    snap.docs.map((d) =>
+      setDoc(
+        doc(db, 'classes', d.id),
+        { teacherName: cleanName, updatedAt: serverTimestamp() },
+        { merge: true }
+      )
+    )
+  );
+}
+
 function generateClassCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
