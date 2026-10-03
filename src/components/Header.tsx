@@ -89,10 +89,15 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Orta Alan: Logo ile İlk Buton (Mesaj) Arasında Ortalanmış Veli / Rol Başlığı */}
         <div className="relative z-10 flex-1 flex items-center justify-center min-w-0 px-1 sm:px-2">
           {isParent && (
-            <span className="px-2.5 py-0.5 rounded-full bg-white/60 backdrop-blur-sm border border-white/70 shadow-[0_4px_14px_rgba(0,0,0,0.18)] text-[10px] sm:text-[11px] font-bold text-slate-800 tracking-tight truncate max-w-[160px] sm:max-w-[200px]">
-              Merhaba, {parentDisplayName}
-              {currentUser?.className ? ` (${currentUser.className})` : ''}!
-            </span>
+            <div className="flex flex-col items-center justify-center text-center px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-2xl bg-white/65 backdrop-blur-md border border-white/75 shadow-[0_4px_14px_rgba(0,0,0,0.12)] max-w-full">
+              <span className="text-[9.5px] sm:text-[10px] font-black text-indigo-700 tracking-wider uppercase leading-none">
+                Merhaba
+              </span>
+              <span className="text-[11px] sm:text-xs font-black text-slate-900 tracking-tight leading-tight mt-0.5 whitespace-nowrap">
+                {parentDisplayName}
+                {currentUser?.className ? ` (${currentUser.className})` : ''}
+              </span>
+            </div>
           )}
 
           {isSuperAdmin && (

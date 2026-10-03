@@ -55,7 +55,7 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
     Math.max(240, cleanStudentName.length * (studentFontSize * 0.58) + 56)
   );
   const frameX = 54;
-  const frameY = 4;
+  const frameY = 8;
   const frameHeight = 82;
 
   // Zone Configurations matching exact design specifications
@@ -143,7 +143,7 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
     <div
       onClick={onNavigateToStages}
       className={`relative w-full max-w-[580px] mx-auto select-none cursor-pointer group active:scale-[0.99] transition-transform duration-200 ${className}`}
-      title="Detaylı kademeleri görmek için tıklayın"
+      aria-label="Detaylı kademeleri görmek için tıklayın"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {

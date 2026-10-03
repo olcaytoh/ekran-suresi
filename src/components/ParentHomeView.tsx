@@ -65,7 +65,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
           totalMinutes={totalMinutes}
           onNavigateToStages={onNavigateToStages}
           studentName={studentName}
-          className="mt-0 mb-auto flex-shrink-0 max-w-[400px] sm:max-w-[460px] max-h-[160px] sm:max-h-[185px] w-full"
+          className="my-auto flex-shrink-0 max-w-[420px] sm:max-w-[480px] max-h-[168px] sm:max-h-[192px] w-full"
         />
 
         {/* İnce Cam Ayırıcı Çizgi */}
