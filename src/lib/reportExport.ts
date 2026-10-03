@@ -5,6 +5,9 @@ import { generateDefaultAcademicCalendar, getActiveWeekNumber } from './academic
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 export type ReportSortOption =
   | 'minutes-asc'  // Düşükten Yükseğe (Az ekran süresi - teşvik edici)
@@ -413,7 +416,7 @@ export function exportStatisticsToExcel({
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 
-  const url = triggerFileDownload(blob, fileName);
+  const url = URL.createObjectURL(blob);
   return { blob, fileName, url };
 }
 
@@ -438,9 +441,51 @@ export function isIOS(): boolean {
 }
 
 /**
+ * APK (Capacitor / Android WebView) içinde mi çalışıyoruz?
+ * WebView'da <a download> ve blob: indirmeleri çalışmaz; dosya yerel olarak yazılıp paylaşım menüsü açılır.
+ */
+export function isNativeApp(): boolean {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * APK için: dosyayı cihazın önbelleğine yazar ve sistem paylaşım/kaydet menüsünü açar
+ * (Drive, Dosyalar, WhatsApp, e-posta, PDF/Excel görüntüleyici vb.).
+ */
+export async function saveAndShareNative(blob: Blob, fileName: string): Promise<boolean> {
+  try {
+    const dataUrl = await blobToDataUrl(blob);
+    const base64 = dataUrl.substring(dataUrl.indexOf(',') + 1);
+    const written = await Filesystem.writeFile({
+      path: fileName,
+      data: base64,
+      directory: Directory.Cache,
+    });
+    await Share.share({
+      title: fileName,
+      text: fileName,
+      url: written.uri,
+      dialogTitle: 'Dosyayı kaydet / paylaş',
+    });
+    return true;
+  } catch (err: any) {
+    const msg = String(err?.message || err || '');
+    // Kullanıcı paylaşım menüsünü kapattı: hata değil
+    if (/cancel/i.test(msg)) return false;
+    console.warn('Native save/share error:', err);
+    return false;
+  }
+}
+
+/**
  * Web Share API (Dosya Paylaşımı / Telefona Kaydetme Desteği)
  */
 export function canShareFiles(): boolean {
+  if (isNativeApp()) return true;
   if (typeof navigator === 'undefined' || !navigator.share || !navigator.canShare) return false;
   try {
     const testFile = new File([''], 'test.pdf', { type: 'application/pdf' });
@@ -454,6 +499,7 @@ export function canShareFiles(): boolean {
  * Telefonda yerel sistem paylaşım/kaydet menüsünü açar (iOS "Dosyalara Kaydet", Android "İndirilenler/Drive" vb.)
  */
 export async function shareFileNative(blob: Blob, fileName: string): Promise<boolean> {
+  if (isNativeApp()) return saveAndShareNative(blob, fileName);
   if (typeof navigator === 'undefined' || !navigator.share) return false;
   try {
     const mimeType = blob.type || 'application/octet-stream';
@@ -532,6 +578,12 @@ export async function downloadViaDataUrl(blob: Blob, fileName: string): Promise<
  * PDF veya dökümanı mobilde yeni sekmede açar (iOS Safari ve Android Chrome'un yerleşik PDF okuyucusunu açar)
  */
 export function openBlobInNewTab(blob: Blob): Window | null {
+  // APK: WebView'da blob: adresi açılmaz, dosya yazılıp sistem menüsünden açılır
+  if (isNativeApp()) {
+    const name = blob.type === 'application/pdf' ? 'istatistik-raporu.pdf' : 'istatistik-raporu';
+    saveAndShareNative(blob, name).catch(() => {});
+    return null;
+  }
   try {
     const url = URL.createObjectURL(blob);
     const win = window.open(url, '_blank');
@@ -562,6 +614,11 @@ export function openBlobInNewTab(blob: Blob): Window | null {
  */
 export async function downloadBlobUniversal(blob: Blob, fileName: string): Promise<string> {
   const url = URL.createObjectURL(blob);
+  // APK (Capacitor): dosyayı yaz + paylaşım/kaydet menüsünü aç
+  if (isNativeApp()) {
+    await saveAndShareNative(blob, fileName);
+    return url;
+  }
   if (typeof window === 'undefined') return url;
 
   // 1. IE / Eski Edge
@@ -570,19 +627,39 @@ export async function downloadBlobUniversal(blob: Blob, fileName: string): Promi
     return url;
   }
 
-  // 2. iOS Safari: WebKit blob: protokolünde a.download'ı bazen yok sayar, Data URL güvenilirdir
-  if (isIOS()) {
+  // 2. Mobil cihazlar (Android APK / WebView / iOS):
+  // Eğer Web Share API destekliyorsa doğrudan sistem indirme/kaydetme diyaloğunu aç
+  if (isMobileDevice() && canShareFiles()) {
     try {
-      const ok = await downloadViaDataUrl(blob, fileName);
-      if (ok) return url;
+      const shared = await shareFileNative(blob, fileName);
+      if (shared) return url;
     } catch {
       // devam et
     }
   }
 
-  // 3. Android (Samsung A52 / Chrome / Samsung Internet) ve Masaüstü:
-  // KRİTİK: a.style.display = 'none' Android Chrome'da tıklamanın yutulmasına sebep olabilir!
-  // Görünmeyen ama DOM'da gerçek boyutlu bir element kullanılmalıdır.
+  // 3. iOS Safari veya Android WebView için Data URL indirmesi
+  try {
+    const dataUrl = await blobToDataUrl(blob);
+    const forcedOctet = dataUrl.replace(/^data:[^;]+;/, 'data:application/octet-stream;');
+    const a = document.createElement('a');
+    a.href = forcedOctet;
+    a.download = fileName;
+    a.setAttribute('download', fileName);
+    a.target = '_self';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        if (document.body.contains(a)) document.body.removeChild(a);
+      } catch {}
+    }, 4000);
+  } catch (err) {
+    console.warn('Data URL download fallback notice:', err);
+  }
+
+  // 4. Standart blob click
   try {
     const a = document.createElement('a');
     a.href = url;
@@ -597,7 +674,6 @@ export async function downloadBlobUniversal(blob: Blob, fileName: string): Promi
     a.style.opacity = '0.01';
     document.body.appendChild(a);
 
-    // Native click
     a.click();
 
     setTimeout(() => {
@@ -610,8 +686,7 @@ export async function downloadBlobUniversal(blob: Blob, fileName: string): Promi
       }
     }, 4000);
   } catch (err) {
-    console.warn('downloadBlobUniversal standard click failed, trying data-url:', err);
-    await downloadViaDataUrl(blob, fileName);
+    console.warn('Standard blob click notice:', err);
   }
 
   return url;
@@ -867,7 +942,7 @@ export function exportStatisticsToPdf({
   const fileName = `${cleanFileBase}_${dateSuffix}.pdf`;
 
   const blob = doc.output('blob');
-  const url = triggerFileDownload(blob, fileName);
+  const url = URL.createObjectURL(blob);
   return { blob, fileName, url, doc };
 }
 
@@ -889,6 +964,24 @@ export function printStatisticsReport({
   institutionName?: string;
   className?: string;
 }) {
+  // APK: WebView'da yazdırma diyaloğu yok; PDF üretilip sistem paylaşım menüsünden açılır/kaydedilir
+  if (isNativeApp()) {
+    try {
+      const res = exportStatisticsToPdf({
+        students,
+        calendarConfig,
+        sortOption,
+        weekRange,
+        institutionName,
+        className,
+      });
+      saveAndShareNative(res.blob, res.fileName).catch(() => {});
+    } catch (err) {
+      console.warn('Native print fallback error:', err);
+    }
+    return;
+  }
+
   const { weeksToInclude, activeWeekNum, rows, summary } = buildStudentReportData(
     students,
     calendarConfig,

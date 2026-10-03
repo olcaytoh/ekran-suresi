@@ -16,6 +16,7 @@ import {
   openBlobInNewTab,
   isMobileDevice,
   canShareFiles,
+  isNativeApp,
 } from '../lib/reportExport';
 import {
   X,
@@ -163,15 +164,14 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         blob: res.blob,
       });
 
-      // 1. Doğrudan cihaz indirmesini başlat (Android, Samsung A52, iOS & Masaüstü)
+      // 1. Doğrudan cihaz indirmesini / paylaşımını başlat
       await downloadBlobUniversal(res.blob, res.fileName);
 
-      // 2. Mobilde Web Share API destekleniyorsa arka planda paylaşım seçeneği sun
-      if (isMobile && hasShareApi) {
-        shareFileNative(res.blob, res.fileName).catch(() => {});
+      if (isMobile) {
+        setExportFeedback(`Excel dosyası hazırlandı! Dosyayı kaydetmek için aşağıdaki 'Telefona Kaydet' butonunu kullanabilirsiniz.`);
+      } else {
+        setExportFeedback(`Excel dosyası indirildi: ${res.fileName}`);
       }
-
-      setExportFeedback(`Excel dosyası indirildi: ${res.fileName}`);
     } catch (err: any) {
       console.error('Excel export error:', err);
       setExportFeedback('Excel oluşturulurken bir hata oluştu.');
@@ -200,15 +200,14 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         blob: res.blob,
       });
 
-      // 1. Doğrudan cihaz indirmesini başlat (Android, Samsung A52, iOS & Masaüstü)
+      // 1. Doğrudan cihaz indirmesini / paylaşımını başlat
       await downloadBlobUniversal(res.blob, res.fileName);
 
-      // 2. Mobilde Web Share API destekleniyorsa arka planda paylaşım seçeneği sun
-      if (isMobile && hasShareApi) {
-        shareFileNative(res.blob, res.fileName).catch(() => {});
+      if (isMobile) {
+        setExportFeedback(`PDF raporu hazırlandı! Telefonunuza kaydetmek için 'Telefona Kaydet' veya 'PDF Olarak Kaydet' butonunu kullanabilirsiniz.`);
+      } else {
+        setExportFeedback(`PDF raporu indirildi: ${res.fileName}`);
       }
-
-      setExportFeedback(`PDF raporu indirildi: ${res.fileName}`);
     } catch (err: any) {
       console.error('PDF export error:', err);
       setExportFeedback('PDF oluşturulurken bir hata oluştu.');
@@ -453,7 +452,10 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100/90 text-emerald-950 font-black text-xs shadow-xs hover:bg-white active:scale-95 transition-all cursor-pointer"
                   title="Dosyayı cihazınıza indirin"
-                  onClick={() => handleDirectDownload()}
+                  onClick={(e) => {
+                    if (isNativeApp()) e.preventDefault();
+                    handleDirectDownload();
+                  }}
                 >
                   <Download className="w-3.5 h-3.5 text-emerald-800" />
                   <span>İndir</span>
@@ -520,7 +522,10 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
                     rel="noopener noreferrer"
                     className="btn-3d-emerald px-3.5 py-2 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 text-white"
                     title="Dosyayı cihazınıza doğrudan indirin"
-                    onClick={() => handleDirectDownload()}
+                    onClick={(e) => {
+                      if (isNativeApp()) e.preventDefault();
+                      handleDirectDownload();
+                    }}
                   >
                     <Download className="w-4 h-4" />
                     <span>Cihaza İndir</span>

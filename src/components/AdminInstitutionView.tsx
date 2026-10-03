@@ -60,6 +60,7 @@ interface AdminInstitutionViewProps {
   onDeleteUser?: (userUid: string, classId?: string) => Promise<void> | void;
   onProfileUpdated?: (updates: Partial<UserProfile>) => void;
   onSwitchToTeacherMode?: (classroom?: ClassroomInfo) => void;
+  onNavigateToBadges?: (classId?: string) => void;
   isDemo?: boolean;
 }
 
@@ -98,6 +99,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   onDeleteUser,
   onProfileUpdated,
   onSwitchToTeacherMode,
+  onNavigateToBadges,
   isDemo = false,
 }) => {
   // Navigation & Tabs
@@ -629,7 +631,20 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             </div>
           </div>
 
-          <div className="relative z-10 flex items-center gap-1.5 flex-shrink-0">
+          <div className="relative z-10 flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+            {onNavigateToBadges && (
+              <button
+                type="button"
+                id="btn-admin-view-class-badges"
+                onClick={() => onNavigateToBadges(selectedClassId || undefined)}
+                className="btn-3d-cyan px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+                title="Bu sınıfın 35 haftalık kutu ve rozet takip ekranını aç"
+              >
+                <img src="/kutu_yesil.png" alt="Kutular" className="w-3.5 h-3.5 object-contain" />
+                <span>Haftalık Kutular &amp; Rozetler</span>
+              </button>
+            )}
+
             <button
               type="button"
               id="btn-admin-export-selected-class"
