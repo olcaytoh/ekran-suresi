@@ -163,16 +163,15 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         blob: res.blob,
       });
 
-      // Mobilde canShare varsa doğrudan sistem paylaşım/kaydet penceresini aç
+      // 1. Doğrudan cihaz indirmesini başlat (Android, Samsung A52, iOS & Masaüstü)
+      await downloadBlobUniversal(res.blob, res.fileName);
+
+      // 2. Mobilde Web Share API destekleniyorsa arka planda paylaşım seçeneği sun
       if (isMobile && hasShareApi) {
-        const shared = await shareFileNative(res.blob, res.fileName);
-        if (shared) {
-          setExportFeedback(`Excel dosyası cihaza aktarıldı: ${res.fileName}`);
-          return;
-        }
+        shareFileNative(res.blob, res.fileName).catch(() => {});
       }
 
-      setExportFeedback(`Excel dosyası hazırlandı: ${res.fileName}`);
+      setExportFeedback(`Excel dosyası indirildi: ${res.fileName}`);
     } catch (err: any) {
       console.error('Excel export error:', err);
       setExportFeedback('Excel oluşturulurken bir hata oluştu.');
@@ -201,16 +200,15 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
         blob: res.blob,
       });
 
-      // Mobilde canShare varsa doğrudan sistem paylaşım/kaydet penceresini aç
+      // 1. Doğrudan cihaz indirmesini başlat (Android, Samsung A52, iOS & Masaüstü)
+      await downloadBlobUniversal(res.blob, res.fileName);
+
+      // 2. Mobilde Web Share API destekleniyorsa arka planda paylaşım seçeneği sun
       if (isMobile && hasShareApi) {
-        const shared = await shareFileNative(res.blob, res.fileName);
-        if (shared) {
-          setExportFeedback(`PDF raporu cihaza aktarıldı: ${res.fileName}`);
-          return;
-        }
+        shareFileNative(res.blob, res.fileName).catch(() => {});
       }
 
-      setExportFeedback(`PDF raporu hazırlandı: ${res.fileName}`);
+      setExportFeedback(`PDF raporu indirildi: ${res.fileName}`);
     } catch (err: any) {
       console.error('PDF export error:', err);
       setExportFeedback('PDF oluşturulurken bir hata oluştu.');
@@ -448,15 +446,18 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
                     <span>PDF'i Aç</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => handleDirectDownload()}
+                <a
+                  href={downloadedFile.url}
+                  download={downloadedFile.fileName}
+                  target="_self"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100/90 text-emerald-950 font-black text-xs shadow-xs hover:bg-white active:scale-95 transition-all cursor-pointer"
                   title="Dosyayı cihazınıza indirin"
+                  onClick={() => handleDirectDownload()}
                 >
                   <Download className="w-3.5 h-3.5 text-emerald-800" />
                   <span>İndir</span>
-                </button>
+                </a>
               </div>
             )}
           </div>
@@ -512,15 +513,18 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => handleDirectDownload()}
-                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 border-2 border-emerald-300 text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                  <a
+                    href={downloadedFile.url}
+                    download={downloadedFile.fileName}
+                    target="_self"
+                    rel="noopener noreferrer"
+                    className="btn-3d-emerald px-3.5 py-2 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95 text-white"
                     title="Dosyayı cihazınıza doğrudan indirin"
+                    onClick={() => handleDirectDownload()}
                   >
                     <Download className="w-4 h-4" />
-                    <span>Doğrudan İndir</span>
-                  </button>
+                    <span>Cihaza İndir</span>
+                  </a>
 
                   {downloadedFile.type === 'pdf' && (
                     <button

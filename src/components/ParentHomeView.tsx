@@ -38,10 +38,10 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-between gap-2 sm:gap-2.5 w-full flex-1 min-h-0 select-none">
+    <div className="relative flex flex-col items-center justify-between gap-1.5 sm:gap-2 w-full flex-1 min-h-0 select-none">
       {/* Durum Dashboard Ana Cam Kartı (Glassmorphism Kart Efekti) */}
       <div
-        className="relative w-full rounded-[24px] sm:rounded-[28px] px-2.5 sm:px-3.5 pt-0.5 sm:pt-1 pb-1.5 sm:pb-2 select-none flex flex-col items-center flex-1 justify-between min-h-0 overflow-hidden"
+        className="relative w-full rounded-[24px] sm:rounded-[28px] px-2 sm:px-3 pt-0.5 sm:pt-1 pb-1 sm:pb-1.5 select-none flex flex-col items-center flex-1 justify-between min-h-0 overflow-hidden"
         style={{
           background: 'rgba(255, 255, 255, 0.20)',
           backdropFilter: 'blur(20px)',
@@ -65,7 +65,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
           totalMinutes={totalMinutes}
           onNavigateToStages={onNavigateToStages}
           studentName={studentName}
-          className="mt-0 mb-auto flex-shrink-0 max-w-[430px] sm:max-w-[490px] max-h-[170px] sm:max-h-[195px] w-full"
+          className="mt-0 mb-auto flex-shrink-0 max-w-[400px] sm:max-w-[460px] max-h-[160px] sm:max-h-[185px] w-full"
         />
 
         {/* İnce Cam Ayırıcı Çizgi */}
@@ -75,7 +75,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
 
         {/* 4 Renk Bölgesi Butonları: 11.png (kodlanmış), 11a.png, 11b.png, 11c.png (Alt Bölüm) */}
         <div className="relative z-10 w-full mb-0.5 flex-shrink-0 select-none">
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[335px] sm:max-w-[370px] mx-auto select-none">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full max-w-[325px] sm:max-w-[360px] mx-auto select-none">
             {/* 1. Güvenli Alan (11.png ve hemen dışındaki yeşil çizgi) */}
             <button
               type="button"

@@ -343,6 +343,9 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             <div className="relative z-10 flex-shrink-0 self-stretch flex items-end justify-center w-[100px] sm:w-[124px] md:w-[140px] -mb-3 sm:-mb-3.5 pointer-events-none select-none">
               <TransparentMascotVideo
                 src="/kss.mp4"
+                chromaKeyType="blue"
+                cropTop={0}
+                cropBottom={0.36}
                 className="h-auto w-full max-h-[126px] sm:max-h-[140px] md:max-h-[150px] object-contain drop-shadow-[0_8px_16px_rgba(124,58,237,0.18)] transition-all duration-300"
               />
             </div>

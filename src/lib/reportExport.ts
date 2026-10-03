@@ -558,7 +558,7 @@ export function openBlobInNewTab(blob: Blob): Window | null {
 }
 
 /**
- * Masaüstü ve Mobil için Evrensel İndirme Yöntemi
+ * Masaüstü ve Mobil için Evrensel İndirme Yöntemi (Android Chrome, Samsung Internet, iOS Safari ve masaüstü)
  */
 export async function downloadBlobUniversal(blob: Blob, fileName: string): Promise<string> {
   const url = URL.createObjectURL(blob);
@@ -570,8 +570,7 @@ export async function downloadBlobUniversal(blob: Blob, fileName: string): Promi
     return url;
   }
 
-  // 2. iOS Safari: WebKit, blob: URL'lerde a.download'ı yok sayar.
-  // Data URL'e çevrildiğinde Safari yerel "İndir" penceresini gösterir.
+  // 2. iOS Safari: WebKit blob: protokolünde a.download'ı bazen yok sayar, Data URL güvenilirdir
   if (isIOS()) {
     try {
       const ok = await downloadViaDataUrl(blob, fileName);
@@ -581,14 +580,24 @@ export async function downloadBlobUniversal(blob: Blob, fileName: string): Promi
     }
   }
 
-  // 3. Android & Masaüstü standart bağlantı tıklaması
+  // 3. Android (Samsung A52 / Chrome / Samsung Internet) ve Masaüstü:
+  // KRİTİK: a.style.display = 'none' Android Chrome'da tıklamanın yutulmasına sebep olabilir!
+  // Görünmeyen ama DOM'da gerçek boyutlu bir element kullanılmalıdır.
   try {
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
+    a.setAttribute('download', fileName);
     a.rel = 'noopener noreferrer';
-    a.style.display = 'none';
+    a.style.position = 'fixed';
+    a.style.top = '-9999px';
+    a.style.left = '-9999px';
+    a.style.width = '2px';
+    a.style.height = '2px';
+    a.style.opacity = '0.01';
     document.body.appendChild(a);
+
+    // Native click
     a.click();
 
     setTimeout(() => {
@@ -610,14 +619,14 @@ export async function downloadBlobUniversal(blob: Blob, fileName: string): Promi
 
 export function triggerFileDownload(blob: Blob, fileName: string): string {
   const url = URL.createObjectURL(blob);
+  if (typeof window === 'undefined') return url;
+
   try {
-    // If browser supports msSaveOrOpenBlob (legacy Edge/IE)
-    if (typeof window !== 'undefined' && (window.navigator as any)?.msSaveOrOpenBlob) {
+    if ((window.navigator as any)?.msSaveOrOpenBlob) {
       (window.navigator as any).msSaveOrOpenBlob(blob, fileName);
       return url;
     }
 
-    // iOS cihazlarda Safari'nin indirme diyaloğunu tetiklemek için Data URL fallback
     if (isIOS()) {
       downloadViaDataUrl(blob, fileName).catch(() => {});
       return url;
@@ -626,11 +635,16 @@ export function triggerFileDownload(blob: Blob, fileName: string): string {
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
+    a.setAttribute('download', fileName);
     a.rel = 'noopener noreferrer';
-    a.style.display = 'none';
+    a.style.position = 'fixed';
+    a.style.top = '-9999px';
+    a.style.left = '-9999px';
+    a.style.width = '2px';
+    a.style.height = '2px';
+    a.style.opacity = '0.01';
     document.body.appendChild(a);
 
-    // Direct programmatic click
     a.click();
 
     setTimeout(() => {
@@ -644,6 +658,7 @@ export function triggerFileDownload(blob: Blob, fileName: string): string {
     }, 4000);
   } catch (err) {
     console.warn('Programmatic download trigger notice:', err);
+    downloadViaDataUrl(blob, fileName).catch(() => {});
   }
   return url;
 }
