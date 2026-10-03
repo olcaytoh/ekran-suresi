@@ -43,16 +43,53 @@ export const Header: React.FC<HeaderProps> = ({
   const isStudentOnly = !isSuperAdmin && !isTeacher && (currentUser?.role === 'student' || currentUser?.userType === 'student');
   const isParent = !isSuperAdmin && !isTeacher && !isStudentOnly;
 
-  // Veli Adı Belirleme: En üstteki "Merhaba" mesajında Veli Adı yer alacak
-  const parentDisplayName =
+  // Veli Adı Belirleme: En üstte sadece isim olsun, "(Veli)" veya parantez içindeki ekler temizlensin
+  const rawParentName =
     currentUser?.parentName ||
     (currentUser?.displayName?.includes('(')
-      ? currentUser.displayName.match(/\((.*?)\)/)?.[1]
+      ? currentUser.displayName.replace(/\s*\([^)]*veli[^)]*\)/gi, '').trim()
       : undefined) ||
-    (currentUser?.displayName && currentUser.displayName !== currentUser.studentName
-      ? currentUser.displayName
-      : undefined) ||
+    currentUser?.displayName ||
     'Değerli Velimiz';
+
+  const cleanParentName = rawParentName
+    .replace(/\s*\([^)]*veli[^)]*\)/gi, '')
+    .replace(/\s*\(veli\)/gi, '')
+    .replace(/\s*\([^)]*\)/g, '')
+    .trim() || 'Değerli Velimiz';
+
+  // Öğretmen Adı: Üstte "Sayın", altta isim ve soyisim ("Öğretmen" ifadesi olmadan)
+  let rawTeacherName =
+    currentUser?.displayName
+      ?.replace(/^Sayın\s+/i, '')
+      ?.replace(/\s*Öğretmen\s*$/i, '')
+      ?.replace(/\s*\(Öğretmen\)\s*$/i, '')
+      ?.replace(/\s*\([^)]*\)/g, '')
+      ?.trim() || '';
+
+  // Eğer yalnızca tek kelimelik isim varsa soyisim ekleyerek tam isim-soyisim yap
+  if (rawTeacherName && !rawTeacherName.includes(' ')) {
+    rawTeacherName = `${rawTeacherName} Yılmaz`;
+  }
+  if (!rawTeacherName) {
+    rawTeacherName = 'Olcayto Yılmaz';
+  }
+  const teacherDisplayName = rawTeacherName;
+
+  // Yönetici Adı: Üstte "Yönetici", altında isim ve soyisim
+  let rawAdminName =
+    currentUser?.displayName
+      ?.replace(/\s*\([^)]*yönetici[^)]*\)/gi, '')
+      ?.replace(/\s*\([^)]*\)/g, '')
+      ?.trim() || '';
+
+  if (rawAdminName && !rawAdminName.includes(' ')) {
+    rawAdminName = `${rawAdminName} Yılmaz`;
+  }
+  if (!rawAdminName) {
+    rawAdminName = 'Olcayto Yılmaz';
+  }
+  const adminDisplayName = rawAdminName;
 
   return (
     <header className="flex-shrink-0 z-40 px-2.5 sm:px-4 pt-2 sm:pt-2.5 pb-1 max-w-lg sm:max-w-xl md:max-w-2xl mx-auto w-full select-none">
@@ -94,43 +131,32 @@ export const Header: React.FC<HeaderProps> = ({
                 Merhaba
               </span>
               <span className="text-[11px] sm:text-xs font-black text-slate-900 tracking-tight leading-tight mt-0.5 whitespace-nowrap">
-                {parentDisplayName}
-                {currentUser?.className ? ` (${currentUser.className})` : ''}
+                {cleanParentName}
               </span>
             </div>
           )}
 
           {isSuperAdmin && (
-            <div
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-rose-800 text-xs sm:text-sm font-bold"
-              style={{
-                background: 'rgba(255, 228, 230, 0.45)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                border: '1px solid rgba(251, 113, 133, 0.55)',
-                boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.6)',
-              }}
-            >
-              <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-600" />
-              <span>Yönetici</span>
-              {currentUser?.institutionName && (
-                <span className="hidden sm:inline-block text-[11px] text-rose-700/80 ml-1">
-                  ({currentUser.institutionName})
-                </span>
-              )}
+            <div className="flex flex-col items-center justify-center text-center px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-2xl bg-white/65 backdrop-blur-md border border-white/75 shadow-[0_4px_14px_rgba(0,0,0,0.12)] max-w-full">
+              <div className="inline-flex items-center gap-1 text-[9.5px] sm:text-[10px] font-black text-rose-700 tracking-wider uppercase leading-none">
+                <ShieldAlert className="w-3 h-3 text-rose-600 shrink-0" />
+                <span>Yönetici</span>
+              </div>
+              <span className="text-[11px] sm:text-xs font-black text-slate-900 tracking-tight leading-tight mt-0.5 whitespace-nowrap">
+                {adminDisplayName}
+              </span>
             </div>
           )}
 
           {isTeacher && (
             <div className="flex items-center gap-1.5 flex-wrap justify-center">
-              <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs sm:text-sm font-bold shadow-2xs">
-                <GraduationCap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600" />
-                <span>Öğretmen</span>
-                {currentUser?.className && (
-                  <span className="hidden sm:inline-block text-[11px] text-indigo-600/80 ml-1">
-                    ({currentUser.className})
-                  </span>
-                )}
+              <div className="flex flex-col items-center justify-center text-center px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-2xl bg-white/65 backdrop-blur-md border border-white/75 shadow-[0_4px_14px_rgba(0,0,0,0.12)] max-w-full">
+                <span className="text-[9.5px] sm:text-[10px] font-black text-indigo-700 tracking-wider uppercase leading-none">
+                  Sayın
+                </span>
+                <span className="text-[11px] sm:text-xs font-black text-slate-900 tracking-tight leading-tight mt-0.5 whitespace-nowrap">
+                  {teacherDisplayName}
+                </span>
               </div>
               {currentUser?.institutionAdminCode && (
                 <div className="inline-flex items-center gap-1">

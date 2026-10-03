@@ -36,7 +36,7 @@ export const DEMO_3_CLASSES: Array<{
     code: 'AKC-1A',
     name: '1-A Sınıfı',
     teacherUid: 'teacher_demo_olcayto',
-    teacherName: 'Olcayto Öğretmen',
+    teacherName: 'Olcayto Yılmaz',
     teacherEmail: 'olcaytoh@gmail.com',
     institutionId: DEMO_INSTITUTION.id,
     institutionCode: DEMO_INSTITUTION.code,

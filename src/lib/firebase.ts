@@ -1284,7 +1284,7 @@ const DEMO_CLASSES_FALLBACK = [
     code: 'AKC-1A',
     name: '1-A Sınıfı',
     teacherUid: 'teacher_demo_olcayto',
-    teacherName: 'Olcayto Öğretmen',
+    teacherName: 'Olcayto Yılmaz',
     teacherEmail: 'olcaytoh@gmail.com',
     institutionId: 'demo-institution-1',
     institutionCode: 'KRM-AKC1',

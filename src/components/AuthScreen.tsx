@@ -274,10 +274,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       setLoading(true);
       const guestName =
         targetRole === 'admin'
-          ? 'Olcayto (Yönetici)'
+          ? 'Olcayto Yılmaz'
           : targetRole === 'teacher'
-          ? 'Olcayto Öğretmen'
-          : 'Fatma Yılmaz (Veli)';
+          ? 'Olcayto Yılmaz'
+          : 'Fatma Yılmaz';
       const guestEmail =
         targetRole === 'admin'
           ? 'olcaytoh@gmail.com'

@@ -96,7 +96,7 @@ export default function App() {
       setClassroom(null);
       profile = {
         uid: 'admin_demo_super',
-        displayName: 'Olcayto (Kurum Yöneticisi)',
+        displayName: 'Olcayto Yılmaz',
         email: 'olcaytoh@gmail.com',
         role: 'admin',
         userType: 'teacher',

@@ -32,6 +32,10 @@ interface BadgeLevel {
   description: string;
   pillClass: string;
   glowClass: string;
+  imageSrc: string;
+  boxBg: string;
+  boxBorder: string;
+  boxShadow: string;
 }
 
 const BADGE_LEVELS: Record<'green' | 'yellow' | 'orange' | 'red', BadgeLevel> = {
@@ -42,8 +46,12 @@ const BADGE_LEVELS: Record<'green' | 'yellow' | 'orange' | 'red', BadgeLevel> = 
     timeRange: '0 - 210 dk',
     stageRange: '1 - 7. Kademe',
     description: 'Harika denge! Ekran süresi güvenli alanda korundu.',
-    pillClass: 'bg-emerald-500 text-white',
+    pillClass: 'bg-emerald-500 text-white font-black',
     glowClass: 'drop-shadow-[0_4px_8px_rgba(16,185,129,0.55)]',
+    imageSrc: '/kutu_yesil.png?v=2',
+    boxBg: 'rgba(209, 250, 229, 0.45)',
+    boxBorder: '1.5px solid rgba(52, 211, 153, 0.85)',
+    boxShadow: '0 8px 24px rgba(16, 185, 129, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.85)',
   },
   yellow: {
     key: 'yellow',
@@ -52,8 +60,12 @@ const BADGE_LEVELS: Record<'green' | 'yellow' | 'orange' | 'red', BadgeLevel> = 
     timeRange: '240 - 300 dk',
     stageRange: '8 - 10. Kademe',
     description: 'Dengeli süre. Faydalı aktivitelerle ekran süresi dengelendi.',
-    pillClass: 'bg-yellow-500 text-slate-950 font-black',
+    pillClass: 'bg-amber-400 text-slate-950 font-black',
     glowClass: 'drop-shadow-[0_4px_8px_rgba(234,179,8,0.65)]',
+    imageSrc: '/kutu_sari.png?v=2',
+    boxBg: 'rgba(254, 240, 138, 0.45)',
+    boxBorder: '1.5px solid rgba(250, 204, 21, 0.85)',
+    boxShadow: '0 8px 24px rgba(234, 179, 8, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.85)',
   },
   orange: {
     key: 'orange',
@@ -64,6 +76,10 @@ const BADGE_LEVELS: Record<'green' | 'yellow' | 'orange' | 'red', BadgeLevel> = 
     description: 'Dikkat sınırı. Süre artışta, ekran dışı etkinliklere ağırlık verilmeli.',
     pillClass: 'bg-orange-500 text-white font-black',
     glowClass: 'drop-shadow-[0_4px_8px_rgba(249,115,22,0.65)]',
+    imageSrc: '/kutu_turuncu.png?v=2',
+    boxBg: 'rgba(255, 237, 213, 0.45)',
+    boxBorder: '1.5px solid rgba(251, 146, 60, 0.85)',
+    boxShadow: '0 8px 24px rgba(249, 115, 22, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.85)',
   },
   red: {
     key: 'red',
@@ -74,6 +90,10 @@ const BADGE_LEVELS: Record<'green' | 'yellow' | 'orange' | 'red', BadgeLevel> = 
     description: 'Kritik tavan. Ekran süresi maksimuma ulaştı, mola zamanı!',
     pillClass: 'bg-rose-600 text-white font-black',
     glowClass: 'drop-shadow-[0_4px_8px_rgba(239,68,68,0.7)]',
+    imageSrc: '/kutu_kirmizi.png?v=2',
+    boxBg: 'rgba(255, 228, 230, 0.45)',
+    boxBorder: '1.5px solid rgba(251, 113, 133, 0.85)',
+    boxShadow: '0 8px 24px rgba(239, 68, 68, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.85)',
   },
 };
 
@@ -550,12 +570,12 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                     </span>
                   </div>
 
-                  {/* Center: kutu.png enlarged to full size with locked state */}
+                  {/* Center: kutu_gri.png enlarged to full size with locked state */}
                   <div className="relative z-10 flex-1 w-full flex items-center justify-center my-0.5">
                     <img
-                      src="/kutu.png"
+                      src="/kutu_gri.png?v=2"
                       alt="Kilitli Kutu"
-                      className="w-8 h-8 sm:w-10 sm:h-10 object-contain opacity-40 filter grayscale drop-shadow-2xs"
+                      className="w-8 h-8 sm:w-10 sm:h-10 object-contain opacity-50 drop-shadow-2xs"
                       referrerPolicy="no-referrer"
                     />
                     <Lock className="w-2.5 h-2.5 text-slate-600 absolute bottom-0 right-1 drop-shadow-xs" />
@@ -570,7 +590,7 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
             }
 
             // CASE C: Active Current Week or Completed Past Week
-            const { pillClass, glowClass } = item.badgeInfo;
+            const { pillClass, glowClass, imageSrc, boxBg, boxBorder, boxShadow } = item.badgeInfo;
 
             return (
               <button
@@ -580,33 +600,27 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                 onClick={() => setSelectedWeekNum(item.weekNum)}
                 className={`relative rounded-2xl p-1 sm:p-1.5 flex flex-col items-center justify-between cursor-pointer transition-all duration-150 active:scale-95 group min-h-[80px] sm:min-h-[88px] overflow-hidden select-none ${
                   item.isCurrent
-                    ? 'ring-2 ring-sky-500 ring-offset-1 scale-[1.04] shadow-md z-10'
+                    ? 'ring-2 ring-slate-900 ring-offset-1 scale-[1.04] shadow-md z-10'
                     : isSelected
                     ? 'ring-2 ring-slate-800 scale-[1.03] shadow-sm z-10'
                     : 'hover:scale-[1.02]'
                 }`}
                 style={{
-                  background: item.isCurrent
-                    ? 'rgba(224, 242, 254, 0.50)'
-                    : isSelected
-                    ? 'rgba(255, 255, 255, 0.45)'
-                    : 'rgba(255, 255, 255, 0.28)',
+                  background: boxBg,
                   backdropFilter: 'blur(16px)',
                   WebkitBackdropFilter: 'blur(16px)',
                   border: item.isCurrent
-                    ? '1.5px solid rgba(56, 189, 248, 0.85)'
+                    ? '1.5px solid rgba(15, 23, 42, 0.9)'
                     : isSelected
-                    ? '1.5px solid rgba(15, 23, 42, 0.7)'
-                    : '1.5px solid rgba(255, 255, 255, 0.7)',
-                  boxShadow: item.isCurrent
-                    ? '0 8px 24px rgba(14, 165, 233, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.85)'
-                    : '0 8px 24px rgba(30, 64, 175, 0.16), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                    ? '1.5px solid rgba(15, 23, 42, 0.8)'
+                    : boxBorder,
+                  boxShadow: boxShadow,
                 }}
                 title={`${item.weekNum}. Hafta - ${item.dateLabel}`}
               >
                 {/* Active current week indicator dot */}
                 {item.isCurrent && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-sky-500 rounded-full border-2 border-white animate-pulse z-20" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-slate-900 rounded-full border-2 border-white animate-pulse z-20" />
                 )}
 
                 {/* Üst cam ışıma efekti */}
@@ -617,15 +631,15 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                   <span className="text-[10px] sm:text-[11px] font-black text-slate-900 leading-none block drop-shadow-2xs">
                     {item.weekNum}.H
                   </span>
-                  <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-600 leading-none mt-0.5 block truncate">
+                  <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-700 leading-none mt-0.5 block truncate">
                     {item.dateLabel}
                   </span>
                 </div>
 
-                {/* Center: kutu.png enlarged to fill box nicely with vibrant color glow */}
+                {/* Center: kutu görseli (kutunun rengi alttaki dakika ortalamasının rengi ile birebir aynı: kutu_yesil, kutu_sari, kutu_turuncu, kutu_kirmizi) */}
                 <div className="relative z-10 flex-1 w-full flex items-center justify-center my-0.5">
                   <img
-                    src="/kutu.png"
+                    src={imageSrc}
                     alt={item.badgeInfo.name}
                     className={`w-8 h-8 sm:w-10 sm:h-10 object-contain transition-transform group-hover:scale-110 filter ${glowClass}`}
                     referrerPolicy="no-referrer"
@@ -671,25 +685,32 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
                 key={lvl.key}
                 className="relative rounded-2xl p-2 overflow-hidden flex flex-col justify-between"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.32)',
+                  background: lvl.boxBg,
                   backdropFilter: 'blur(16px)',
                   WebkitBackdropFilter: 'blur(16px)',
-                  border: '1.5px solid rgba(255, 255, 255, 0.7)',
-                  boxShadow: '0 4px 14px rgba(30, 64, 175, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.8)',
+                  border: lvl.boxBorder,
+                  boxShadow: lvl.boxShadow,
                 }}
               >
                 <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/40 to-transparent pointer-events-none rounded-t-2xl" />
                 <div className="relative z-10 flex items-center justify-between gap-1 mb-1">
-                  <span className="text-[11px] font-black text-slate-900 truncate">
-                    {lvl.name}
-                  </span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <img
+                      src={lvl.imageSrc}
+                      alt={lvl.name}
+                      className="w-4 h-4 sm:w-5 sm:h-5 object-contain shrink-0"
+                    />
+                    <span className="text-[10.5px] sm:text-[11px] font-black text-slate-900 truncate">
+                      {lvl.name}
+                    </span>
+                  </div>
                   <span
-                    className={`text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shadow-2xs ${lvl.pillClass}`}
+                    className={`text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shadow-2xs shrink-0 ${lvl.pillClass}`}
                   >
                     {lvl.timeRange}
                   </span>
                 </div>
-                <p className="relative z-10 text-[9px] text-slate-600 leading-tight">
+                <p className="relative z-10 text-[9px] text-slate-700 leading-tight">
                   {lvl.description}
                 </p>
               </div>
@@ -768,14 +789,22 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
               <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/50 to-transparent pointer-events-none rounded-t-3xl" />
 
               <div
-                className="relative z-10 w-12 h-12 rounded-2xl mx-auto flex items-center justify-center font-black text-base shadow-xs"
+                className="relative z-10 w-14 h-14 rounded-2xl mx-auto flex items-center justify-center p-2 shadow-xs"
                 style={{
-                  background: 'rgba(224, 242, 254, 0.65)',
-                  border: '1.5px solid rgba(255, 255, 255, 0.9)',
-                  color: '#0369a1',
+                  background: item.isHoliday ? 'rgba(243, 232, 255, 0.65)' : item.badgeInfo.boxBg,
+                  border: item.isHoliday ? '1.5px solid rgba(255, 255, 255, 0.9)' : item.badgeInfo.boxBorder,
+                  boxShadow: item.isHoliday ? undefined : item.badgeInfo.boxShadow,
                 }}
               >
-                {item.weekNum}
+                {item.isHoliday ? (
+                  <Palmtree className="w-7 h-7 text-purple-700" />
+                ) : (
+                  <img
+                    src={item.badgeInfo.imageSrc}
+                    alt={item.badgeInfo.name}
+                    className="w-full h-full object-contain"
+                  />
+                )}
               </div>
               <div className="relative z-10">
                 <h4 className="text-base font-black text-slate-900 cv-heading-font">{item.weekNum}. Hafta Detayı</h4>
