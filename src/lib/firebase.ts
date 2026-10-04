@@ -18,6 +18,8 @@ import {
 import { Capacitor } from '@capacitor/core';
 import {
   getFirestore,
+  initializeFirestore,
+  setLogLevel,
   doc,
   getDoc,
   getDocs,
@@ -42,10 +44,26 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 
+// Suppress transient Firestore connection retry logs from triggering error overlays
+try {
+  setLogLevel('silent');
+} catch {
+  // ignore
+}
+
+function createFirestoreInstance(): Firestore {
+  const dbId = firebaseConfig.firestoreDatabaseId;
+  try {
+    return dbId
+      ? initializeFirestore(app, { experimentalForceLongPolling: true }, dbId)
+      : initializeFirestore(app, { experimentalForceLongPolling: true });
+  } catch {
+    return dbId ? getFirestore(app, dbId) : getFirestore(app);
+  }
+}
+
 // Initialize Firestore with specific databaseId if provided
-export const db: Firestore = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+export const db: Firestore = createFirestoreInstance();
 
 /**
  * Strips all keys whose values are strictly undefined so Firestore never rejects payloads
