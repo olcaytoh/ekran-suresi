@@ -144,13 +144,16 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
           console.warn('teacherName sınıf kayıtlarında güncellenemedi:', err);
         }
       }
-      if (nameChanged) {
-        onDemoProfileUpdate?.({ displayName: trimmedFullName });
-      }
+
+      onDemoProfileUpdate?.({
+        displayName: trimmedFullName,
+        institutionName: trimmedName,
+      });
 
       if (isDemo) {
         await new Promise((r) => setTimeout(r, 300));
         onDemoProfileUpdate?.({
+          displayName: trimmedFullName,
           institutionName: trimmedName,
           institutionCode: institutionCode || currentUser.institutionCode || 'KRM-1071',
           role: 'admin',
@@ -162,7 +165,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
 
       if (currentUser.institutionId) {
         await updateInstitutionName(currentUser.institutionId, currentUser.uid, trimmedName);
-        setSuccessMsg('Kurum adı başarıyla güncellendi.');
+        setSuccessMsg('Ayarlarınız başarıyla güncellendi.');
         setTimeout(() => onCompleted(), 1000);
       } else {
         const inst = await createInstitution(
@@ -172,6 +175,13 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
           trimmedName
         );
         setInstitutionCode(inst.code);
+        onDemoProfileUpdate?.({
+          displayName: trimmedFullName,
+          institutionId: inst.id,
+          institutionCode: inst.code,
+          institutionAdminCode: inst.adminCode,
+          institutionName: inst.name,
+        });
         setSuccessMsg(`Kurum oluşturuldu! Kurum Kodunuz: ${inst.code}`);
         setTimeout(() => onCompleted(), 1200);
       }

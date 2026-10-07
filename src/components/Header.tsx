@@ -67,12 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
       ?.replace(/\s*\([^)]*\)/g, '')
       ?.trim() || '';
 
-  // Eğer yalnızca tek kelimelik isim varsa soyisim ekleyerek tam isim-soyisim yap
-  if (rawTeacherName && !rawTeacherName.includes(' ')) {
-    rawTeacherName = `${rawTeacherName} Yılmaz`;
-  }
   if (!rawTeacherName) {
-    rawTeacherName = 'Olcayto Yılmaz';
+    rawTeacherName = 'Öğretmen';
   }
   const teacherDisplayName = rawTeacherName;
 
@@ -83,11 +79,8 @@ export const Header: React.FC<HeaderProps> = ({
       ?.replace(/\s*\([^)]*\)/g, '')
       ?.trim() || '';
 
-  if (rawAdminName && !rawAdminName.includes(' ')) {
-    rawAdminName = `${rawAdminName} Yılmaz`;
-  }
   if (!rawAdminName) {
-    rawAdminName = 'Olcayto Yılmaz';
+    rawAdminName = 'Yönetici';
   }
   const adminDisplayName = rawAdminName;
 

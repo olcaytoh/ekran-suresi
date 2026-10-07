@@ -995,6 +995,7 @@ export default function App() {
   // "kurum oluştur / sınıf oluştur / sınıfa katıl" gibi işlemleri yerel
   // demoProfile üzerinde günceller (Firestore'a yazmaya çalışmaz).
   const handleDemoProfileUpdate = (updates: Partial<UserProfile>) => {
+    setUserProfile((prev) => (prev ? { ...prev, ...updates } : prev));
     if (activeLocalProfile) {
       setActiveLocalProfile((prev) => {
         if (!prev) return prev;

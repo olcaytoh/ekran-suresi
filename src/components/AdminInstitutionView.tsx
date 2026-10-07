@@ -33,7 +33,6 @@ import {
   Sparkles,
   Share2,
   CheckCircle2,
-  Mail,
   RotateCcw,
   Send,
   ShieldCheck,
