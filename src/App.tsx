@@ -84,7 +84,18 @@ export default function App() {
   // Listen to custom local profile changes
   useEffect(() => {
     const handleAuthChange = (e: any) => {
-      setActiveLocalProfile(e.detail || null);
+      const nextProfile = e.detail || null;
+      setActiveLocalProfile(nextProfile);
+      if (nextProfile) {
+        setDemoProfile(null);
+        setAllUsers([]);
+        setClassroom(null);
+        setInstitutionClassrooms([]);
+        setClassStudentsMap({});
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('demoUserProfile');
+        }
+      }
     };
     window.addEventListener('app_auth_change', handleAuthChange);
     return () => window.removeEventListener('app_auth_change', handleAuthChange);
@@ -409,7 +420,7 @@ export default function App() {
         return next;
       });
 
-      if (authUser) {
+      if (authUser || activeLocalProfile) {
         await adminDeleteClassroom(classId, teacherUid);
       }
     } catch (err) {
@@ -589,31 +600,48 @@ export default function App() {
   // Listen to students/users list:
   useEffect(() => {
     if (authUser || activeLocalProfile) {
-      if (isTeacher && effectiveProfile?.classId) {
-        const unsubscribeStudents = subscribeClassroomStudents(
-          effectiveProfile.classId,
-          (students) => {
-            setAllUsers(students);
-          },
-          (err: any) => {
-            if (err?.code !== 'permission-denied') {
-              console.error('Error subscribing classroom students:', err);
+      if (isTeacher) {
+        const targetClassId = effectiveProfile?.classId || classroom?.id;
+        if (targetClassId) {
+          const unsubscribeStudents = subscribeClassroomStudents(
+            targetClassId,
+            (students) => {
+              setAllUsers(students);
+            },
+            (err: any) => {
+              if (err?.code !== 'permission-denied') {
+                console.error('Error subscribing classroom students:', err);
+              }
             }
-          }
-        );
-        return () => unsubscribeStudents();
+          );
+          return () => unsubscribeStudents();
+        } else {
+          // Yeni öğretmen hesabında henüz sınıf oluşturulmamışsa kesinlikle başka kullanıcıları getirme!
+          setAllUsers([]);
+          return;
+        }
+      } else if (isSuperAdmin) {
+        if (effectiveProfile?.institutionId) {
+          const unsubscribeAll = subscribeAllUsers(
+            (users) => {
+              setAllUsers(users);
+            },
+            (err: any) => {
+              if (err?.code !== 'permission-denied') {
+                console.error('Error subscribing all users:', err);
+              }
+            }
+          );
+          return () => unsubscribeAll();
+        } else {
+          // Yeni yönetici hesabında henüz kurum oluşturulmamışsa başka hesapları getirme!
+          setAllUsers([]);
+          return;
+        }
       } else {
-        const unsubscribeAll = subscribeAllUsers(
-          (users) => {
-            setAllUsers(users);
-          },
-          (err: any) => {
-            if (err?.code !== 'permission-denied') {
-              console.error('Error subscribing all users:', err);
-            }
-          }
-        );
-        return () => unsubscribeAll();
+        // Veli hesabı: başka hesapları listelemeye gerek yok
+        setAllUsers([]);
+        return;
       }
     } else if (demoProfile) {
       if (demoProfile.role === 'admin') {
@@ -667,7 +695,16 @@ export default function App() {
         );
       }
     }
-  }, [authUser, isTeacher, userProfile?.classId, demoProfile, classroom?.id]);
+  }, [
+    authUser,
+    activeLocalProfile,
+    isTeacher,
+    isSuperAdmin,
+    effectiveProfile?.classId,
+    effectiveProfile?.institutionId,
+    demoProfile,
+    classroom?.id,
+  ]);
 
   // Admin: Listen to all classrooms belonging to this admin's institution
   useEffect(() => {
@@ -739,7 +776,7 @@ export default function App() {
       });
       setClassStudentsMap(map);
     }
-  }, [authUser, demoProfile, isSuperAdmin, institutionClassrooms]);
+  }, [authUser, activeLocalProfile, demoProfile, isSuperAdmin, institutionClassrooms]);
 
   // Admin için kuruma ait sınıfların öğrencileri, öğretmen/veli için kendi sınıf/öğrenci listesi
   // (React Rules of Hooks uyarınca tüm hook'lar erken return'lerden önce çağrılmalıdır)
@@ -805,12 +842,15 @@ export default function App() {
     }
 
     // Öğretmen için: Sadece öğretmenin kendi sınıfındaki öğrenciler!
-    if (classroom?.id || effectiveProfile?.classId) {
+    if (classroom?.id || effectiveProfile?.classId || classroom?.code || effectiveProfile?.classCode) {
       const targetClassId = classroom?.id || effectiveProfile?.classId;
       const targetClassName = (classroom?.name || effectiveProfile?.className || '').trim().toLowerCase();
       const targetClassCode = (classroom?.code || effectiveProfile?.classCode || '').trim().toUpperCase();
 
       return allUsers.filter((u) => {
+        if (u.role === 'admin' || u.role === 'teacher' || u.userType === 'teacher' || u.uid === effectiveProfile?.uid) {
+          return false;
+        }
         if (targetClassId && u.classId === targetClassId) return true;
         if (targetClassCode && u.classCode && u.classCode.toUpperCase() === targetClassCode) return true;
         if (targetClassName && u.className && u.className.trim().toLowerCase() === targetClassName) return true;
@@ -818,7 +858,8 @@ export default function App() {
       });
     }
 
-    return allUsers;
+    // Henüz sınıf oluşturulmamışsa kesinlikle boş dizi döndür (başka hesaplar görünmesin)
+    return [];
   }, [
     isSuperAdmin,
     institutionClassrooms,
@@ -954,7 +995,28 @@ export default function App() {
       <AuthScreen
         onDemoLogin={handleDemoLogin}
         onLoginSuccess={(profile, isNewRegistration) => {
+          setDemoProfile(null);
+          setAllUsers([]);
+          setClassroom(null);
+          setInstitutionClassrooms([]);
+          setClassStudentsMap({});
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('demoUserProfile');
+          }
           setActiveLocalProfile(profile);
+          setParentTab('home');
+
+          if (
+            isNewRegistration &&
+            profile &&
+            !profile.classId &&
+            !profile.className &&
+            profile.role !== 'parent' &&
+            profile.userType !== 'parent'
+          ) {
+            setShowClassSetup(true);
+          }
+
           // Veli bilgilendirme rehberi sadece üye olduktan sonra ilk açılışta 1 kere gösterilsin, her girişte değil
           if (
             isNewRegistration &&

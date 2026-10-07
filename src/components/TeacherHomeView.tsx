@@ -125,19 +125,29 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
     return () => unsub();
   }, []);
 
-  const classCode = classroom?.code || teacherProfile?.classCode || 'SINIF4A';
-  const className = classroom?.name || teacherProfile?.className || '4-A Sınıfı';
+  const classCode = classroom?.code || teacherProfile?.classCode || '';
+  const className = classroom?.name || teacherProfile?.className || '';
   const targetCount = classroom?.studentTargetCount || 25;
+  const hasClassroom = Boolean(classroom?.id || teacherProfile?.classId || classCode);
 
-  // Filter out teacher themself
+  // Sadece öğretmenin kendi sınıfına kayıtlı öğrencileri göster; henüz sınıf oluşturulmamışsa kesinlikle boş liste döndür
   const studentList = users.filter((u) => {
-    if (u.role === 'admin' || (u.userType === 'teacher' && u.uid === currentUserId)) {
+    if (u.role === 'admin' || u.role === 'teacher' || u.userType === 'teacher' || u.uid === currentUserId) {
       return false;
     }
-    if (classroom?.id && u.classId) {
-      return u.classId === classroom.id;
+    const targetClassId = classroom?.id || teacherProfile?.classId;
+    const targetClassCode = (classroom?.code || teacherProfile?.classCode || '').trim().toUpperCase();
+
+    if (!targetClassId && !targetClassCode) {
+      return false;
     }
-    return true;
+    if (targetClassId && u.classId === targetClassId) {
+      return true;
+    }
+    if (targetClassCode && u.classCode && u.classCode.trim().toUpperCase() === targetClassCode) {
+      return true;
+    }
+    return false;
   });
 
   // Calculate statistics
@@ -589,20 +599,29 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         {/* Öğrenci Kartları Listesi */}
         <div className="space-y-1.5 pt-1">
           {sortedStudents.length === 0 ? (
-            <div className="p-6 text-center rounded-2xl bg-white/60 backdrop-blur-md border border-white space-y-2">
+            <div className="p-6 text-center rounded-2xl bg-white/60 backdrop-blur-md border border-white space-y-2.5">
               <Users className="w-8 h-8 text-slate-400 mx-auto" />
               <p className="text-xs font-bold text-slate-700">
-                {searchQuery ? 'Aramanıza uygun öğrenci bulunamadı' : 'Sınıfta henüz kayıtlı öğrenci yok'}
+                {searchQuery
+                  ? 'Aramanıza uygun öğrenci bulunamadı'
+                  : !hasClassroom
+                  ? 'Henüz sınıfınız oluşturulmadı. Kayıtlı öğrenci veya veli bulunmuyor.'
+                  : 'Sınıfınızda henüz kayıtlı öğrenci / veli bulunmuyor.'}
               </p>
-              {!searchQuery && (
+              {!searchQuery && !hasClassroom && onOpenClassSetup && (
                 <button
                   type="button"
-                  onClick={handleSeedDemoStudents}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-cyan-700 bg-cyan-50 border border-cyan-100 cursor-pointer hover:bg-cyan-100"
+                  onClick={onOpenClassSetup}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer shadow-xs transition-all active:scale-95"
                 >
-                  <UserPlus className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>Örnek 25 Öğrenci Yükle</span>
+                  <UserPlus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Sınıfımı Oluştur</span>
                 </button>
+              )}
+              {!searchQuery && hasClassroom && classCode && (
+                <p className="text-[11px] text-slate-500 max-w-xs mx-auto leading-relaxed">
+                  Velileriniz <strong className="text-indigo-700 font-mono">{classCode}</strong> sınıf kodunu girerek sınıfınıza katıldığında burada listelenecektir.
+                </p>
               )}
             </div>
           ) : (

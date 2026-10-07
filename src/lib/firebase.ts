@@ -1461,7 +1461,7 @@ export async function joinInstitutionWithCode(
     }
   }
 
-  // Also link any classes created by this teacher
+  // Also link any classes created by this teacher and their students
   try {
     const classesQ = query(collection(db, 'classes'), where('teacherUid', '==', userUid));
     const classesSnap = await getDocs(classesQ);
@@ -1476,6 +1476,20 @@ export async function joinInstitutionWithCode(
         },
         { merge: true }
       );
+      const studentsQ = query(collection(db, 'users'), where('classId', '==', cDoc.id));
+      const studentsSnap = await getDocs(studentsQ);
+      for (const sDoc of studentsSnap.docs) {
+        await setDoc(
+          sDoc.ref,
+          {
+            institutionId: instDoc.id,
+            institutionCode: instData.code,
+            institutionName: instData.name,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
     }
   } catch (err) {
     console.warn('Could not link teacher classes to institution:', err);
@@ -2198,12 +2212,12 @@ export function subscribeClassroomStudents(
     (snap) => {
       const list: UserProfile[] = [];
       snap.forEach((d) => {
-        const item = d.data() as UserProfile;
+        const item = { uid: d.id, ...(d.data() as Partial<UserProfile>) } as UserProfile;
         if (item.role === 'parent' || item.userType === 'parent' || item.studentName) {
           list.push(item);
         }
       });
-      list.sort((a, b) => (a.studentName || a.displayName || '').localeCompare(b.studentName || b.displayName || 'tr'));
+      list.sort((a, b) => (a.studentName || a.displayName || '').localeCompare(b.studentName || b.displayName || '', 'tr'));
       onUpdate(list);
     },
     (err) => {

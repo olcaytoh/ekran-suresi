@@ -445,16 +445,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                       <KeyRound className="w-3 h-3" />
                       <span>Yeni Şifre Belirleme Bağlantısı Gönder</span>
                     </button>
-
-                    <button
-                      type="button"
-                      id="btn-error-instant-login"
-                      onClick={handleQuickInstantLogin}
-                      className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 shadow-xs"
-                    >
-                      <Zap className="w-3 h-3" />
-                      <span>Şifresiz Hızlı Giriş Yap</span>
-                    </button>
                   </div>
                 </div>
               )}
@@ -627,53 +617,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               )}
             </button>
           </form>
-
-          {/* Test / İnceleme Giriş Butonları */}
-          <div className="pt-0.5 flex flex-col gap-0.5">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[9.5px] font-black text-slate-800 uppercase tracking-wider drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
-                Test / İnceleme Girişleri
-              </span>
-              <span className="text-[8.5px] text-slate-700 bg-white/75 px-1.5 py-0.5 rounded-md font-bold shadow-2xs">
-                Hızlı Giriş
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                id="btn-quick-teacher-card"
-                onClick={() => handleTestLogin('teacher')}
-                className="py-1 px-1 bg-gradient-to-br from-indigo-200/60 via-sky-100/50 to-white/40 hover:from-indigo-200/75 backdrop-blur-md active:scale-95 text-indigo-950 border-2 border-indigo-300/70 rounded-2xl text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-[0_0_14px_rgba(99,102,241,0.35),inset_0_1px_0_rgba(255,255,255,0.5)] h-7"
-                title="Öğretmen Test Girişi"
-              >
-                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span className="truncate leading-none">Öğretmen</span>
-              </button>
-
-              <button
-                type="button"
-                id="btn-quick-parent-card"
-                onClick={() => handleTestLogin('parent')}
-                className="py-1 px-1 bg-gradient-to-br from-emerald-200/60 via-teal-100/50 to-white/40 hover:from-emerald-200/75 backdrop-blur-md active:scale-95 text-emerald-950 border-2 border-emerald-300/70 rounded-2xl text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-[0_0_14px_rgba(16,185,129,0.35),inset_0_1px_0_rgba(255,255,255,0.5)] h-7"
-                title="Veli Test Girişi"
-              >
-                <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="truncate leading-none">Veli</span>
-              </button>
-
-              <button
-                type="button"
-                id="btn-quick-admin-card"
-                onClick={() => handleTestLogin('admin')}
-                className="py-1 px-1 bg-gradient-to-br from-amber-200/60 via-rose-100/50 to-white/40 hover:from-amber-200/75 backdrop-blur-md active:scale-95 text-rose-950 border-2 border-amber-300/70 rounded-2xl text-[10.5px] font-black cursor-pointer transition-all flex flex-row items-center justify-center gap-1 shadow-[0_0_14px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.5)] h-7"
-                title="Yönetici (Olcayto) Test Girişi"
-              >
-                <span className="text-xs leading-none">👑</span>
-                <span className="truncate leading-none">Yönetici</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

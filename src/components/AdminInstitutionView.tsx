@@ -187,13 +187,36 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [sendingResetForUid, setSendingResetForUid] = useState<string | null>(null);
   const [roleChangingUser, setRoleChangingUser] = useState<UserProfile | null>(null);
 
-  // Comprehensive Registered Users List
+  // Comprehensive Registered Users List (Sadece bu yöneticinin kurumuna ve sınıflarına ait hesaplar!)
   const allRegisteredUsers = useMemo(() => {
     const map = new Map<string, UserProfile>();
+    const instId = currentUser?.institutionId;
+    const instCode = (currentInstCode || currentUser?.institutionCode || '').trim().toUpperCase();
+    const hasInstitution = Boolean(instId || instCode);
+    const classIds = new Set(classrooms.map((c) => c.id));
+    const classCodes = new Set(classrooms.map((c) => (c.code || '').trim().toUpperCase()));
 
-    // 1. From allUsers
+    // Eğer yönetici henüz kurum kodu oluşturmamışsa, kendi hesabı dışında kesinlikle hiçbir hesabı gösterme!
+    if (!hasInstitution) {
+      return [];
+    }
+
+    // 1. From allUsers (only if belonging to this institution or one of its classrooms)
     (allUsers || []).forEach((u) => {
-      if (u.uid) map.set(u.uid, u);
+      if (!u.uid) return;
+      const isCurrentUser = u.uid === currentUser?.uid;
+      const matchesInstId = Boolean(instId && u.institutionId === instId);
+      const matchesInstCode = Boolean(
+        instCode && u.institutionCode && u.institutionCode.trim().toUpperCase() === instCode
+      );
+      const matchesClassId = Boolean(u.classId && classIds.has(u.classId));
+      const matchesClassCode = Boolean(
+        u.classCode && classCodes.has(u.classCode.trim().toUpperCase())
+      );
+
+      if (isCurrentUser || matchesInstId || matchesInstCode || matchesClassId || matchesClassCode) {
+        map.set(u.uid, u);
+      }
     });
 
     // 2. From classrooms teachers
@@ -232,7 +255,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     });
 
     return Array.from(map.values());
-  }, [allUsers, classrooms, studentsByClass]);
+  }, [allUsers, classrooms, studentsByClass, currentUser?.uid, currentUser?.institutionId, currentUser?.institutionCode, currentInstCode]);
 
   // Filtered Registered Users
   const filteredRegisteredUsers = useMemo(() => {
@@ -538,7 +561,16 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     }
   };
 
-  // Kurum İstatistikleri
+  // Kuruma bağlanmış ama henüz sınıf oluşturmamış öğretmenler
+  const connectedTeachersWithoutClass = useMemo(() => {
+    const classTeacherUids = new Set(classrooms.map((c) => c.teacherUid).filter(Boolean));
+    return allRegisteredUsers.filter(
+      (u) =>
+        u.role === 'teacher' &&
+        u.uid !== currentUser?.uid &&
+        !classTeacherUids.has(u.uid)
+    );
+  }, [allRegisteredUsers, classrooms, currentUser?.uid]);
   const overall = useMemo(() => {
     const allStudents: UserProfile[] = [];
     Object.values(studentsByClass).forEach((list) => {
@@ -550,17 +582,27 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
   const institutionStudents = useMemo(() => {
     const list: UserProfile[] = [];
+    const seen = new Set<string>();
     Object.values(studentsByClass).forEach((clList) => {
       const studentList = (clList || []) as UserProfile[];
-      list.push(...studentList);
+      studentList.forEach((st) => {
+        if (st.uid && !seen.has(st.uid)) {
+          seen.add(st.uid);
+          list.push(st);
+        }
+      });
     });
-    if (list.length === 0 && allUsers.length > 0) {
+    if (list.length === 0 && allUsers.length > 0 && currentUser?.institutionId) {
       return allUsers.filter(
-        (u) => u.role !== 'admin' && u.userType !== 'teacher' && u.role !== 'teacher'
+        (u) =>
+          u.institutionId === currentUser.institutionId &&
+          u.role !== 'admin' &&
+          u.userType !== 'teacher' &&
+          u.role !== 'teacher'
       );
     }
     return list;
-  }, [studentsByClass, allUsers]);
+  }, [studentsByClass, allUsers, currentUser?.institutionId]);
 
   // --------------------------------------------------------------
   // 1. TEK BİR SINIFIN İÇİNE GİRİLDİĞİNDE GÖSTERİLECEK DETAY GÖRÜNÜMÜ
@@ -1365,7 +1407,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           }`}
         >
           <School className={`w-4 h-4 ${adminSection === 'classrooms' ? 'text-indigo-600' : 'text-slate-600'}`} />
-          <span>Sınıflar &amp; Öğretmenler ({classrooms.length})</span>
+          <span>Sınıflar &amp; Öğretmenler ({classrooms.length + connectedTeachersWithoutClass.length})</span>
         </button>
 
         <button
@@ -1453,10 +1495,10 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           <div className="space-y-1.5">
             <h3 className="text-xs font-black text-slate-900 flex items-center gap-1.5 px-1 [font-family:inherit]">
               <GraduationCap className="w-4 h-4 text-indigo-600" />
-              <span>Öğretmenler &amp; Sınıflar ({classrooms.length})</span>
+              <span>Öğretmenler &amp; Sınıflar ({classrooms.length + connectedTeachersWithoutClass.length})</span>
             </h3>
 
-            {classrooms.length === 0 ? (
+            {classrooms.length === 0 && connectedTeachersWithoutClass.length === 0 ? (
               <div
                 className="rounded-3xl p-8 text-center space-y-2.5 backdrop-blur-md"
                 style={{
@@ -1475,117 +1517,166 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 </p>
               </div>
             ) : (
-              classrooms.map((classroom) => {
-                const students = studentsByClass[classroom.id] || [];
-                const stats = computeClassStats(students);
-                const hasCritical = stats.criticalCount > 0;
+              <>
+                {classrooms.map((classroom) => {
+                  const students = studentsByClass[classroom.id] || [];
+                  const stats = computeClassStats(students);
+                  const hasCritical = stats.criticalCount > 0;
 
-                return (
+                  return (
+                    <div
+                      key={classroom.id}
+                      onClick={() => setSelectedClassId(classroom.id)}
+                      className="relative z-10 w-full text-left rounded-2xl p-2 sm:p-2.5 transition-all duration-150 cursor-pointer overflow-hidden backdrop-blur-md hover:scale-[1.01] active:scale-[0.99]"
+                      style={{
+                        background: hasCritical
+                          ? 'rgba(255, 241, 242, 0.32)'
+                          : 'rgba(255, 255, 255, 0.25)',
+                        backdropFilter: 'blur(18px)',
+                        WebkitBackdropFilter: 'blur(18px)',
+                        border: hasCritical
+                          ? '1.5px solid rgba(244, 63, 94, 0.45)'
+                          : '1px solid rgba(255, 255, 255, 0.55)',
+                        boxShadow:
+                          '0 4px 14px rgba(0, 0, 0, 0.06), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
+                      }}
+                    >
+                      {/* Üst cam parlama efekti */}
+                      <div
+                        className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
+                        style={{
+                          background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent)',
+                        }}
+                      />
+
+                      <div className="relative z-10 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center border flex-shrink-0 backdrop-blur-xs ${
+                              hasCritical
+                                ? 'bg-rose-100/60 text-rose-600 border-rose-200/70'
+                                : 'bg-emerald-100/60 text-emerald-700 border-emerald-200/70'
+                            }`}
+                          >
+                            <School className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 leading-none">
+                            <h4 className="text-xs font-black text-slate-900 truncate leading-none [font-family:inherit]">{classroom.name}</h4>
+                            <p className="text-[9.5px] text-slate-800 truncate font-semibold leading-none mt-1">
+                              Öğretmen: {classroom.teacherName} • {stats.totalStudents}/
+                              {classroom.studentTargetCount || 25} öğr.
+                            </p>
+                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                              <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-white/60 text-slate-800 border border-white/70 leading-none">
+                                Ort: {stats.avgMinutes} dk
+                              </span>
+                              {hasCritical && (
+                                <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-rose-100/60 text-rose-800 border border-rose-200/70 leading-none flex items-center gap-0.5">
+                                  <Flame className="w-2 h-2 text-rose-600" />
+                                  <span>{stats.criticalCount} Kırmızı</span>
+                                </span>
+                              )}
+                              <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-emerald-100/60 text-emerald-800 border border-emerald-200/70 leading-none">
+                                {stats.safeCount} Güvenli
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            id={`btn-export-class-${classroom.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExportClassId(classroom.id);
+                              setIsStatsExportModalOpen(true);
+                            }}
+                            title="Bu sınıfın haftalık istatistik ve ekran süresi raporunu al"
+                            className="p-1.5 rounded-lg bg-white/50 hover:bg-emerald-100 text-emerald-800 border border-white/70 transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
+                          >
+                            <FileSpreadsheet className="w-3.5 h-3.5" />
+                          </button>
+                          {onSwitchToTeacherMode && (
+                            <button
+                              type="button"
+                              id={`btn-view-as-teacher-${classroom.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSwitchToTeacherMode(classroom);
+                              }}
+                              title="Bu sınıfı öğretmen hesabıyla incele"
+                              className="p-1.5 rounded-lg bg-white/50 hover:bg-indigo-100 text-indigo-800 border border-white/70 transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
+                            >
+                              <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            id={`btn-delete-class-${classroom.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClassToDelete(classroom);
+                            }}
+                            title="Sınıfı & Öğretmeni Kurumdan Sil"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white/40 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {connectedTeachersWithoutClass.map((teacher) => (
                   <div
-                    key={classroom.id}
-                    onClick={() => setSelectedClassId(classroom.id)}
-                    className="relative z-10 w-full text-left rounded-2xl p-2 sm:p-2.5 transition-all duration-150 cursor-pointer overflow-hidden backdrop-blur-md hover:scale-[1.01] active:scale-[0.99]"
+                    key={teacher.uid}
+                    className="relative z-10 w-full text-left rounded-2xl p-2 sm:p-2.5 transition-all duration-150 overflow-hidden backdrop-blur-md"
                     style={{
-                      background: hasCritical
-                        ? 'rgba(255, 241, 242, 0.32)'
-                        : 'rgba(255, 255, 255, 0.25)',
+                      background: 'rgba(255, 255, 255, 0.25)',
                       backdropFilter: 'blur(18px)',
                       WebkitBackdropFilter: 'blur(18px)',
-                      border: hasCritical
-                        ? '1.5px solid rgba(244, 63, 94, 0.45)'
-                        : '1px solid rgba(255, 255, 255, 0.55)',
+                      border: '1px solid rgba(255, 255, 255, 0.55)',
                       boxShadow:
-                        '0 4px 14px rgba(0, 0, 0, 0.06), inset 0 1px 1.5px rgba(255, 255, 255, 0.7), inset 0 -1px 1px rgba(255, 255, 255, 0.15)',
+                        '0 4px 14px rgba(0, 0, 0, 0.06), inset 0 1px 1.5px rgba(255, 255, 255, 0.7)',
                     }}
                   >
-                    {/* Üst cam parlama efekti */}
-                    <div
-                      className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-2xl"
-                      style={{
-                        background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent)',
-                      }}
-                    />
-
                     <div className="relative z-10 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center border flex-shrink-0 backdrop-blur-xs ${
-                            hasCritical
-                              ? 'bg-rose-100/60 text-rose-600 border-rose-200/70'
-                              : 'bg-emerald-100/60 text-emerald-700 border-emerald-200/70'
-                          }`}
-                        >
-                          <School className="w-4 h-4" />
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center border flex-shrink-0 backdrop-blur-xs bg-indigo-100/60 text-indigo-700 border-indigo-200/70">
+                          <GraduationCap className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 leading-none">
-                          <h4 className="text-xs font-black text-slate-900 truncate leading-none [font-family:inherit]">{classroom.name}</h4>
-                          <p className="text-[9.5px] text-slate-800 truncate font-semibold leading-none mt-1">
-                            Öğretmen: {classroom.teacherName} • {stats.totalStudents}/
-                            {classroom.studentTargetCount || 25} öğr.
-                          </p>
-                          <div className="flex items-center gap-1 mt-1 flex-wrap">
-                            <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-white/60 text-slate-800 border border-white/70 leading-none">
-                              Ort: {stats.avgMinutes} dk
-                            </span>
-                            {hasCritical && (
-                              <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-rose-100/60 text-rose-800 border border-rose-200/70 leading-none flex items-center gap-0.5">
-                                <Flame className="w-2 h-2 text-rose-600" />
-                                <span>{stats.criticalCount} Kırmızı</span>
-                              </span>
-                            )}
-                            <span className="text-[8px] font-black px-1 py-0.5 rounded-full bg-emerald-100/60 text-emerald-800 border border-emerald-200/70 leading-none">
-                              {stats.safeCount} Güvenli
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs font-black text-slate-900 truncate leading-none [font-family:inherit]">
+                              {teacher.displayName || 'Öğretmen'}
+                            </h4>
+                            <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-amber-100/70 text-amber-800 border border-amber-300/70">
+                              Henüz Sınıf Oluşturmadı
                             </span>
                           </div>
+                          <p className="text-[9.5px] text-slate-700 truncate font-semibold leading-none mt-1">
+                            {teacher.email || 'Kuruma Bağlı Öğretmen'}
+                          </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           type="button"
-                          id={`btn-export-class-${classroom.id}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExportClassId(classroom.id);
-                            setIsStatsExportModalOpen(true);
-                          }}
-                          title="Bu sınıfın haftalık istatistik ve ekran süresi raporunu al"
-                          className="p-1.5 rounded-lg bg-white/50 hover:bg-emerald-100 text-emerald-800 border border-white/70 transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
-                        >
-                          <FileSpreadsheet className="w-3.5 h-3.5" />
-                        </button>
-                        {onSwitchToTeacherMode && (
-                          <button
-                            type="button"
-                            id={`btn-view-as-teacher-${classroom.id}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSwitchToTeacherMode(classroom);
-                            }}
-                            title="Bu sınıfı öğretmen hesabıyla incele"
-                            className="p-1.5 rounded-lg bg-white/50 hover:bg-indigo-100 text-indigo-800 border border-white/70 transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
-                          >
-                            <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          id={`btn-delete-class-${classroom.id}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setClassToDelete(classroom);
-                          }}
-                          title="Sınıfı & Öğretmeni Kurumdan Sil"
+                          onClick={() => setUserToReset(teacher)}
+                          title="Bu öğretmen hesabını sil / sıfırla"
                           className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white/40 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                       </div>
                     </div>
                   </div>
-                );
-              })
+                ))}
+              </>
             )}
           </div>
         </div>

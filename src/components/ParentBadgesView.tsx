@@ -160,8 +160,12 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
           (s.className && validClassNames.has(s.className.trim().toLowerCase()))
       );
     }
+    // Öğretmen veya yönetici hesabında henüz sınıf oluşturulmamışsa kesinlikle boş liste döndür
+    if (isTeacher || isSuperAdmin) {
+      return [];
+    }
     return students;
-  }, [students, classrooms, selectedClassId]);
+  }, [students, classrooms, selectedClassId, isTeacher, isSuperAdmin]);
 
   // Modal ve başlık için dinamik sınıf adı
   const activeClassNameTitle = useMemo(() => {
