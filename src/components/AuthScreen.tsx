@@ -3,7 +3,8 @@ import {
   registerWithEmailAndPassword,
   signInWithEmailAndPasswordAuth,
   signInAsGuest,
-  resetPasswordEmail,
+  sendNonExpiringResetCode,
+  verifyAndConfirmResetCode,
   getFriendlyAuthErrorMessage,
   syncUserProfile,
 } from '../lib/firebase';
@@ -26,6 +27,7 @@ import {
   KeyRound,
   CheckCircle2,
   Zap,
+  X,
 } from 'lucide-react';
 
 interface AuthScreenProps {
@@ -54,6 +56,42 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
   const [videoReady, setVideoReady] = useState(false);
   const [showForm, setShowForm] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // In-App Password Reset Modal States (Requires email verification link/oobCode)
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetEmailInput, setResetEmailInput] = useState('');
+  const [resetCodeOrLinkInput, setResetCodeOrLinkInput] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
+  const [oobCodeParam, setOobCodeParam] = useState<string | null>(null);
+
+  // Detect if user opened a password reset link with ?mode=resetPassword&oobCode=... or ?permanentCode=...
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlMode = params.get('mode');
+      const urlOob = params.get('oobCode');
+      const urlPermCode = params.get('permanentCode');
+      const urlResetEmail = params.get('resetEmail');
+      if (urlResetEmail) {
+        setResetEmailInput(urlResetEmail);
+        setEmail(urlResetEmail);
+      }
+      if (urlPermCode) {
+        setOobCodeParam(urlPermCode);
+        setResetCodeOrLinkInput(urlPermCode);
+        setIsResetModalOpen(true);
+      } else if (urlMode === 'resetPassword' && urlOob) {
+        setOobCodeParam(urlOob);
+        setResetCodeOrLinkInput(urlOob);
+        setIsResetModalOpen(true);
+      }
+    }
+  }, []);
 
   // Guarantee autoplay without black screen or play overlay
   useEffect(() => {
@@ -217,24 +255,79 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
     }
   };
 
-  const handlePasswordReset = async () => {
-    const cleanEmail = email.trim();
-    if (!cleanEmail) {
-      setError('Lütfen önce e-posta adresinizi yukarıdaki alana yazınız.');
+  const handlePasswordReset = () => {
+    setResetEmailInput(email.trim());
+    setResetCodeOrLinkInput(oobCodeParam || '');
+    setResetNewPassword('');
+    setResetConfirmPassword('');
+    setResetError(null);
+    setResetSuccess(null);
+    setIsResetModalOpen(true);
+  };
+
+  const handleConfirmInAppReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    setResetSuccess(null);
+
+    const codeOrLink = (oobCodeParam || resetCodeOrLinkInput).trim();
+    if (!codeOrLink) {
+      setResetError('Lütfen 1. Adım ile e-postanıza kod gönderin ve gelen 6 haneli kodu (veya maildeki bağlantıyı) kutucuğa giriniz.');
+      return;
+    }
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      setResetError('Yeni şifreniz en az 6 karakter olmalıdır.');
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetError('Girdiğiniz yeni şifreler birbiriyle eşleşmiyor.');
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      const updatedProfile = await verifyAndConfirmResetCode(
+        codeOrLink,
+        resetNewPassword,
+        rememberMe,
+        resetEmailInput.trim() || email.trim()
+      );
+      setEmail(updatedProfile.email || resetEmailInput);
+      setPassword(resetNewPassword);
+      setResetSuccess('Doğrulama başarılı! Yeni şifreniz kaydedildi, giriş yapılıyor...');
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      setOobCodeParam(null);
+      setTimeout(() => {
+        setIsResetModalOpen(false);
+        onLoginSuccess?.(updatedProfile, false);
+      }, 600);
+    } catch (err: any) {
+      console.warn('Password reset verification error:', err);
+      setResetError(err?.message || getFriendlyAuthErrorMessage(err));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleSendResetLinkOnly = async () => {
+    const targetEmail = resetEmailInput.trim().toLowerCase();
+    if (!targetEmail) {
+      setResetError('Lütfen önce e-posta adresinizi giriniz.');
       return;
     }
     try {
-      setLoading(true);
-      setError(null);
-      await resetPasswordEmail(cleanEmail);
-      setSuccessMsg(
-        `"${cleanEmail}" adresinize yeni şifre belirleme/sıfırlama bağlantısı gönderildi! Lütfen gelen kutunuzu (ve spam klasörünü) kontrol ederek yeni 6 haneli şifrenizi belirleyin, ardından buradan o şifreyle giriş yapın.`
+      setResetLoading(true);
+      setResetError(null);
+      await sendNonExpiringResetCode(targetEmail);
+      setResetSuccess(
+        `"${targetEmail}" adresine SÜRESİZ şifre sıfırlama kodunuz gönderildi! Gelen e-postadaki 6 haneli kodu (veya maildeki bağlantıyı kopyalayıp) aşağıdaki 2. Adım kutusuna yapıştırarak yeni şifrenizi hemen kaydedebilirsiniz.`
       );
     } catch (err: any) {
-      console.warn('Password reset error:', err);
-      setError(getFriendlyAuthErrorMessage(err));
+      setResetError(getFriendlyAuthErrorMessage(err));
     } finally {
-      setLoading(false);
+      setResetLoading(false);
     }
   };
 
@@ -619,6 +712,169 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
           </form>
         </div>
       </div>
+
+      {/* Uygulama İçi Doğrudan Şifre Sıfırlama / Yeni Şifre Belirleme Modalı */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="relative rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200 border border-white/80 shadow-2xl"
+            style={{
+              background: 'rgba(255, 255, 255, 0.94)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setIsResetModalOpen(false);
+                setResetError(null);
+                setResetSuccess(null);
+              }}
+              className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Kapat"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200">
+              <KeyRound className="w-6 h-6 stroke-[2.5]" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-sm font-black text-slate-900">
+                Kod ile Şifre Sıfırlama (Süresiz Kod)
+              </h3>
+              <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                E-postanıza gönderilen <strong>süresiz doğrulama kodunu</strong> (veya maildeki bağlantıyı) girerek yeni şifrenizi hemen belirleyebilirsiniz.
+              </p>
+            </div>
+
+            {resetError && (
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-semibold flex items-start gap-1.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{resetError}</span>
+              </div>
+            )}
+
+            {resetSuccess && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-start gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>{resetSuccess}</span>
+              </div>
+            )}
+
+            {/* 1. ADIM: E-postaya Süresiz Kod Gönder */}
+            {!oobCodeParam && (
+              <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-2">
+                <div className="text-[11px] font-black text-indigo-950">
+                  1. Adım: E-Postanıza Süresiz Kod Gönderin
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="relative flex-1">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="email"
+                      value={resetEmailInput}
+                      onChange={(e) => setResetEmailInput(e.target.value)}
+                      placeholder="Kayıtlı e-posta adresiniz"
+                      className="w-full pl-8 pr-2.5 py-2 rounded-xl bg-white border border-indigo-200 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSendResetLinkOnly}
+                    disabled={resetLoading}
+                    className="px-3 py-2 rounded-xl text-[11px] font-black text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all cursor-pointer shrink-0 shadow-xs disabled:opacity-60"
+                  >
+                    Kod Gönder
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-600 leading-tight font-medium">
+                  ✅ <strong>Süresizdir:</strong> E-postanıza gelen <strong>6 haneli kodu</strong> (veya maildeki linki kopyalayıp) aşağıdaki kutuya girdiğinizde, tarayıcıda <em>&quot;expired&quot;</em> yazsa bile süresiz olarak kabul edilir.
+                </p>
+              </div>
+            )}
+
+            {/* 2. ADIM: Gelen Süresiz Kod ile Yeni Şifreyi Kaydet */}
+            <form onSubmit={handleConfirmInAppReset} className="space-y-2.5 pt-1">
+              {!oobCodeParam && (
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black text-slate-800">
+                    2. Adım: E-Postaya Gelen Doğrulama Kodu (Süresiz):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={resetCodeOrLinkInput}
+                    onChange={(e) => setResetCodeOrLinkInput(e.target.value)}
+                    placeholder="6 haneli kodu veya maildeki linki buraya yapıştırın..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700">Yeni Şifreniz (En az 6 karakter):</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    placeholder="Yeni şifreniz"
+                    className="w-full pl-9 pr-9 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPassword(!showResetPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-700 cursor-pointer"
+                    tabIndex={-1}
+                  >
+                    {showResetPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-700">Yeni Şifreniz (Tekrar):</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type={showResetPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={resetConfirmPassword}
+                    onChange={(e) => setResetConfirmPassword(e.target.value)}
+                    placeholder="Yeni şifrenizi tekrar yazın"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={resetLoading}
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                {resetLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Doğrulanıyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Doğrula ve Yeni Şifreyi Kaydet</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

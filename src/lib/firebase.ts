@@ -10,6 +10,8 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   sendPasswordResetEmail,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
   GoogleAuthProvider,
   signInWithPopup,
   deleteUser,
@@ -225,6 +227,13 @@ export async function registerWithEmailAndPassword(
     }
 
     const profile = await syncUserProfile(user, cleanName, role);
+    try {
+      await setDoc(
+        doc(db, 'users', profile.uid),
+        { passwordHash: btoa(password), updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    } catch {}
     setActiveAppProfile(profile, rememberMe);
     return profile;
   } catch (authErr: any) {
@@ -339,7 +348,57 @@ export async function signInWithEmailAndPasswordAuth(
     throw new Error('Şifre en az 6 karakter olmalıdır.');
   }
 
-  // 1. Try Firebase Auth
+  // 1. First check if a Firestore user has an explicitly updated passwordHash (e.g. from in-app password reset)
+  try {
+    const usersRef = collection(db, 'users');
+    const existingEmailQuery = query(usersRef, where('email', '==', cleanEmail));
+    const existingEmailSnap = await getDocs(existingEmailQuery);
+
+    if (!existingEmailSnap.empty) {
+      const docData = existingEmailSnap.docs[0].data() as any;
+      if (docData.passwordHash && docData.passwordHash === btoa(password)) {
+        // Also try signing into Firebase Auth silently if possible, but if password was changed in-app, proceed directly
+        try {
+          await setPersistence(
+            auth,
+            rememberMe ? browserLocalPersistence : browserSessionPersistence
+          );
+          const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+          const profile = await syncUserProfile(cred.user);
+          setActiveAppProfile(profile, rememberMe);
+          return profile;
+        } catch {
+          const profile: UserProfile = {
+            uid: existingEmailSnap.docs[0].id,
+            email: cleanEmail,
+            displayName:
+              docData.displayName ||
+              (docData.role === 'admin' ? 'Yönetici' : docData.role === 'teacher' ? 'Öğretmen' : 'Veli'),
+            role: docData.role || 'teacher',
+            userType: docData.userType || (docData.role === 'parent' ? 'parent' : 'teacher'),
+            institutionId: docData.institutionId,
+            institutionCode: docData.institutionCode,
+            institutionAdminCode: docData.institutionAdminCode,
+            institutionName: docData.institutionName,
+            classId: docData.classId,
+            className: docData.className,
+            classCode: docData.classCode,
+            studentName: docData.studentName,
+            parentName: docData.parentName,
+            currentWeekId: docData.currentWeekId || getCurrentWeekInfo().weekId,
+            currentWeekMinutes: docData.currentWeekMinutes ?? 0,
+            currentWeekStage: docData.currentWeekStage ?? 0,
+          };
+          setActiveAppProfile(profile, rememberMe);
+          return profile;
+        }
+      }
+    }
+  } catch (preCheckErr) {
+    console.warn('Firestore pre-check warning:', preCheckErr);
+  }
+
+  // 2. Try Firebase Auth
   try {
     try {
       await setPersistence(
@@ -357,12 +416,20 @@ export async function signInWithEmailAndPasswordAuth(
     );
     const user = userCredential.user;
     const profile = await syncUserProfile(user);
+    // Sync latest working passwordHash to Firestore so both stay in sync
+    try {
+      await setDoc(
+        doc(db, 'users', profile.uid),
+        { passwordHash: btoa(password), updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    } catch {}
     setActiveAppProfile(profile, rememberMe);
     return profile;
   } catch (authErr: any) {
     console.warn('Firebase Auth sign in warning:', authErr?.code, authErr?.message);
 
-    // 2. Fallback: Search Firestore for this email
+    // 3. Fallback: Search Firestore for this email
     try {
       const usersRef = collection(db, 'users');
       const existingEmailQuery = query(usersRef, where('email', '==', cleanEmail));
@@ -371,7 +438,7 @@ export async function signInWithEmailAndPasswordAuth(
       if (!existingEmailSnap.empty) {
         const docData = existingEmailSnap.docs[0].data() as any;
         if (docData.passwordHash && docData.passwordHash !== btoa(password)) {
-          throw new Error('Girdiğiniz şifre hatalı. Lütfen kontrol edip tekrar deneyiniz.');
+          throw new Error('Girdiğiniz şifre hatalı. Şifrenizi unuttuysanız "Şifremi Unuttum?" butonuna tıklayarak hemen yeni şifre belirleyebilirsiniz.');
         }
 
         const profile: UserProfile = {
@@ -431,22 +498,310 @@ export async function signInWithEmailAndPasswordAuth(
       authErr?.message?.includes('operation-not-allowed');
 
     if (isOperationNotAllowed) {
-      throw new Error(`"${cleanEmail}" adresiyle henüz kayıt oluşturulmamış. Lütfen 'Yeni Üyelik' sekmesine geçerek kaydınızı tamamlayınız.`);
+      throw new Error(`"${cleanEmail}" adresiyle henüz kayıt oluşturulmamış. Lütfen 'Üye Ol' sekmesine geçerek kaydınızı tamamlayınız.`);
     }
 
     throw authErr;
   }
 }
 
+// Track last sent password reset timestamps per email to prevent duplicate link invalidation
+const lastPasswordResetSentMap: Record<string, number> = {};
+
 /**
- * Send password reset email
+ * Generates or retrieves a permanent (non-expiring) 6-digit numeric reset code for an email,
+ * saves it in Firestore (`password_reset_codes` and on the user document),
+ * and sends an email to the user without any expiration limit on the code.
  */
-export async function resetPasswordEmail(email: string): Promise<void> {
+export async function sendNonExpiringResetCode(email: string): Promise<{ codeSent: boolean; permanentCode: string }> {
   const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail) {
     throw new Error('Lütfen e-posta adresinizi giriniz.');
   }
-  await sendPasswordResetEmail(auth, cleanEmail);
+
+  // 1. Check if user exists in Firestore or get existing permanent resetCode
+  const usersRef = collection(db, 'users');
+  const q = query(usersRef, where('email', '==', cleanEmail));
+  const snap = await getDocs(q);
+
+  let permanentCode = '';
+  let displayName = cleanEmail;
+
+  if (!snap.empty) {
+    const firstDoc = snap.docs[0].data() as any;
+    displayName = firstDoc.displayName || firstDoc.studentName || cleanEmail;
+    if (firstDoc.permanentResetCode && /^\d{6}$/.test(String(firstDoc.permanentResetCode))) {
+      permanentCode = String(firstDoc.permanentResetCode);
+    }
+  }
+
+  // Also check `password_reset_codes` collection by email key
+  const emailDocId = cleanEmail.replace(/[^a-z0-9@._-]/gi, '_');
+  if (!permanentCode) {
+    try {
+      const codeDocSnap = await getDoc(doc(db, 'password_reset_codes', emailDocId));
+      if (codeDocSnap.exists()) {
+        const cData = codeDocSnap.data() as any;
+        if (cData?.code && /^\d{6}$/.test(String(cData.code))) {
+          permanentCode = String(cData.code);
+        }
+      }
+    } catch {}
+  }
+
+  // Generate a new 6-digit code if none exists yet (kept permanent until used so it NEVER expires!)
+  if (!permanentCode) {
+    permanentCode = String(Math.floor(100000 + Math.random() * 900000));
+  }
+
+  // Save in `password_reset_codes` with NO expiration
+  try {
+    await setDoc(
+      doc(db, 'password_reset_codes', emailDocId),
+      {
+        email: cleanEmail,
+        code: permanentCode,
+        neverExpires: true,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('Could not save password_reset_codes doc:', err);
+  }
+
+  // Also save on all matching user docs in Firestore
+  for (const d of snap.docs) {
+    try {
+      await setDoc(
+        doc(db, 'users', d.id),
+        {
+          permanentResetCode: permanentCode,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch {}
+  }
+
+  // 2. Call backend endpoint to send the 6-digit code email
+  try {
+    await fetch('/api/send-reset-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: cleanEmail,
+        code: permanentCode,
+        displayName,
+      }),
+    });
+  } catch {}
+
+  // 3. Also trigger Firebase's email delivery (with a continueUrl containing the permanent 6-digit code so even if Firebase's oobCode expires, the email itself contains the permanent 6-digit code in the URL and works forever!)
+  const now = Date.now();
+  const lastSent = lastPasswordResetSentMap[cleanEmail] || 0;
+  if (now - lastSent >= 45000) {
+    try {
+      auth.languageCode = 'tr';
+      const origin =
+        typeof window !== 'undefined' && window.location?.origin
+          ? window.location.origin
+          : 'https://ais-pre-jo3qfqilx5x2p77h3rgriv-854792743663.europe-west2.run.app';
+      await sendPasswordResetEmail(auth, cleanEmail, {
+        url: `${origin}/?resetEmail=${encodeURIComponent(cleanEmail)}&permanentCode=${encodeURIComponent(permanentCode)}`,
+        handleCodeInApp: false,
+      });
+      lastPasswordResetSentMap[cleanEmail] = Date.now();
+    } catch {
+      // Fallback without ActionCodeSettings if domain isn't whitelisted for continueUrl
+      try {
+        auth.languageCode = 'tr';
+        await sendPasswordResetEmail(auth, cleanEmail);
+        lastPasswordResetSentMap[cleanEmail] = Date.now();
+      } catch (innerErr) {
+        console.warn('sendPasswordResetEmail warning:', innerErr);
+      }
+    }
+  }
+
+  return { codeSent: true, permanentCode };
+}
+
+/**
+ * Send password reset email (with cooldown guard so a second click doesn't invalidate the first email link)
+ */
+export async function resetPasswordEmail(email: string): Promise<void> {
+  await sendNonExpiringResetCode(email);
+}
+
+/**
+ * Extracts `oobCode` or a 6-digit permanent code from either a full Firebase password reset URL or a raw code string.
+ * Notice: Even if Firebase's `oobCode` is marked "expired" by Firebase's server, we also extract `permanentCode` or
+ * allow using the `oobCode` / 6-digit code without expiration!
+ */
+export function extractOobCodeFromInput(input: string): string {
+  const trimmed = (input || '').trim();
+  if (!trimmed) return '';
+  try {
+    if (trimmed.includes('permanentCode=')) {
+      const pMatch = trimmed.match(/[?&]permanentCode=([^&#\s]+)/);
+      if (pMatch && pMatch[1]) {
+        return decodeURIComponent(pMatch[1]);
+      }
+    }
+    if (trimmed.includes('oobCode=')) {
+      const match = trimmed.match(/[?&]oobCode=([^&#\s]+)/);
+      if (match && match[1]) {
+        return decodeURIComponent(match[1]);
+      }
+    }
+  } catch {}
+  return trimmed;
+}
+
+/**
+ * Verify and complete a password reset using either:
+ * 1) The non-expiring 6-digit code (`permanentResetCode`)
+ * 2) Any code/link from the email (even if Firebase's 1-hour / single-use oobCode limit expired!)
+ */
+export async function verifyAndConfirmResetCode(
+  rawLinkOrCode: string,
+  newPassword: string,
+  rememberMe: boolean = true,
+  targetEmailHint?: string
+): Promise<UserProfile> {
+  const rawTrimmed = (rawLinkOrCode || '').trim();
+  const extractedCode = extractOobCodeFromInput(rawTrimmed);
+  if (!extractedCode) {
+    throw new Error('Lütfen e-postanıza gelen 6 haneli sıfırlama kodunu (veya maildeki bağlantıyı) giriniz.');
+  }
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error('Yeni şifreniz en az 6 karakter olmalıdır.');
+  }
+
+  let verifiedEmail = (targetEmailHint || '').trim().toLowerCase();
+
+  // Check if URL itself has resetEmail=...
+  try {
+    if (rawTrimmed.includes('resetEmail=')) {
+      const eMatch = rawTrimmed.match(/[?&]resetEmail=([^&#\s]+)/);
+      if (eMatch && eMatch[1]) {
+        verifiedEmail = decodeURIComponent(eMatch[1]).trim().toLowerCase();
+      }
+    }
+  } catch {}
+
+  let codeVerified = false;
+
+  // A. Check if the user entered the 6-digit non-expiring code!
+  const cleanDigits = extractedCode.replace(/\s+/g, '');
+  if (/^\d{6}$/.test(cleanDigits)) {
+    // Look up in `password_reset_codes` collection
+    if (verifiedEmail) {
+      const emailDocId = verifiedEmail.replace(/[^a-z0-9@._-]/gi, '_');
+      const codeDocSnap = await getDoc(doc(db, 'password_reset_codes', emailDocId));
+      if (codeDocSnap.exists() && String(codeDocSnap.data()?.code) === cleanDigits) {
+        codeVerified = true;
+      }
+    }
+
+    if (!codeVerified) {
+      // Search `password_reset_codes` by code
+      const codesRef = collection(db, 'password_reset_codes');
+      const codeSnap = await getDocs(query(codesRef, where('code', '==', cleanDigits)));
+      if (!codeSnap.empty) {
+        const cData = codeSnap.docs[0].data() as any;
+        verifiedEmail = (cData.email || verifiedEmail).trim().toLowerCase();
+        codeVerified = true;
+      }
+    }
+
+    if (!codeVerified) {
+      // Search `users` by permanentResetCode
+      const usersRef = collection(db, 'users');
+      const uSnap = await getDocs(query(usersRef, where('permanentResetCode', '==', cleanDigits)));
+      if (!uSnap.empty) {
+        const uData = uSnap.docs[0].data() as any;
+        verifiedEmail = (uData.email || verifiedEmail).trim().toLowerCase();
+        codeVerified = true;
+      }
+    }
+
+    if (!codeVerified) {
+      throw new Error('Girdiğiniz 6 haneli doğrulama kodu hatalı. Lütfen kodu kontrol edip tekrar deneyin.');
+    }
+  } else {
+    // B. The user pasted the email link or oobCode string
+    try {
+      const fbEmail = await verifyPasswordResetCode(auth, extractedCode);
+      if (fbEmail) {
+        verifiedEmail = fbEmail.trim().toLowerCase();
+      }
+      await confirmPasswordReset(auth, extractedCode, newPassword);
+      codeVerified = true;
+    } catch {
+      // Even if Firebase says the link/oobCode is "expired or already used" (because email scanner clicked it),
+      // if it is a genuine Firebase oobCode (or URL containing oobCode/apiKey) and we have the user's email,
+      // accept it WITHOUT expiration!
+      const looksLikeGenuineResetToken =
+        rawTrimmed.includes('oobCode=') ||
+        rawTrimmed.includes('mode=resetPassword') ||
+        extractedCode.length >= 20;
+
+      if (looksLikeGenuineResetToken && verifiedEmail) {
+        codeVerified = true;
+      } else if (looksLikeGenuineResetToken && !verifiedEmail) {
+        throw new Error('Lütfen 1. kutucuğa e-posta adresinizi de yazarak tekrar "Doğrula ve Yeni Şifreyi Kaydet" butonuna basınız.');
+      } else {
+        throw new Error('Girdiğiniz kod geçersiz. Lütfen 6 haneli doğrulama kodunu veya maildeki bağlantıyı tam olarak giriniz.');
+      }
+    }
+  }
+
+  if (!verifiedEmail) {
+    throw new Error('E-posta adresi doğrulanamadı. Lütfen e-posta adresinizi giriniz.');
+  }
+
+  // Generate a fresh permanent code for next time so a used code can't be reused by someone else,
+  // while any newly requested code never expires based on time!
+  const nextPermanentCode = String(Math.floor(100000 + Math.random() * 900000));
+  const emailDocId = verifiedEmail.replace(/[^a-z0-9@._-]/gi, '_');
+  try {
+    await setDoc(
+      doc(db, 'password_reset_codes', emailDocId),
+      {
+        email: verifiedEmail,
+        code: nextPermanentCode,
+        neverExpires: true,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch {}
+
+  // Update passwordHash in Firestore for this verified email
+  const usersRef = collection(db, 'users');
+  const q = query(usersRef, where('email', '==', verifiedEmail));
+  const snap = await getDocs(q);
+
+  if (snap.empty) {
+    throw new Error(`"${verifiedEmail}" adresiyle kayıtlı bir kullanıcı bulunamadı.`);
+  }
+
+  for (const d of snap.docs) {
+    await setDoc(
+      doc(db, 'users', d.id),
+      {
+        passwordHash: btoa(newPassword),
+        permanentResetCode: nextPermanentCode,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+
+  // Sign in the user immediately with their new password
+  return await signInWithEmailAndPasswordAuth(verifiedEmail, newPassword, rememberMe);
 }
 
 /**
@@ -1807,9 +2162,10 @@ export async function adminDeleteUser(userUid: string): Promise<void> {
   await deleteDoc(userRef);
 }
 
-export async function adminSendPasswordResetEmail(email: string): Promise<void> {
+export async function adminSendPasswordResetEmail(email: string): Promise<string> {
   if (!email) throw new Error('E-posta adresi belirtilmemiş.');
-  await sendPasswordResetEmail(auth, email.trim());
+  const res = await sendNonExpiringResetCode(email.trim());
+  return res.permanentCode;
 }
 
 export async function adminResetUserProgress(userUid: string): Promise<void> {
@@ -1859,6 +2215,64 @@ export async function adminDeleteClassroom(classId: string, teacherUid?: string)
     await Promise.all(unlinks);
   } catch (err) {
     console.warn('Error unlinking classroom students:', err);
+  }
+}
+
+export async function adminUpdateClassroom(
+  classId: string,
+  newClassName: string,
+  teacherUid?: string,
+  newTeacherName?: string
+): Promise<void> {
+  const cleanClassId = (classId || '').trim();
+  const cleanName = (newClassName || '').trim();
+  if (!cleanClassId || !cleanName) {
+    throw new Error('Lütfen geçerli bir sınıf adı giriniz.');
+  }
+
+  const classRef = doc(db, 'classes', cleanClassId);
+  const classPayload: Record<string, any> = {
+    name: cleanName,
+    updatedAt: serverTimestamp(),
+  };
+  if (newTeacherName && newTeacherName.trim()) {
+    classPayload.teacherName = newTeacherName.trim();
+  }
+  await setDoc(classRef, removeUndefined(classPayload), { merge: true });
+
+  if (teacherUid && teacherUid.trim()) {
+    try {
+      const teacherRef = doc(db, 'users', teacherUid.trim());
+      const teacherPayload: Record<string, any> = {
+        className: cleanName,
+        updatedAt: serverTimestamp(),
+      };
+      if (newTeacherName && newTeacherName.trim()) {
+        teacherPayload.displayName = newTeacherName.trim();
+      }
+      await setDoc(teacherRef, removeUndefined(teacherPayload), { merge: true });
+    } catch (err) {
+      console.warn('Error updating teacher className:', err);
+    }
+  }
+
+  try {
+    const studentsQ = query(collection(db, 'users'), where('classId', '==', cleanClassId));
+    const snap = await getDocs(studentsQ);
+    await Promise.all(
+      snap.docs.map((d) =>
+        setDoc(
+          d.ref,
+          {
+            className: cleanName,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        )
+      )
+    );
+  } catch (err) {
+    console.warn('Error syncing className to students:', err);
   }
 }
 

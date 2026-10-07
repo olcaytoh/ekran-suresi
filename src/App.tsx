@@ -17,6 +17,7 @@ import {
   signOutUser,
   forgetAndClearAllDeviceData,
   adminDeleteClassroom,
+  adminUpdateClassroom,
   adminDeleteUser,
   setUserRole,
   updateUserProfile,
@@ -425,6 +426,62 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to delete classroom:', err);
+    }
+  };
+
+  const handleAdminUpdateClassroom = async (
+    classId: string,
+    newClassName: string,
+    teacherUid?: string,
+    newTeacherName?: string
+  ) => {
+    try {
+      const cleanName = newClassName.trim();
+      const cleanTeacher = newTeacherName?.trim();
+
+      setInstitutionClassrooms((prev) =>
+        prev.map((c) =>
+          c.id === classId
+            ? {
+                ...c,
+                name: cleanName,
+                ...(cleanTeacher ? { teacherName: cleanTeacher } : {}),
+              }
+            : c
+        )
+      );
+
+      setClassStudentsMap((prev) => {
+        const existing = prev[classId];
+        if (!existing) return prev;
+        return {
+          ...prev,
+          [classId]: existing.map((u) => ({ ...u, className: cleanName })),
+        };
+      });
+
+      setAllUsers((prev) =>
+        prev.map((u) => {
+          if (u.classId === classId) {
+            return { ...u, className: cleanName };
+          }
+          if (teacherUid && u.uid === teacherUid) {
+            return {
+              ...u,
+              className: cleanName,
+              ...(cleanTeacher ? { displayName: cleanTeacher } : {}),
+            };
+          }
+          return u;
+        })
+      );
+
+      if (authUser || activeLocalProfile) {
+        await adminUpdateClassroom(classId, cleanName, teacherUid, cleanTeacher);
+      }
+    } catch (err) {
+      console.error('Failed to update classroom:', err);
+      throw err;
     }
   };
 
@@ -1142,7 +1199,9 @@ export default function App() {
                   allUsers={allUsers}
                   onOpenClassSetup={() => setShowClassSetup(true)}
                   onDeleteClassroom={handleAdminDeleteClassroom}
+                  onUpdateClassroom={handleAdminUpdateClassroom}
                   onDeleteUser={handleAdminDeleteUser}
+                  onUpdateUser={handleUpdateStudentUser}
                   onProfileUpdated={handleProfileUpdated}
                   onSwitchToTeacherMode={handleSwitchToTeacherMode}
                   isDemo={isCurrentDemo}

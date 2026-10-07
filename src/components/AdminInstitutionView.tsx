@@ -57,7 +57,14 @@ interface AdminInstitutionViewProps {
   allUsers?: UserProfile[];
   onOpenClassSetup?: () => void;
   onDeleteClassroom?: (classId: string, teacherUid?: string) => Promise<void> | void;
+  onUpdateClassroom?: (
+    classId: string,
+    newClassName: string,
+    teacherUid?: string,
+    newTeacherName?: string
+  ) => Promise<void> | void;
   onDeleteUser?: (userUid: string, classId?: string) => Promise<void> | void;
+  onUpdateUser?: (userUid: string, updates: Partial<UserProfile>) => Promise<void> | void;
   onProfileUpdated?: (updates: Partial<UserProfile>) => void;
   onSwitchToTeacherMode?: (classroom?: ClassroomInfo) => void;
   onNavigateToBadges?: (classId?: string) => void;
@@ -96,7 +103,9 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   allUsers = [],
   onOpenClassSetup,
   onDeleteClassroom,
+  onUpdateClassroom,
   onDeleteUser,
+  onUpdateUser,
   onProfileUpdated,
   onSwitchToTeacherMode,
   onNavigateToBadges,
@@ -186,6 +195,112 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [sendingResetForUid, setSendingResetForUid] = useState<string | null>(null);
   const [roleChangingUser, setRoleChangingUser] = useState<UserProfile | null>(null);
+
+  // Sınıf Adı & Öğretmen Adı Düzenleme State'leri
+  const [classToEdit, setClassToEdit] = useState<ClassroomInfo | null>(null);
+  const [editClassNameInput, setEditClassNameInput] = useState('');
+  const [editTeacherNameInput, setEditTeacherNameInput] = useState('');
+  const [isSavingClassEdit, setIsSavingClassEdit] = useState(false);
+  const [editClassError, setEditClassError] = useState<string | null>(null);
+
+  // Öğrenci / Veli / Kullanıcı Adı Düzenleme State'leri
+  const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
+  const [editStudentNameInput, setEditStudentNameInput] = useState('');
+  const [editParentNameInput, setEditParentNameInput] = useState('');
+  const [isSavingUserEdit, setIsSavingUserEdit] = useState(false);
+  const [editUserError, setEditUserError] = useState<string | null>(null);
+
+  const handleOpenEditClass = (classroom: ClassroomInfo) => {
+    setClassToEdit(classroom);
+    setEditClassNameInput(classroom.name || '');
+    setEditTeacherNameInput(classroom.teacherName || '');
+    setEditClassError(null);
+  };
+
+  const handleSaveClassEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!classToEdit) return;
+    const cleanClassName = editClassNameInput.trim();
+    const cleanTeacherName = editTeacherNameInput.trim();
+    if (!cleanClassName) {
+      setEditClassError('Lütfen sınıf adını giriniz.');
+      return;
+    }
+
+    try {
+      setIsSavingClassEdit(true);
+      setEditClassError(null);
+      await onUpdateClassroom?.(
+        classToEdit.id,
+        cleanClassName,
+        classToEdit.teacherUid,
+        cleanTeacherName || undefined
+      );
+      setClassToEdit(null);
+      setFeedback({ type: 'success', text: `"${cleanClassName}" sınıf bilgileri güncellendi.` });
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (err: any) {
+      console.error('Error updating classroom:', err);
+      setEditClassError(err?.message || 'Sınıf adı güncellenirken bir hata oluştu.');
+    } finally {
+      setIsSavingClassEdit(false);
+    }
+  };
+
+  const handleOpenEditUser = (user: UserProfile) => {
+    setUserToEdit(user);
+    const isStaff = user.role === 'teacher' || user.role === 'admin';
+    setEditStudentNameInput(isStaff ? (user.displayName || '') : (user.studentName || user.displayName || ''));
+    setEditParentNameInput(user.parentName || '');
+    setEditUserError(null);
+  };
+
+  const handleSaveUserEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userToEdit) return;
+    const isStaff = userToEdit.role === 'teacher' || userToEdit.role === 'admin';
+    const cleanMainName = editStudentNameInput.trim();
+    const cleanParentName = editParentNameInput.trim();
+
+    if (!cleanMainName) {
+      setEditUserError(isStaff ? 'Lütfen ad ve soyad giriniz.' : 'Lütfen öğrencinin adını ve soyadını giriniz.');
+      return;
+    }
+
+    try {
+      setIsSavingUserEdit(true);
+      setEditUserError(null);
+
+      if (isStaff) {
+        await onUpdateUser?.(userToEdit.uid, {
+          displayName: cleanMainName,
+        });
+        if (userToEdit.classId && userToEdit.className) {
+          await onUpdateClassroom?.(
+            userToEdit.classId,
+            userToEdit.className,
+            userToEdit.uid,
+            cleanMainName
+          );
+        }
+      } else {
+        await onUpdateUser?.(userToEdit.uid, {
+          studentName: cleanMainName,
+          parentName: cleanParentName || undefined,
+          displayName: cleanMainName,
+        });
+      }
+
+      setUserToEdit(null);
+      setFeedback({ type: 'success', text: `"${cleanMainName}" bilgileri başarıyla güncellendi.` });
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (err: any) {
+      console.error('Error updating user:', err);
+      setEditUserError(err?.message || 'Bilgiler güncellenirken bir hata oluştu.');
+    } finally {
+      setIsSavingUserEdit(false);
+    }
+  };
 
   // Comprehensive Registered Users List (Sadece bu yöneticinin kurumuna ve sınıflarına ait hesaplar!)
   const allRegisteredUsers = useMemo(() => {
@@ -527,17 +642,17 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     }
     try {
       setSendingResetForUid(uid || 'loading');
-      await adminSendPasswordResetEmail(email);
+      const code = await adminSendPasswordResetEmail(email);
       setFeedback({
         type: 'success',
-        text: `"${email}" adresine şifre sıfırlama bağlantısı gönderildi.`,
+        text: `"${email}" adresine süresiz şifre sıfırlama kodu (${code}) gönderildi.`,
       });
-      setTimeout(() => setFeedback(null), 4000);
+      setTimeout(() => setFeedback(null), 6000);
     } catch (err: any) {
       console.error('Password reset error:', err);
       setFeedback({
         type: 'error',
-        text: err?.message || 'Şifre sıfırlama e-postası gönderilemedi.',
+        text: err?.message || 'Şifre sıfırlama kodu gönderilemedi.',
       });
       setTimeout(() => setFeedback(null), 4000);
     } finally {
@@ -632,7 +747,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       <div className="space-y-4">
         {/* Üst Bar: Geri Dönüş ve Sınıf Başlığı (Glassmorphism Çerçeve) */}
         <div
-          className="relative z-10 flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-3xl overflow-hidden"
+          className="relative z-10 flex flex-col gap-3 p-3.5 sm:p-4 rounded-3xl overflow-hidden"
           style={{
             background: 'rgba(255, 255, 255, 0.25)',
             backdropFilter: 'blur(20px)',
@@ -650,39 +765,66 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             }}
           />
 
-          <div className="relative z-10 flex items-center gap-3 min-w-0">
-            <button
-              type="button"
-              id="btn-back-to-classes"
-              onClick={() => {
-                setSelectedClassId(null);
-                setSearchQuery('');
-              }}
-              className="p-2 rounded-2xl bg-white/40 hover:bg-white/60 text-slate-800 border border-white/60 backdrop-blur-md transition-colors cursor-pointer active:scale-95 flex-shrink-0 shadow-2xs"
-              title="Kurum Görünümüne Dön"
-            >
-              <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
-            </button>
-            <div className="min-w-0">
-              <h2 className="text-xs font-black text-slate-900 truncate [font-family:inherit]">
-                {selectedClassroom?.name || 'Sınıf Detayı'}
-              </h2>
-              <p className="text-xs text-slate-800 truncate font-bold">
-                Öğretmen: {selectedClassroom?.teacherName || 'Atanmamış'} • {stats.totalStudents} Kayıtlı Öğrenci
-              </p>
+          {/* 1. Satır: Geri Butonu, Sınıf & Öğretmen Bilgisi ve Sağda Düzenle/Sil Butonları */}
+          <div className="relative z-10 flex items-center justify-between gap-2.5 w-full">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <button
+                type="button"
+                id="btn-back-to-classes"
+                onClick={() => {
+                  setSelectedClassId(null);
+                  setSearchQuery('');
+                }}
+                className="p-2 rounded-2xl bg-white/50 hover:bg-white/75 text-slate-800 border border-white/70 backdrop-blur-md transition-colors cursor-pointer active:scale-95 flex-shrink-0 shadow-2xs"
+                title="Kurum Görünümüne Dön"
+              >
+                <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xs sm:text-sm font-black text-slate-900 truncate [font-family:inherit]">
+                  {selectedClassroom?.name || 'Sınıf Detayı'}
+                </h2>
+                <p className="text-[11px] sm:text-xs text-slate-800 truncate font-bold mt-0.5">
+                  Öğretmen: {selectedClassroom?.teacherName || 'Atanmamış'} • {stats.totalStudents} Kayıtlı Öğrenci
+                </p>
+              </div>
             </div>
+
+            {selectedClassroom && (
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button
+                  type="button"
+                  id="btn-edit-current-class"
+                  onClick={() => handleOpenEditClass(selectedClassroom)}
+                  className="p-2 rounded-2xl text-indigo-700 bg-indigo-50/85 hover:bg-indigo-100 border border-indigo-200/80 backdrop-blur-xs transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                  title="Sınıf & Öğretmen Adını Düzenle"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  id="btn-delete-current-class"
+                  onClick={() => setClassToDelete(selectedClassroom)}
+                  className="p-2 rounded-2xl text-rose-600 bg-rose-50/85 hover:bg-rose-100 border border-rose-200/80 backdrop-blur-xs transition-colors cursor-pointer active:scale-95 shadow-2xs"
+                  title="Bu Sınıfı Kurumdan Sil"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="relative z-10 flex items-center gap-1.5 flex-shrink-0 flex-wrap">
+          {/* 2. Satır: Haftalık Kutular & Rozetler ve İstatistik Çıktısı Butonları */}
+          <div className="relative z-10 flex items-center gap-2 flex-wrap pt-2 border-t border-white/40">
             {onNavigateToBadges && (
               <button
                 type="button"
                 id="btn-admin-view-class-badges"
                 onClick={() => onNavigateToBadges(selectedClassId || undefined)}
-                className="btn-3d-cyan px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+                className="btn-3d-cyan flex-1 sm:flex-initial px-3 py-2 rounded-xl text-[11px] sm:text-xs font-black inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
                 title="Bu sınıfın 35 haftalık kutu ve rozet takip ekranını aç"
               >
-                <img src="/kutu_yesil.png" alt="Kutular" className="w-3.5 h-3.5 object-contain" />
+                <img src="/kutu_yesil.png" alt="Kutular" className="w-3.5 h-3.5 object-contain shrink-0" />
                 <span>Haftalık Kutular &amp; Rozetler</span>
               </button>
             )}
@@ -694,24 +836,12 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 setExportClassId(selectedClassId);
                 setIsStatsExportModalOpen(true);
               }}
-              className="btn-3d-emerald px-3 py-1.5 rounded-xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+              className="btn-3d-emerald flex-1 sm:flex-initial px-3 py-2 rounded-xl text-[11px] sm:text-xs font-black inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
               title="Bu sınıfın haftalık istatistik ve ekran süresi raporunu PDF veya Excel olarak indir"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
               <span>İstatistik Çıktısı (PDF / Excel)</span>
             </button>
-
-            {selectedClassroom && (
-              <button
-                type="button"
-                id="btn-delete-current-class"
-                onClick={() => setClassToDelete(selectedClassroom)}
-                className="p-2 rounded-2xl text-rose-600 bg-rose-50/80 hover:bg-rose-100 border border-rose-200/80 backdrop-blur-xs transition-colors cursor-pointer active:scale-95 shadow-2xs"
-                title="Bu Sınıfı Kurumdan Sil"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
           </div>
         </div>
 
@@ -883,6 +1013,18 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                     </div>
                     <button
                       type="button"
+                      id={`btn-edit-student-${user.uid}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditUser(user);
+                      }}
+                      title="Öğrenci & Veli Adını Düzenle"
+                      className="p-1 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white/50 border border-transparent hover:border-indigo-200 transition-colors cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
                       id={`btn-reset-student-${user.uid}`}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -965,6 +1107,186 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   <span>{isDeleting ? 'Sıfırlanıyor...' : 'Evet, Sıfırla & Sil'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Sınıf & Öğretmen Adı Düzenleme (Cam Efektli) */}
+        {classToEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div
+              className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
+              style={{
+                background: 'rgba(255, 255, 255, 0.85)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255, 255, 255, 0.75)',
+                boxShadow:
+                  '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
+              }}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 backdrop-blur-md text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200/70">
+                <Edit2 className="w-6 h-6 stroke-[2.5]" />
+              </div>
+
+              <div className="text-center space-y-1">
+                <h4 className="text-sm font-black text-slate-900 [font-family:inherit]">
+                  Sınıf &amp; Öğretmen Bilgilerini Düzenle
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Sınıf adını veya öğretmenin görünen adını güncelleyebilirsiniz.
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveClassEdit} className="space-y-3 pt-1">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Sınıf Adı:</label>
+                  <input
+                    type="text"
+                    value={editClassNameInput}
+                    onChange={(e) => setEditClassNameInput(e.target.value)}
+                    placeholder="Örn: 4-A Sınıfı"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Öğretmen Adı Soyadı:</label>
+                  <input
+                    type="text"
+                    value={editTeacherNameInput}
+                    onChange={(e) => setEditTeacherNameInput(e.target.value)}
+                    placeholder="Örn: Ayşe Yılmaz"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                {editClassError && (
+                  <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{editClassError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClassToEdit(null);
+                      setEditClassError(null);
+                    }}
+                    disabled={isSavingClassEdit}
+                    className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
+                  >
+                    Vazgeç
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingClassEdit || !editClassNameInput.trim()}
+                    className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{isSavingClassEdit ? 'Kaydediliyor...' : 'Kaydet'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Öğrenci & Veli Adı Düzenleme (Cam Efektli) */}
+        {userToEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div
+              className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
+              style={{
+                background: 'rgba(255, 255, 255, 0.85)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255, 255, 255, 0.75)',
+                boxShadow:
+                  '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
+              }}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 backdrop-blur-md text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200/70">
+                <Edit2 className="w-6 h-6 stroke-[2.5]" />
+              </div>
+
+              <div className="text-center space-y-1">
+                <h4 className="text-sm font-black text-slate-900 [font-family:inherit]">
+                  {userToEdit.role === 'teacher' || userToEdit.role === 'admin'
+                    ? 'Kullanıcı Adını Düzenle'
+                    : 'Öğrenci & Veli Düzenle'}
+                </h4>
+                <p className="text-xs text-slate-500">
+                  {userToEdit.role === 'teacher' || userToEdit.role === 'admin'
+                    ? 'Öğretmen veya yönetici adında düzeltme yapabilirsiniz.'
+                    : 'Öğrenci veya veli adında düzeltme yapabilirsiniz.'}
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveUserEdit} className="space-y-3 pt-1">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {userToEdit.role === 'teacher'
+                      ? 'Öğretmen Adı Soyadı:'
+                      : userToEdit.role === 'admin'
+                      ? 'Yönetici Adı Soyadı:'
+                      : 'Öğrenci Adı Soyadı:'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editStudentNameInput}
+                    onChange={(e) => setEditStudentNameInput(e.target.value)}
+                    placeholder="Örn: Ali Yılmaz"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    required
+                  />
+                </div>
+
+                {userToEdit.role !== 'teacher' && userToEdit.role !== 'admin' && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Veli Adı Soyadı:</label>
+                    <input
+                      type="text"
+                      value={editParentNameInput}
+                      onChange={(e) => setEditParentNameInput(e.target.value)}
+                      placeholder="Örn: Mehmet Yılmaz"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    />
+                  </div>
+                )}
+
+                {editUserError && (
+                  <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{editUserError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserToEdit(null);
+                      setEditUserError(null);
+                    }}
+                    disabled={isSavingUserEdit}
+                    className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
+                  >
+                    Vazgeç
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingUserEdit || !editStudentNameInput.trim()}
+                    className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{isSavingUserEdit ? 'Kaydediliyor...' : 'Kaydet'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -1613,6 +1935,18 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           )}
                           <button
                             type="button"
+                            id={`btn-edit-class-${classroom.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditClass(classroom);
+                            }}
+                            title="Sınıf & Öğretmen Adını Düzenle"
+                            className="p-1.5 rounded-lg bg-white/50 hover:bg-indigo-100 text-indigo-700 border border-white/70 transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             id={`btn-delete-class-${classroom.id}`}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1664,6 +1998,14 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditUser(teacher)}
+                          title="Öğretmen adını düzenle"
+                          className="p-1.5 rounded-lg bg-white/50 hover:bg-indigo-100 text-indigo-700 border border-white/70 transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           type="button"
                           onClick={() => setUserToReset(teacher)}
@@ -1991,6 +2333,17 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           </button>
                         )}
 
+                        {/* İsim Düzenleme Butonu */}
+                        <button
+                          type="button"
+                          id={`btn-edit-user-${user.uid}`}
+                          onClick={() => handleOpenEditUser(user)}
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 backdrop-blur-xs shadow-2xs"
+                          title="Öğrenci / Veli / Kullanıcı Adını Düzenle"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-indigo-600" />
+                        </button>
+
                         {/* Rol Değiştirme Butonu (Öğretmen <-> Veli) */}
                         {!isAdminRole && (
                           <button
@@ -2184,6 +2537,190 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             >
               Kapat
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: SINIF & ÖĞRETMEN ADI DÜZENLEME MODALI (Cam Efektli)     */}
+      {/* ============================================================== */}
+      {classToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
+            style={{
+              background: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255, 255, 255, 0.75)',
+              boxShadow:
+                '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
+            }}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 backdrop-blur-md text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200/70">
+              <Edit2 className="w-6 h-6 stroke-[2.5]" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h4 className="text-sm font-black text-slate-900 [font-family:inherit]">
+                Sınıf &amp; Öğretmen Bilgilerini Düzenle
+              </h4>
+              <p className="text-xs text-slate-500">
+                Sınıf adını veya öğretmenin görünen adını güncelleyebilirsiniz.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveClassEdit} className="space-y-3 pt-1">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Sınıf Adı:</label>
+                <input
+                  type="text"
+                  value={editClassNameInput}
+                  onChange={(e) => setEditClassNameInput(e.target.value)}
+                  placeholder="Örn: 4-A Sınıfı"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Öğretmen Adı Soyadı:</label>
+                <input
+                  type="text"
+                  value={editTeacherNameInput}
+                  onChange={(e) => setEditTeacherNameInput(e.target.value)}
+                  placeholder="Örn: Ayşe Yılmaz"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                />
+              </div>
+
+              {editClassError && (
+                <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>{editClassError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClassToEdit(null);
+                    setEditClassError(null);
+                  }}
+                  disabled={isSavingClassEdit}
+                  className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingClassEdit || !editClassNameInput.trim()}
+                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isSavingClassEdit ? 'Kaydediliyor...' : 'Kaydet'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: ÖĞRENCİ / VELİ / KULLANICI ADI DÜZENLEME MODALI         */}
+      {/* ============================================================== */}
+      {userToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
+            style={{
+              background: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255, 255, 255, 0.75)',
+              boxShadow:
+                '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
+            }}
+          >
+            <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 backdrop-blur-md text-indigo-600 flex items-center justify-center mx-auto border border-indigo-200/70">
+              <Edit2 className="w-6 h-6 stroke-[2.5]" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h4 className="text-sm font-black text-slate-900 [font-family:inherit]">
+                {userToEdit.role === 'teacher' || userToEdit.role === 'admin'
+                  ? 'Kullanıcı Adını Düzenle'
+                  : 'Öğrenci & Veli Düzenle'}
+              </h4>
+              <p className="text-xs text-slate-500">
+                {userToEdit.role === 'teacher' || userToEdit.role === 'admin'
+                  ? 'Öğretmen veya yönetici adında düzeltme yapabilirsiniz.'
+                  : 'Öğrenci veya veli adında düzeltme yapabilirsiniz.'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveUserEdit} className="space-y-3 pt-1">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  {userToEdit.role === 'teacher'
+                    ? 'Öğretmen Adı Soyadı:'
+                    : userToEdit.role === 'admin'
+                    ? 'Yönetici Adı Soyadı:'
+                    : 'Öğrenci Adı Soyadı:'}
+                </label>
+                <input
+                  type="text"
+                  value={editStudentNameInput}
+                  onChange={(e) => setEditStudentNameInput(e.target.value)}
+                  placeholder="Örn: Ali Yılmaz"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  required
+                />
+              </div>
+
+              {userToEdit.role !== 'teacher' && userToEdit.role !== 'admin' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Veli Adı Soyadı:</label>
+                  <input
+                    type="text"
+                    value={editParentNameInput}
+                    onChange={(e) => setEditParentNameInput(e.target.value)}
+                    placeholder="Örn: Mehmet Yılmaz"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+              )}
+
+              {editUserError && (
+                <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>{editUserError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserToEdit(null);
+                    setEditUserError(null);
+                  }}
+                  disabled={isSavingUserEdit}
+                  className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingUserEdit || !editStudentNameInput.trim()}
+                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isSavingUserEdit ? 'Kaydediliyor...' : 'Kaydet'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

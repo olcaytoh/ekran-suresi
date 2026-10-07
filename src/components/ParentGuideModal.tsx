@@ -132,7 +132,7 @@ export const ParentGuideModal: React.FC<ParentGuideModalProps> = ({
                   1. Haftalık Ekran Süresini Takip Edin
                 </h4>
                 <p className="text-[11px] text-slate-600 mt-0.5 leading-tight">
-                  Ana ekrandaki yeşil <strong>"+30 dk Ekle"</strong> butonuyla veya <strong>"Aşamalar"</strong> sekmesinden o haftaki ekran süresini girin.
+                  Ana ekrandaki yeşil <strong>"+30 dk Ekle"</strong> butonuyla veya <strong>"Aşamalar"</strong> sekmesinden o günkü ekran süresini girin.
                 </p>
               </div>
             </div>
