@@ -57,7 +57,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
   const [showForm, setShowForm] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // In-App Password Reset Modal States (Requires email verification link/oobCode)
+  // In-App Password Reset Modal States (6-digit non-expiring code)
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [resetEmailInput, setResetEmailInput] = useState('');
   const [resetCodeOrLinkInput, setResetCodeOrLinkInput] = useState('');
@@ -69,12 +69,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
   const [resetSuccess, setResetSuccess] = useState<string | null>(null);
   const [oobCodeParam, setOobCodeParam] = useState<string | null>(null);
 
-  // Detect if user opened a password reset link with ?mode=resetPassword&oobCode=... or ?permanentCode=...
+  // Detect if URL has permanentCode=...
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const urlMode = params.get('mode');
-      const urlOob = params.get('oobCode');
       const urlPermCode = params.get('permanentCode');
       const urlResetEmail = params.get('resetEmail');
       if (urlResetEmail) {
@@ -84,10 +82,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       if (urlPermCode) {
         setOobCodeParam(urlPermCode);
         setResetCodeOrLinkInput(urlPermCode);
-        setIsResetModalOpen(true);
-      } else if (urlMode === 'resetPassword' && urlOob) {
-        setOobCodeParam(urlOob);
-        setResetCodeOrLinkInput(urlOob);
         setIsResetModalOpen(true);
       }
     }
@@ -272,7 +266,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
 
     const codeOrLink = (oobCodeParam || resetCodeOrLinkInput).trim();
     if (!codeOrLink) {
-      setResetError('Lütfen 1. Adım ile e-postanıza kod gönderin ve gelen 6 haneli kodu (veya maildeki bağlantıyı) kutucuğa giriniz.');
+      setResetError('Lütfen 1. Adım ile e-postanıza kod gönderin ve gelen 6 haneli şifre sıfırlama kodunu kutucuğa giriniz.');
       return;
     }
     if (!resetNewPassword || resetNewPassword.length < 6) {
@@ -322,7 +316,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       setResetError(null);
       await sendNonExpiringResetCode(targetEmail);
       setResetSuccess(
-        `"${targetEmail}" adresine SÜRESİZ şifre sıfırlama kodunuz gönderildi! Gelen e-postadaki 6 haneli kodu (veya maildeki bağlantıyı kopyalayıp) aşağıdaki 2. Adım kutusuna yapıştırarak yeni şifrenizi hemen kaydedebilirsiniz.`
+        `"${targetEmail}" adresine 6 haneli süresiz şifre sıfırlama kodunuz gönderildi! Gelen e-postadaki 6 haneli kodu aşağıdaki 2. Adım kutusuna yazarak yeni şifrenizi hemen kaydedebilirsiniz.`
       );
     } catch (err: any) {
       setResetError(getFriendlyAuthErrorMessage(err));
@@ -536,7 +530,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                       className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 shadow-xs"
                     >
                       <KeyRound className="w-3 h-3" />
-                      <span>Yeni Şifre Belirleme Bağlantısı Gönder</span>
+                      <span>Şifre Sıfırlama Kodu Gönder</span>
                     </button>
                   </div>
                 </div>
@@ -746,7 +740,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                 Kod ile Şifre Sıfırlama (Süresiz Kod)
               </h3>
               <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                E-postanıza gönderilen <strong>süresiz doğrulama kodunu</strong> (veya maildeki bağlantıyı) girerek yeni şifrenizi hemen belirleyebilirsiniz.
+                E-postanıza gönderilen <strong>6 haneli süresiz şifre sıfırlama kodunu</strong> girerek yeni şifrenizi hemen belirleyebilirsiniz.
               </p>
             </div>
 
@@ -768,17 +762,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
             {!oobCodeParam && (
               <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-2">
                 <div className="text-[11px] font-black text-indigo-950">
-                  1. Adım: E-Postanıza Süresiz Kod Gönderin
+                  1. Adım: E-Postanıza Şifre Sıfırlama Kodu Gönderin
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="relative flex-1">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="email"
                       value={resetEmailInput}
                       onChange={(e) => setResetEmailInput(e.target.value)}
                       placeholder="Kayıtlı e-posta adresiniz"
-                      className="w-full pl-8 pr-2.5 py-2 rounded-xl bg-white border border-indigo-200 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-indigo-200 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <button
@@ -791,7 +784,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-600 leading-tight font-medium">
-                  ✅ <strong>Süresizdir:</strong> E-postanıza gelen <strong>6 haneli kodu</strong> (veya maildeki linki kopyalayıp) aşağıdaki kutuya girdiğinizde, tarayıcıda <em>&quot;expired&quot;</em> yazsa bile süresiz olarak kabul edilir.
+                  ✅ <strong>Süresizdir:</strong> E-postanıza yalnızca <strong>6 haneli şifre sıfırlama kodu</strong> gönderilir ve bu kodun kullanım süresi yoktur.
                 </p>
               </div>
             )}
@@ -801,15 +794,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               {!oobCodeParam && (
                 <div className="space-y-1">
                   <label className="text-[11px] font-black text-slate-800">
-                    2. Adım: E-Postaya Gelen Doğrulama Kodu (Süresiz):
+                    2. Adım: E-Postaya Gelen 6 Haneli Kod:
                   </label>
                   <input
                     type="text"
                     required
+                    maxLength={6}
                     value={resetCodeOrLinkInput}
-                    onChange={(e) => setResetCodeOrLinkInput(e.target.value)}
-                    placeholder="6 haneli kodu veya maildeki linki buraya yapıştırın..."
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    onChange={(e) => setResetCodeOrLinkInput(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="6 haneli sıfırlama kodunu giriniz..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-mono tracking-widest font-black text-center text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:bg-white"
                   />
                 </div>
               )}

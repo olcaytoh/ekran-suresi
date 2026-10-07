@@ -26,6 +26,8 @@ import {
   setActiveAppProfile,
   clearActiveAppProfile,
   subscribeInAppMessages,
+  purgeBlockedEmailsFromFirestore,
+  isBlockedEmail,
 } from './lib/firebase';
 import { UserProfile, ClassroomInfo, InAppMessage } from './types';
 import { getCurrentWeekInfo } from './lib/weekUtils';
@@ -81,6 +83,11 @@ export default function App() {
   const [showInboxModal, setShowInboxModal] = useState(false);
 
   const weekInfo = getCurrentWeekInfo();
+
+  // Purge any deleted/blocked test emails from Firestore on startup
+  useEffect(() => {
+    purgeBlockedEmailsFromFirestore();
+  }, []);
 
   // Listen to custom local profile changes
   useEffect(() => {
@@ -539,8 +546,22 @@ export default function App() {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setAuthUser(user);
       if (user) {
+        if (isBlockedEmail(user.email)) {
+          await signOutUser().catch(() => {});
+          setAuthUser(null);
+          setUserProfile(null);
+          setAuthLoading(false);
+          return;
+        }
         try {
           const profile = await syncUserProfile(user);
+          if (isBlockedEmail(profile?.email)) {
+            await signOutUser().catch(() => {});
+            setAuthUser(null);
+            setUserProfile(null);
+            setAuthLoading(false);
+            return;
+          }
           setUserProfile(profile);
 
           // Default tab is always 'home'

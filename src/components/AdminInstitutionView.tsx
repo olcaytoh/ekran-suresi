@@ -10,6 +10,7 @@ import {
   ensureInstitutionAdminCode,
   adminSendPasswordResetEmail,
   setUserRole,
+  isBlockedEmail,
 } from '../lib/firebase';
 import {
   Building2,
@@ -318,7 +319,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
     // 1. From allUsers (only if belonging to this institution or one of its classrooms)
     (allUsers || []).forEach((u) => {
-      if (!u.uid) return;
+      if (!u.uid || isBlockedEmail(u.email)) return;
       const isCurrentUser = u.uid === currentUser?.uid;
       const matchesInstId = Boolean(instId && u.institutionId === instId);
       const matchesInstCode = Boolean(
@@ -336,7 +337,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
     // 2. From classrooms teachers
     classrooms.forEach((c) => {
-      if (c.teacherUid && !map.has(c.teacherUid)) {
+      if (c.teacherUid && !map.has(c.teacherUid) && !isBlockedEmail(c.teacherEmail)) {
         map.set(c.teacherUid, {
           uid: c.teacherUid,
           displayName: c.teacherName,
@@ -357,7 +358,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       const cls = classrooms.find((c) => c.id === cId);
       const studentList = (list || []) as UserProfile[];
       studentList.forEach((u) => {
-        if (u.uid) {
+        if (u.uid && !isBlockedEmail(u.email)) {
           const existing = map.get(u.uid);
           map.set(u.uid, {
             ...existing,
@@ -1070,19 +1071,20 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               </div>
 
               <div className="p-3.5 bg-rose-50/70 backdrop-blur-md rounded-2xl border border-rose-200/80 text-xs text-slate-700 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                  <span className="font-mono font-black text-rose-900 text-xs truncate">
-                    {userToReset.email || '(E-posta belirtilmemiş)'}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-600 pl-6 space-y-0.5">
+                {userToReset.email && !isBlockedEmail(userToReset.email) && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-rose-900 text-xs truncate">
+                      {userToReset.email}
+                    </span>
+                  </div>
+                )}
+                <div className="text-[11px] text-slate-600 space-y-0.5">
                   <div>Kullanıcı: <strong className="text-slate-900">{userToReset.displayName || 'İsimsiz'}</strong></div>
                   {userToReset.studentName && <div>Öğrenci: <strong className="text-slate-900">{userToReset.studentName}</strong></div>}
                   {userToReset.className && <div>Sınıf: <strong className="text-slate-900">{userToReset.className}</strong></div>}
                 </div>
                 <div className="text-[11px] text-rose-700 bg-white/80 p-2 rounded-xl border border-rose-200 font-medium">
-                  ⚠️ <strong>Önemli:</strong> Bu işlem yapıldığında bu e-posta adresi veritabanından tamamen silinir ve serbest kalır. Kullanıcı aynı e-posta ile sıfırdan yeniden üye olabilir.
+                  ⚠️ <strong>Önemli:</strong> Bu işlem yapıldığında bu hesap veritabanından tamamen silinir ve serbest kalır. Kullanıcı sıfırdan yeniden üye olabilir.
                 </div>
               </div>
 
@@ -1742,8 +1744,8 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               : 'text-slate-800 hover:text-slate-900 hover:bg-white/30'
           }`}
         >
-          <Mail className={`w-4 h-4 ${adminSection === 'registered_emails' ? 'text-rose-600' : 'text-slate-600'}`} />
-          <span>Kayıtlı E-Postalar ({allRegisteredUsers.length})</span>
+          <Users className={`w-4 h-4 ${adminSection === 'registered_emails' ? 'text-rose-600' : 'text-slate-600'}`} />
+          <span>Kayıtlı Hesaplar ({allRegisteredUsers.length})</span>
         </button>
       </div>
 
@@ -2050,11 +2052,11 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             />
 
             <div className="relative z-10 flex items-center gap-2 text-rose-700 font-black text-xs">
-              <Mail className="w-4 h-4" />
-              <span>Kayıtlı E-Postalar &amp; Hesap Sıfırlama Merkezi</span>
+              <Users className="w-4 h-4" />
+              <span>Kayıtlı Hesaplar &amp; Hesap Sıfırlama Merkezi</span>
             </div>
             <p className="relative z-10 text-[11px] text-slate-700 leading-relaxed font-semibold">
-              Sisteme kayıt olan tüm e-posta adreslerini buradan inceleyebilirsiniz. Yanlışlıkla açılan veya hatalı e-posta ile üye olunan bir hesap olduğunda, yanındaki <strong>&quot;Sıfırla &amp; Sil&quot;</strong> butonunu kullanarak hesabı veritabanından tamamen silebilirsiniz. Böylece o e-posta adresi serbest kalır ve kullanıcı aynı e-posta ile sıfırdan yeniden kayıt olabilir.
+              Sisteme kayıt olan tüm hesapları buradan inceleyebilirsiniz. Yanlışlıkla açılan veya hatalı e-posta ile üye olunan bir hesap olduğunda, yanındaki <strong>&quot;Sıfırla &amp; Sil&quot;</strong> butonunu kullanarak hesabı veritabanından tamamen silebilirsiniz. Böylece o e-posta adresi serbest kalır ve kullanıcı sıfırdan yeniden kayıt olabilir.
             </p>
           </div>
 
@@ -2174,9 +2176,9 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.7)',
                 }}
               >
-                <Mail className="w-8 h-8 text-slate-400 mx-auto" />
+                <Users className="w-8 h-8 text-slate-400 mx-auto" />
                 <p className="text-xs font-bold text-slate-800">
-                  {emailSearchQuery ? 'Aramanıza uygun kayıtlı e-posta bulunamadı.' : 'Sistemde kayıtlı kullanıcı bulunmuyor.'}
+                  {emailSearchQuery ? 'Aramanıza uygun kayıtlı hesap bulunamadı.' : 'Sistemde kayıtlı kullanıcı bulunmuyor.'}
                 </p>
                 <p className="text-[11px] text-slate-800 font-semibold">
                   Yeni kullanıcılar üye oldukça burada anlık olarak listelenecektir.
@@ -2240,7 +2242,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           {/* E-Posta Adresi & Kopyalama */}
                           <div className="flex items-center gap-1 flex-wrap leading-none">
                             <span className="font-mono font-black text-[11px] sm:text-xs text-slate-900 truncate leading-none">
-                              {user.email || '(E-posta belirtilmemiş)'}
+                              {user.email || user.displayName || 'Kullanıcı'}
                             </span>
                             {user.email && (
                               <button
@@ -2319,7 +2321,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
                         </button>
 
-                        {/* Şifre Sıfırlama Gönder Butonu */}
+                        {/* Şifre Sıfırlama Kodu Gönder Butonu */}
                         {user.email && (
                           <button
                             type="button"
@@ -2327,7 +2329,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             onClick={() => handleSendPasswordReset(user.email, user.uid)}
                             disabled={sendingResetForUid === user.uid}
                             className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-xs font-bold backdrop-blur-xs shadow-2xs"
-                            title="Kullanıcıya Şifre Sıfırlama Bağlantısı Gönder"
+                            title="Kullanıcıya 6 Haneli Şifre Sıfırlama Kodu Gönder"
                           >
                             <Send className={`w-3.5 h-3.5 ${sendingResetForUid === user.uid ? 'animate-bounce text-indigo-600' : ''}`} />
                           </button>
@@ -2371,7 +2373,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           title={
                             isCurrentAdminAccount
                               ? 'Kendi yönetici hesabınızı silemezsiniz'
-                              : 'Bu e-postayı ve hesabı tamamen sıfırla/sil'
+                              : 'Bu hesabı tamamen sıfırla/sil'
                           }
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -2408,22 +2410,23 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
             <div className="text-center space-y-1.5">
               <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">
-                E-Postayı ve Hesabı Sıfırla &amp; Sil
+                Hesabı Sıfırla &amp; Sil
               </h4>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Yanlışlıkla açılan veya sıfırlanması istenen bu e-posta kaydını sistemden tamamen kaldıracaksınız.
+                Yanlışlıkla açılan veya sıfırlanması istenen bu kaydı sistemden tamamen kaldıracaksınız.
               </p>
             </div>
 
             {/* Detay Kutusu */}
             <div className="p-3.5 bg-rose-50/70 backdrop-blur-md rounded-2xl border border-rose-200/80 text-xs text-slate-700 space-y-2">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                <span className="font-mono font-black text-rose-900 text-xs sm:text-sm truncate">
-                  {userToReset.email || '(E-posta belirtilmemiş)'}
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-600 pl-6 space-y-0.5 font-medium">
+              {userToReset.email && !isBlockedEmail(userToReset.email) && (
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-black text-rose-900 text-xs sm:text-sm truncate">
+                    {userToReset.email}
+                  </span>
+                </div>
+              )}
+              <div className="text-[11px] text-slate-600 space-y-0.5 font-medium">
                 <div>Kullanıcı: <strong className="text-slate-900">{userToReset.displayName || 'İsimsiz'}</strong></div>
                 <div>Rol: <strong className="text-slate-900">{userToReset.role === 'teacher' ? 'Öğretmen' : userToReset.role === 'admin' ? 'Yönetici' : 'Veli'}</strong></div>
                 {userToReset.studentName && <div>Öğrenci: <strong className="text-slate-900">{userToReset.studentName}</strong></div>}
@@ -2437,7 +2440,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
                   <li>Bu hesap veritabanından tamamen silinir.</li>
                   <li>E-posta adresi sistemde serbest kalır ve sıfırlanır.</li>
-                  <li>Kullanıcı veya siz aynı e-posta ile sıfırdan yeniden üye olabilirsiniz.</li>
+                  <li>Kullanıcı veya siz sıfırdan yeniden üye olabilirsiniz.</li>
                 </ul>
               </div>
             </div>

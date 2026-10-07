@@ -84,6 +84,44 @@ export function removeUndefined<T extends Record<string, any>>(obj: T): T {
 export const ADMIN_EMAILS: string[] = [];
 export const DEFAULT_ADMIN_EMAIL = '';
 
+const BLOCKED_EMAILS = ['horocis321@aahzz.com'];
+
+export function isBlockedEmail(email?: string | null): boolean {
+  if (!email) return false;
+  return BLOCKED_EMAILS.includes(email.trim().toLowerCase());
+}
+
+/**
+ * Permanently removes any blocked/deleted test email records from Firestore (`users`, `classes`, `password_reset_codes`)
+ * and local storage.
+ */
+export async function purgeBlockedEmailsFromFirestore(): Promise<void> {
+  try {
+    for (const badEmail of BLOCKED_EMAILS) {
+      const usersRef = collection(db, 'users');
+      const snap = await getDocs(query(usersRef, where('email', '==', badEmail)));
+      for (const d of snap.docs) {
+        try {
+          await deleteDoc(d.ref);
+        } catch {}
+      }
+
+      const classesRef = collection(db, 'classes');
+      const cSnap = await getDocs(query(classesRef, where('teacherEmail', '==', badEmail)));
+      for (const cd of cSnap.docs) {
+        try {
+          await deleteDoc(cd.ref);
+        } catch {}
+      }
+
+      const emailDocId = badEmail.replace(/[^a-z0-9@._-]/gi, '_');
+      try {
+        await deleteDoc(doc(db, 'password_reset_codes', emailDocId));
+      } catch {}
+    }
+  } catch {}
+}
+
 export function isAdminEmail(_email?: string | null): boolean {
   return false;
 }
@@ -93,7 +131,13 @@ export function getActiveAppProfile(): UserProfile | null {
   try {
     const raw = localStorage.getItem('activeAppProfile') || sessionStorage.getItem('activeAppProfile');
     if (raw) {
-      return JSON.parse(raw) as UserProfile;
+      const parsed = JSON.parse(raw) as UserProfile;
+      if (isBlockedEmail(parsed?.email)) {
+        localStorage.removeItem('activeAppProfile');
+        sessionStorage.removeItem('activeAppProfile');
+        return null;
+      }
+      return parsed;
     }
   } catch (err) {
     console.warn('Failed to parse activeAppProfile:', err);
@@ -511,12 +555,15 @@ const lastPasswordResetSentMap: Record<string, number> = {};
 /**
  * Generates or retrieves a permanent (non-expiring) 6-digit numeric reset code for an email,
  * saves it in Firestore (`password_reset_codes` and on the user document),
- * and sends an email to the user without any expiration limit on the code.
+ * and sends ONLY the 6-digit code via email without any password reset link or expiration limit.
  */
 export async function sendNonExpiringResetCode(email: string): Promise<{ codeSent: boolean; permanentCode: string }> {
   const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail) {
     throw new Error('Lütfen e-posta adresinizi giriniz.');
+  }
+  if (isBlockedEmail(cleanEmail)) {
+    throw new Error('Bu e-posta adresi sistemden silinmiştir.');
   }
 
   // 1. Check if user exists in Firestore or get existing permanent resetCode
@@ -584,7 +631,7 @@ export async function sendNonExpiringResetCode(email: string): Promise<{ codeSen
     } catch {}
   }
 
-  // 2. Call backend endpoint to send the 6-digit code email
+  // 2. Call backend endpoint to send ONLY the 6-digit code email (no password reset link)
   try {
     await fetch('/api/send-reset-code', {
       method: 'POST',
@@ -597,47 +644,19 @@ export async function sendNonExpiringResetCode(email: string): Promise<{ codeSen
     });
   } catch {}
 
-  // 3. Also trigger Firebase's email delivery (with a continueUrl containing the permanent 6-digit code so even if Firebase's oobCode expires, the email itself contains the permanent 6-digit code in the URL and works forever!)
-  const now = Date.now();
-  const lastSent = lastPasswordResetSentMap[cleanEmail] || 0;
-  if (now - lastSent >= 45000) {
-    try {
-      auth.languageCode = 'tr';
-      const origin =
-        typeof window !== 'undefined' && window.location?.origin
-          ? window.location.origin
-          : 'https://ais-pre-jo3qfqilx5x2p77h3rgriv-854792743663.europe-west2.run.app';
-      await sendPasswordResetEmail(auth, cleanEmail, {
-        url: `${origin}/?resetEmail=${encodeURIComponent(cleanEmail)}&permanentCode=${encodeURIComponent(permanentCode)}`,
-        handleCodeInApp: false,
-      });
-      lastPasswordResetSentMap[cleanEmail] = Date.now();
-    } catch {
-      // Fallback without ActionCodeSettings if domain isn't whitelisted for continueUrl
-      try {
-        auth.languageCode = 'tr';
-        await sendPasswordResetEmail(auth, cleanEmail);
-        lastPasswordResetSentMap[cleanEmail] = Date.now();
-      } catch (innerErr) {
-        console.warn('sendPasswordResetEmail warning:', innerErr);
-      }
-    }
-  }
-
+  lastPasswordResetSentMap[cleanEmail] = Date.now();
   return { codeSent: true, permanentCode };
 }
 
 /**
- * Send password reset email (with cooldown guard so a second click doesn't invalidate the first email link)
+ * Send password reset code email
  */
 export async function resetPasswordEmail(email: string): Promise<void> {
   await sendNonExpiringResetCode(email);
 }
 
 /**
- * Extracts `oobCode` or a 6-digit permanent code from either a full Firebase password reset URL or a raw code string.
- * Notice: Even if Firebase's `oobCode` is marked "expired" by Firebase's server, we also extract `permanentCode` or
- * allow using the `oobCode` / 6-digit code without expiration!
+ * Extracts a 6-digit permanent code from raw input.
  */
 export function extractOobCodeFromInput(input: string): string {
   const trimmed = (input || '').trim();
@@ -660,9 +679,7 @@ export function extractOobCodeFromInput(input: string): string {
 }
 
 /**
- * Verify and complete a password reset using either:
- * 1) The non-expiring 6-digit code (`permanentResetCode`)
- * 2) Any code/link from the email (even if Firebase's 1-hour / single-use oobCode limit expired!)
+ * Verify and complete a password reset using the non-expiring 6-digit code (`permanentResetCode`).
  */
 export async function verifyAndConfirmResetCode(
   rawLinkOrCode: string,
@@ -673,7 +690,7 @@ export async function verifyAndConfirmResetCode(
   const rawTrimmed = (rawLinkOrCode || '').trim();
   const extractedCode = extractOobCodeFromInput(rawTrimmed);
   if (!extractedCode) {
-    throw new Error('Lütfen e-postanıza gelen 6 haneli sıfırlama kodunu (veya maildeki bağlantıyı) giriniz.');
+    throw new Error('Lütfen e-postanıza gelen 6 haneli şifre sıfırlama kodunu giriniz.');
   }
   if (!newPassword || newPassword.length < 6) {
     throw new Error('Yeni şifreniz en az 6 karakter olmalıdır.');
@@ -681,19 +698,9 @@ export async function verifyAndConfirmResetCode(
 
   let verifiedEmail = (targetEmailHint || '').trim().toLowerCase();
 
-  // Check if URL itself has resetEmail=...
-  try {
-    if (rawTrimmed.includes('resetEmail=')) {
-      const eMatch = rawTrimmed.match(/[?&]resetEmail=([^&#\s]+)/);
-      if (eMatch && eMatch[1]) {
-        verifiedEmail = decodeURIComponent(eMatch[1]).trim().toLowerCase();
-      }
-    }
-  } catch {}
-
   let codeVerified = false;
 
-  // A. Check if the user entered the 6-digit non-expiring code!
+  // Check if the user entered the 6-digit non-expiring code!
   const cleanDigits = extractedCode.replace(/\s+/g, '');
   if (/^\d{6}$/.test(cleanDigits)) {
     // Look up in `password_reset_codes` collection
@@ -728,34 +735,10 @@ export async function verifyAndConfirmResetCode(
     }
 
     if (!codeVerified) {
-      throw new Error('Girdiğiniz 6 haneli doğrulama kodu hatalı. Lütfen kodu kontrol edip tekrar deneyin.');
+      throw new Error('Girdiğiniz 6 haneli şifre sıfırlama kodu hatalı. Lütfen kodu kontrol edip tekrar deneyin.');
     }
   } else {
-    // B. The user pasted the email link or oobCode string
-    try {
-      const fbEmail = await verifyPasswordResetCode(auth, extractedCode);
-      if (fbEmail) {
-        verifiedEmail = fbEmail.trim().toLowerCase();
-      }
-      await confirmPasswordReset(auth, extractedCode, newPassword);
-      codeVerified = true;
-    } catch {
-      // Even if Firebase says the link/oobCode is "expired or already used" (because email scanner clicked it),
-      // if it is a genuine Firebase oobCode (or URL containing oobCode/apiKey) and we have the user's email,
-      // accept it WITHOUT expiration!
-      const looksLikeGenuineResetToken =
-        rawTrimmed.includes('oobCode=') ||
-        rawTrimmed.includes('mode=resetPassword') ||
-        extractedCode.length >= 20;
-
-      if (looksLikeGenuineResetToken && verifiedEmail) {
-        codeVerified = true;
-      } else if (looksLikeGenuineResetToken && !verifiedEmail) {
-        throw new Error('Lütfen 1. kutucuğa e-posta adresinizi de yazarak tekrar "Doğrula ve Yeni Şifreyi Kaydet" butonuna basınız.');
-      } else {
-        throw new Error('Girdiğiniz kod geçersiz. Lütfen 6 haneli doğrulama kodunu veya maildeki bağlantıyı tam olarak giriniz.');
-      }
-    }
+    throw new Error('Lütfen e-postanıza gönderilen 6 haneli şifre sıfırlama kodunu giriniz.');
   }
 
   if (!verifiedEmail) {
@@ -843,7 +826,7 @@ export function getFriendlyAuthErrorMessage(error: any): string {
   const msg = rawMsg.toLowerCase();
 
   if (code.includes('email-already-in-use') || msg.includes('email-already-in-use')) {
-    return 'Bu e-posta adresiyle kayıtlı bir hesap zaten var. Hesabınıza giriş yapmak için şifrenizi girebilir veya aşağıdaki butonla yeni şifre bağlantısı isteyebilirsiniz.';
+    return 'Bu e-posta adresiyle kayıtlı bir hesap zaten var. Hesabınıza giriş yapmak için şifrenizi girebilir veya aşağıdaki butonla şifre sıfırlama kodu isteyebilirsiniz.';
   }
   if (
     code.includes('invalid-credential') ||
@@ -853,7 +836,7 @@ export function getFriendlyAuthErrorMessage(error: any): string {
     msg.includes('wrong-password') ||
     msg.includes('user-not-found')
   ) {
-    return 'E-posta veya şifre hatalı. Şifrenizi bilmiyorsanız veya daha önce Google ile açtıysanız aşağıdaki "Şifremi Sıfırla" butonuyla yeni şifre belirleyebilirsiniz.';
+    return 'E-posta veya şifre hatalı. Şifrenizi bilmiyorsanız aşağıdaki "Şifremi Sıfırla" butonuyla e-postanıza kod göndererek yeni şifre belirleyebilirsiniz.';
   }
   if (code.includes('invalid-email') || msg.includes('invalid-email')) {
     return 'Lütfen geçerli bir e-posta adresi giriniz.';
@@ -878,7 +861,7 @@ export function getFriendlyAuthErrorMessage(error: any): string {
   }
 
   if (msg.includes('auth/') || msg.includes('firebase')) {
-    return 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz veya şifre sıfırlama bağlantısı isteyiniz.';
+    return 'Giriş yapılamadı. Bilgilerinizi kontrol ediniz veya şifre sıfırlama kodu isteyiniz.';
   }
 
   return error?.message || 'İşlem gerçekleştirilemedi. Lütfen tekrar deneyiniz.';
@@ -1282,8 +1265,13 @@ export function subscribeAllUsers(
     q,
     (snap) => {
       const users: UserProfile[] = [];
-      snap.forEach((doc) => {
-        users.push({ uid: doc.id, ...doc.data() } as UserProfile);
+      snap.forEach((d) => {
+        const item = { uid: d.id, ...d.data() } as UserProfile;
+        if (isBlockedEmail(item.email)) {
+          deleteDoc(d.ref).catch(() => {});
+          return;
+        }
+        users.push(item);
       });
       onUpdate(users);
     },
@@ -1291,8 +1279,13 @@ export function subscribeAllUsers(
       console.error('Subscribe all users error:', error);
       onSnapshot(usersRef, (snap) => {
         const users: UserProfile[] = [];
-        snap.forEach((doc) => {
-          users.push({ uid: doc.id, ...doc.data() } as UserProfile);
+        snap.forEach((d) => {
+          const item = { uid: d.id, ...d.data() } as UserProfile;
+          if (isBlockedEmail(item.email)) {
+            deleteDoc(d.ref).catch(() => {});
+            return;
+          }
+          users.push(item);
         });
         onUpdate(users);
       }, onError);
@@ -2627,6 +2620,10 @@ export function subscribeClassroomStudents(
       const list: UserProfile[] = [];
       snap.forEach((d) => {
         const item = { uid: d.id, ...(d.data() as Partial<UserProfile>) } as UserProfile;
+        if (isBlockedEmail(item.email)) {
+          deleteDoc(d.ref).catch(() => {});
+          return;
+        }
         if (item.role === 'parent' || item.userType === 'parent' || item.studentName) {
           list.push(item);
         }

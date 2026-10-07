@@ -2,7 +2,7 @@ import React from 'react';
 import { UserProfile } from '../types';
 import { signOutUser } from '../lib/firebase';
 import {
-  Mail,
+  MessageSquare,
   HelpCircle,
   Settings,
   LogOut,
@@ -208,7 +208,7 @@ export const Header: React.FC<HeaderProps> = ({
                 title="Mesajlar ve Bildirimler"
                 className="relative text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer active:scale-95 flex items-center justify-center p-0.5"
               >
-                <Mail className="w-4 h-4" strokeWidth={1.9} />
+                <MessageSquare className="w-4 h-4" strokeWidth={1.9} />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white animate-pulse" />
                 )}
