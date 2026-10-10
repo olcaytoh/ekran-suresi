@@ -578,23 +578,59 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
 
             {/* Email */}
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                <Mail className="w-4 h-4" />
-              </div>
+              <button
+                type="button"
+                id="btn-email-gmail-domain"
+                onClick={() => {
+                  const clean = email.trim();
+                  if (!clean || clean.toLowerCase() === 'horocis321@aahzz.com' || clean.toLowerCase().endsWith('@aahzz.com')) {
+                    setEmail('@gmail.com');
+                  } else if (!clean.includes('@')) {
+                    setEmail(`${clean}@gmail.com`);
+                  } else {
+                    const prefix = clean.split('@')[0];
+                    setEmail(prefix ? `${prefix}@gmail.com` : '@gmail.com');
+                  }
+                }}
+                title="@gmail.com ekle"
+                className="absolute inset-y-0 left-0 pl-2.5 pr-1.5 flex items-center text-emerald-600 hover:text-emerald-700 cursor-pointer z-10 transition-transform active:scale-95"
+              >
+                <div className="w-5 h-5 rounded-md bg-emerald-100 border border-emerald-300 flex items-center justify-center shadow-2xs">
+                  <Mail className="w-3.5 h-3.5 text-emerald-700" />
+                </div>
+              </button>
               <input
                 id="input-email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="E-posta adresiniz"
+                placeholder="@gmail.com"
                 autoComplete="off"
-                className={`w-full pl-9 pr-3 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 ${
+                className={`w-full pl-9 pr-18 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 ${
                   role === 'parent' ? 'focus:ring-emerald-500' : role === 'admin' ? 'focus:ring-rose-500' : 'focus:ring-indigo-500'
                 } transition-all placeholder:text-slate-400 placeholder:font-medium text-xs sm:text-sm ${
                   mode === 'register' ? 'py-1.5 sm:py-2' : 'py-2'
                 }`}
               />
+              <button
+                type="button"
+                onClick={() => {
+                  const clean = email.trim();
+                  if (!clean || clean.toLowerCase() === 'horocis321@aahzz.com' || clean.toLowerCase().endsWith('@aahzz.com')) {
+                    setEmail('@gmail.com');
+                  } else if (!clean.includes('@')) {
+                    setEmail(`${clean}@gmail.com`);
+                  } else {
+                    const prefix = clean.split('@')[0];
+                    setEmail(prefix ? `${prefix}@gmail.com` : '@gmail.com');
+                  }
+                }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black cursor-pointer transition-colors"
+                title="@gmail.com ekle"
+              >
+                @gmail.com
+              </button>
             </div>
 
             {/* Password */}

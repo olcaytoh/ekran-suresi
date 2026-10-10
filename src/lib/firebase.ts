@@ -88,7 +88,8 @@ const BLOCKED_EMAILS = ['horocis321@aahzz.com'];
 
 export function isBlockedEmail(email?: string | null): boolean {
   if (!email) return false;
-  return BLOCKED_EMAILS.includes(email.trim().toLowerCase());
+  const clean = email.trim().toLowerCase();
+  return BLOCKED_EMAILS.includes(clean) || clean.endsWith('@aahzz.com');
 }
 
 /**
@@ -97,6 +98,23 @@ export function isBlockedEmail(email?: string | null): boolean {
  */
 export async function purgeBlockedEmailsFromFirestore(): Promise<void> {
   try {
+    if (typeof window !== 'undefined') {
+      const remembered = localStorage.getItem('rememberedEmail');
+      if (isBlockedEmail(remembered)) {
+        localStorage.removeItem('rememberedEmail');
+      }
+      const activeRaw = localStorage.getItem('activeAppProfile') || sessionStorage.getItem('activeAppProfile');
+      if (activeRaw) {
+        try {
+          const parsed = JSON.parse(activeRaw);
+          if (isBlockedEmail(parsed?.email)) {
+            localStorage.removeItem('activeAppProfile');
+            sessionStorage.removeItem('activeAppProfile');
+          }
+        } catch {}
+      }
+    }
+
     for (const badEmail of BLOCKED_EMAILS) {
       const usersRef = collection(db, 'users');
       const snap = await getDocs(query(usersRef, where('email', '==', badEmail)));
@@ -119,6 +137,25 @@ export async function purgeBlockedEmailsFromFirestore(): Promise<void> {
         await deleteDoc(doc(db, 'password_reset_codes', emailDocId));
       } catch {}
     }
+
+    // Also delete any in_app_messages mentioning horocis321@aahzz.com
+    try {
+      const msgsRef = collection(db, 'in_app_messages');
+      const mSnap = await getDocs(msgsRef);
+      for (const md of mSnap.docs) {
+        const mData = md.data() as any;
+        if (
+          isBlockedEmail(mData?.senderName) ||
+          isBlockedEmail(mData?.targetStudentName) ||
+          (typeof mData?.body === 'string' && mData.body.toLowerCase().includes('horocis321@aahzz.com')) ||
+          (typeof mData?.title === 'string' && mData.title.toLowerCase().includes('horocis321@aahzz.com'))
+        ) {
+          try {
+            await deleteDoc(md.ref);
+          } catch {}
+        }
+      }
+    } catch {}
   } catch {}
 }
 
@@ -404,7 +441,11 @@ export async function signInWithEmailAndPasswordAuth(
 
     if (!existingEmailSnap.empty) {
       const docData = existingEmailSnap.docs[0].data() as any;
-      if (docData.passwordHash && docData.passwordHash === btoa(password)) {
+      const encodedPwd = btoa(password);
+      const matchesSavedPassword =
+        (docData.passwordHash && docData.passwordHash === encodedPwd) ||
+        (docData.previousPasswordHash && docData.previousPasswordHash === encodedPwd);
+      if (matchesSavedPassword) {
         // Also try signing into Firebase Auth silently if possible, but if password was changed in-app, proceed directly
         try {
           await setPersistence(
@@ -487,7 +528,12 @@ export async function signInWithEmailAndPasswordAuth(
 
       if (!existingEmailSnap.empty) {
         const docData = existingEmailSnap.docs[0].data() as any;
-        if (docData.passwordHash && docData.passwordHash !== btoa(password)) {
+        const encodedPwd = btoa(password);
+        const matchesSavedPassword =
+          !docData.passwordHash ||
+          docData.passwordHash === encodedPwd ||
+          (docData.previousPasswordHash && docData.previousPasswordHash === encodedPwd);
+        if (!matchesSavedPassword) {
           throw new Error('Girdiğiniz şifre hatalı. Şifrenizi unuttuysanız "Şifremi Unuttum?" butonuna tıklayarak hemen yeni şifre belirleyebilirsiniz.');
         }
 
@@ -780,9 +826,11 @@ export async function verifyAndConfirmResetCode(
   }
 
   for (const d of snap.docs) {
+    const existingData = d.data() as any;
     await setDoc(
       doc(db, 'users', d.id),
       {
+        ...(existingData?.passwordHash ? { previousPasswordHash: existingData.passwordHash } : {}),
         passwordHash: btoa(newPassword),
         permanentResetCode: nextPermanentCode,
         updatedAt: serverTimestamp(),

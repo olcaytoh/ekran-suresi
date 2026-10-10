@@ -207,13 +207,14 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
   const [editStudentNameInput, setEditStudentNameInput] = useState('');
   const [editParentNameInput, setEditParentNameInput] = useState('');
+  const [editUserClassNameInput, setEditUserClassNameInput] = useState('');
   const [isSavingUserEdit, setIsSavingUserEdit] = useState(false);
   const [editUserError, setEditUserError] = useState<string | null>(null);
 
   const handleOpenEditClass = (classroom: ClassroomInfo) => {
     setClassToEdit(classroom);
     setEditClassNameInput(classroom.name || '');
-    setEditTeacherNameInput(classroom.teacherName || '');
+    setEditTeacherNameInput(resolveTeacherDisplayName(classroom) === 'Atanmamış' ? '' : resolveTeacherDisplayName(classroom));
     setEditClassError(null);
   };
 
@@ -252,6 +253,13 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     const isStaff = user.role === 'teacher' || user.role === 'admin';
     setEditStudentNameInput(isStaff ? (user.displayName || '') : (user.studentName || user.displayName || ''));
     setEditParentNameInput(user.parentName || '');
+    const matchedClassroom = classrooms.find(
+      (c) =>
+        (user.classId && c.id === user.classId) ||
+        c.teacherUid === user.uid ||
+        c.teacherId === user.uid
+    );
+    setEditUserClassNameInput(user.className || matchedClassroom?.name || '');
     setEditUserError(null);
   };
 
@@ -261,6 +269,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     const isStaff = userToEdit.role === 'teacher' || userToEdit.role === 'admin';
     const cleanMainName = editStudentNameInput.trim();
     const cleanParentName = editParentNameInput.trim();
+    const cleanUserClassName = editUserClassNameInput.trim();
 
     if (!cleanMainName) {
       setEditUserError(isStaff ? 'Lütfen ad ve soyad giriniz.' : 'Lütfen öğrencinin adını ve soyadını giriniz.');
@@ -272,13 +281,23 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       setEditUserError(null);
 
       if (isStaff) {
+        const matchedClassroom = classrooms.find(
+          (c) =>
+            (userToEdit.classId && c.id === userToEdit.classId) ||
+            c.teacherUid === userToEdit.uid ||
+            c.teacherId === userToEdit.uid
+        );
+        const targetClassId = userToEdit.classId || matchedClassroom?.id;
+        const finalClassName = cleanUserClassName || userToEdit.className || matchedClassroom?.name;
+
         await onUpdateUser?.(userToEdit.uid, {
           displayName: cleanMainName,
+          ...(finalClassName ? { className: finalClassName } : {}),
         });
-        if (userToEdit.classId && userToEdit.className) {
+        if (targetClassId && finalClassName) {
           await onUpdateClassroom?.(
-            userToEdit.classId,
-            userToEdit.className,
+            targetClassId,
+            finalClassName,
             userToEdit.uid,
             cleanMainName
           );
@@ -288,6 +307,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           studentName: cleanMainName,
           parentName: cleanParentName || undefined,
           displayName: cleanMainName,
+          ...(cleanUserClassName ? { className: cleanUserClassName } : {}),
         });
       }
 
@@ -374,7 +394,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
   // Filtered Registered Users
   const filteredRegisteredUsers = useMemo(() => {
-    return allRegisteredUsers.filter((u) => {
+    const filtered = allRegisteredUsers.filter((u) => {
       // Role filter
       if (emailRoleFilter === 'parent' && u.role !== 'parent' && u.userType !== 'parent') return false;
       if (emailRoleFilter === 'teacher' && u.role !== 'teacher') return false;
@@ -391,7 +411,36 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       const classMatch = (u.className || '').toLowerCase().includes(q);
       return emailMatch || nameMatch || studentMatch || parentMatch || classMatch;
     });
-  }, [allRegisteredUsers, emailRoleFilter, emailSearchQuery]);
+
+    return [...filtered].sort((a, b) => {
+      const getResolvedClassName = (user: UserProfile) => {
+        if (user.className && user.className.trim()) return user.className.trim();
+        const cls = classrooms.find(
+          (c) =>
+            (user.classId && c.id === user.classId) ||
+            c.teacherUid === user.uid ||
+            c.teacherId === user.uid
+        );
+        return (cls?.name || '').trim();
+      };
+
+      const classA = getResolvedClassName(a);
+      const classB = getResolvedClassName(b);
+
+      if (classA && classB) {
+        const cmp = classA.localeCompare(classB, 'tr', { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+      } else if (classA && !classB) {
+        return -1;
+      } else if (!classA && classB) {
+        return 1;
+      }
+
+      const nameA = (a.studentName || a.displayName || a.email || '').trim();
+      const nameB = (b.studentName || b.displayName || b.email || '').trim();
+      return nameA.localeCompare(nameB, 'tr', { numeric: true, sensitivity: 'base' });
+    });
+  }, [allRegisteredUsers, emailRoleFilter, emailSearchQuery, classrooms]);
 
   // User Counts
   const parentCount = useMemo(
@@ -1273,13 +1322,17 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
               <div className="text-center space-y-1">
                 <h4 className="text-sm font-black text-slate-900 [font-family:inherit]">
-                  {userToEdit.role === 'teacher' || userToEdit.role === 'admin'
-                    ? 'Kullanıcı Adını Düzenle'
+                  {userToEdit.role === 'teacher'
+                    ? 'Öğretmen & Sınıf Düzenle'
+                    : userToEdit.role === 'admin'
+                    ? 'Yönetici Adını Düzenle'
                     : 'Öğrenci & Veli Düzenle'}
                 </h4>
                 <p className="text-xs text-slate-500">
-                  {userToEdit.role === 'teacher' || userToEdit.role === 'admin'
-                    ? 'Öğretmen veya yönetici adında düzeltme yapabilirsiniz.'
+                  {userToEdit.role === 'teacher'
+                    ? 'Öğretmen adını ve bağlı olduğu sınıf adını güncelleyebilirsiniz.'
+                    : userToEdit.role === 'admin'
+                    ? 'Yönetici adında düzeltme yapabilirsiniz.'
                     : 'Öğrenci veya veli adında düzeltme yapabilirsiniz.'}
                 </p>
               </div>
@@ -1302,6 +1355,19 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                     required
                   />
                 </div>
+
+                {userToEdit.role === 'teacher' && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Sınıf Adı:</label>
+                    <input
+                      type="text"
+                      value={editUserClassNameInput}
+                      onChange={(e) => setEditUserClassNameInput(e.target.value)}
+                      placeholder="Örn: 4-A Sınıfı"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    />
+                  </div>
+                )}
 
                 {userToEdit.role !== 'teacher' && userToEdit.role !== 'admin' && (
                   <div className="space-y-1">
@@ -1898,7 +1964,11 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               </div>
             ) : (
               <>
-                {classrooms.map((classroom) => {
+                {[...classrooms]
+                  .sort((a, b) =>
+                    (a.name || '').localeCompare(b.name || '', 'tr', { numeric: true, sensitivity: 'base' })
+                  )
+                  .map((classroom) => {
                   const students = studentsByClass[classroom.id] || [];
                   const stats = computeClassStats(students);
                   const hasCritical = stats.criticalCount > 0;
@@ -2717,13 +2787,17 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
             <div className="text-center space-y-1">
               <h4 className="text-sm font-black text-slate-900 [font-family:inherit]">
-                {userToEdit.role === 'teacher' || userToEdit.role === 'admin'
-                  ? 'Kullanıcı Adını Düzenle'
+                {userToEdit.role === 'teacher'
+                  ? 'Öğretmen & Sınıf Düzenle'
+                  : userToEdit.role === 'admin'
+                  ? 'Yönetici Adını Düzenle'
                   : 'Öğrenci & Veli Düzenle'}
               </h4>
               <p className="text-xs text-slate-500">
-                {userToEdit.role === 'teacher' || userToEdit.role === 'admin'
-                  ? 'Öğretmen veya yönetici adında düzeltme yapabilirsiniz.'
+                {userToEdit.role === 'teacher'
+                  ? 'Öğretmen adını ve bağlı olduğu sınıf adını güncelleyebilirsiniz.'
+                  : userToEdit.role === 'admin'
+                  ? 'Yönetici adında düzeltme yapabilirsiniz.'
                   : 'Öğrenci veya veli adında düzeltme yapabilirsiniz.'}
               </p>
             </div>
@@ -2746,6 +2820,19 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   required
                 />
               </div>
+
+              {userToEdit.role === 'teacher' && (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Sınıf Adı:</label>
+                  <input
+                    type="text"
+                    value={editUserClassNameInput}
+                    onChange={(e) => setEditUserClassNameInput(e.target.value)}
+                    placeholder="Örn: 4-A Sınıfı"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+              )}
 
               {userToEdit.role !== 'teacher' && userToEdit.role !== 'admin' && (
                 <div className="space-y-1">
