@@ -25,8 +25,12 @@
     <init>();
     @com.getcapacitor.PluginMethod public void *(com.getcapacitor.PluginCall);
 }
+-keep class * extends com.getcapacitor.Plugin {
+    <init>();
+    @com.getcapacitor.PluginMethod public void *(com.getcapacitor.PluginCall);
+}
 -keep class com.getcapacitor.BridgeActivity { *; }
 -keep class com.olcico.ekransuresi.MainActivity { *; }
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
--dontwarn com.google.android.gms.**
--dontwarn com.google.firebase.**
+-dontwarn **
+-ignorewarnings
