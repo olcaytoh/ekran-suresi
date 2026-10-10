@@ -13,6 +13,7 @@ import {
   subscribeClassroomStudents,
   subscribeInstitutionClassrooms,
   updateStageProgress,
+  updateUnusedDaysProgress,
   syncUserProfile,
   signOutUser,
   forgetAndClearAllDeviceData,
@@ -1018,24 +1019,52 @@ export default function App() {
     if (isUpdatingStage) return;
     try {
       setIsUpdatingStage(true);
+      const clampedStage = Math.max(0, Math.min(14, newStage));
+      const nowObj = new Date();
+      const dd = String(nowObj.getDate()).padStart(2, '0');
+      const mm = String(nowObj.getMonth() + 1).padStart(2, '0');
+      const yy = String(nowObj.getFullYear()).slice(-2);
+      const shortDateStr = `${dd}.${mm}.${yy}`;
+
+      const buildUpdatedDates = (existing?: Record<number, string>) => {
+        const nextDates: Record<number, string> = {};
+        for (let s = 1; s <= clampedStage; s++) {
+          nextDates[s] = existing?.[s] || shortDateStr;
+        }
+        return nextDates;
+      };
+
       if (authUser) {
+        const nextDates = buildUpdatedDates(userProfile?.currentWeekStageDates);
+        setUserProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentWeekStage: clampedStage,
+                currentWeekMinutes: clampedStage * 30,
+                currentWeekStageDates: nextDates,
+              }
+            : prev
+        );
         await updateStageProgress(authUser.uid, newStage);
       } else if (activeLocalProfile) {
+        const nextDates = buildUpdatedDates(activeLocalProfile.currentWeekStageDates);
         await updateStageProgress(activeLocalProfile.uid, newStage);
-        const clampedStage = Math.max(0, Math.min(14, newStage));
         const updated: UserProfile = {
           ...activeLocalProfile,
           currentWeekStage: clampedStage,
           currentWeekMinutes: clampedStage * 30,
+          currentWeekStageDates: nextDates,
         };
         setActiveLocalProfile(updated);
         setActiveAppProfile(updated, true);
       } else if (demoProfile) {
-        const clampedStage = Math.max(0, Math.min(14, newStage));
+        const nextDates = buildUpdatedDates(demoProfile.currentWeekStageDates);
         const updated: UserProfile = {
           ...demoProfile,
           currentWeekStage: clampedStage,
           currentWeekMinutes: clampedStage * 30,
+          currentWeekStageDates: nextDates,
         };
         setDemoProfile(updated);
         if (typeof window !== 'undefined') {
@@ -1044,6 +1073,41 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to update stage:', err);
+    } finally {
+      setIsUpdatingStage(false);
+    }
+  };
+
+  const handleUpdateUnusedDays = async (newUnusedDays: number) => {
+    if (isUpdatingStage) return;
+    try {
+      setIsUpdatingStage(true);
+      const clampedUnused = Math.max(0, Math.min(7, newUnusedDays));
+      if (authUser) {
+        await updateUnusedDaysProgress(authUser.uid, clampedUnused);
+        setUserProfile((prev) =>
+          prev ? { ...prev, currentWeekUnusedDays: clampedUnused } : prev
+        );
+      } else if (activeLocalProfile) {
+        await updateUnusedDaysProgress(activeLocalProfile.uid, clampedUnused);
+        const updated: UserProfile = {
+          ...activeLocalProfile,
+          currentWeekUnusedDays: clampedUnused,
+        };
+        setActiveLocalProfile(updated);
+        setActiveAppProfile(updated, true);
+      } else if (demoProfile) {
+        const updated: UserProfile = {
+          ...demoProfile,
+          currentWeekUnusedDays: clampedUnused,
+        };
+        setDemoProfile(updated);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('demoUserProfile', JSON.stringify(updated));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update unused days:', err);
     } finally {
       setIsUpdatingStage(false);
     }
@@ -1248,9 +1312,11 @@ export default function App() {
               <ParentStagesCompact
                 currentStage={currentStage}
                 onUpdateStage={handleUpdateStage}
+                stageDates={effectiveProfile?.currentWeekStageDates}
                 isUpdating={isUpdatingStage}
                 isTeacher={true}
                 classAverageMinutes={classAverageMinutes}
+                students={studentList}
               />
             )}
 
@@ -1297,6 +1363,9 @@ export default function App() {
                 <ParentHeroBanner
                   currentStage={currentStage}
                   studentName={effectiveProfile?.studentName || effectiveProfile?.displayName}
+                  unusedDays={effectiveProfile?.currentWeekUnusedDays ?? 0}
+                  onUpdateUnusedDays={handleUpdateUnusedDays}
+                  isUpdating={isUpdatingStage}
                 />
               </div>
             )}
@@ -1307,10 +1376,13 @@ export default function App() {
                 <ParentHomeView
                   currentStage={currentStage}
                   onUpdateStage={handleUpdateStage}
+                  unusedDays={effectiveProfile?.currentWeekUnusedDays ?? 0}
+                  onUpdateUnusedDays={handleUpdateUnusedDays}
                   isUpdating={isUpdatingStage}
                   onNavigateToStages={() => setParentTab('stages')}
                   onOpenParentGuide={() => setShowParentGuide(true)}
                   studentName={effectiveProfile?.studentName || effectiveProfile?.displayName || undefined}
+                  userId={effectiveProfile?.uid}
                 />
               )}
 
@@ -1318,7 +1390,12 @@ export default function App() {
                 <ParentStagesCompact
                   currentStage={currentStage}
                   onUpdateStage={handleUpdateStage}
+                  stageDates={effectiveProfile?.currentWeekStageDates}
+                  unusedDays={effectiveProfile?.currentWeekUnusedDays ?? 0}
+                  onUpdateUnusedDays={handleUpdateUnusedDays}
                   isUpdating={isUpdatingStage}
+                  studentName={effectiveProfile?.studentName || effectiveProfile?.displayName || undefined}
+                  userId={effectiveProfile?.uid}
                 />
               )}
 
@@ -1501,6 +1578,11 @@ export default function App() {
                             <span className="text-xs sm:text-sm font-black text-slate-900 group-hover:text-indigo-900 truncate">
                               {cls.name}
                             </span>
+                            {cls.code && (
+                              <span className="font-mono text-[10px] bg-indigo-50 text-indigo-800 px-1.5 py-0.5 rounded border border-indigo-200 font-black">
+                                {cls.code}
+                              </span>
+                            )}
                             {isCurrent && (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-600 text-white">
                                 Aktif
@@ -1508,12 +1590,16 @@ export default function App() {
                             )}
                           </div>
                           <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                            <span>Öğretmen: <strong className="text-slate-700 font-semibold">{cls.teacherName || 'Bilinmiyor'}</strong></span>
-                            {cls.code && (
-                              <span className="font-mono text-[10px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded border border-slate-200">
-                                {cls.code}
-                              </span>
-                            )}
+                            <span>
+                              Sn.{' '}
+                              <strong className="text-slate-700 font-semibold">
+                                {(cls.teacherName || 'Bilinmiyor')
+                                  .replace(/^Öğretmen:?\s*/i, '')
+                                  .replace(/\s*\(Öğretmen\)\s*/gi, '')
+                                  .replace(/\s*Öğretmen\s*$/i, '')
+                                  .trim() || 'Bilinmiyor'}
+                              </strong>
+                            </span>
                             <span className="text-indigo-600 font-bold">
                               {classStudents.length} öğrenci
                             </span>

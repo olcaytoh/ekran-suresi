@@ -1,6 +1,6 @@
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import { AcademicCalendarConfig, AcademicWeekConfig } from '../types';
+import { AcademicCalendarConfig, AcademicWeekConfig, UserProfile } from '../types';
 
 export const SHORT_MONTHS_TR = [
   'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
@@ -213,4 +213,125 @@ export async function saveAcademicCalendar(
     },
     { merge: true }
   );
+}
+
+/**
+ * Safely parse Firestore Timestamp, number, string, or Date into a JS Date
+ */
+export function parseFirestoreTimestampToDate(val: any): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val;
+  }
+  if (typeof val?.toDate === 'function') {
+    const d = val.toDate();
+    return d instanceof Date && !isNaN(d.getTime()) ? d : null;
+  }
+  if (typeof val?.seconds === 'number') {
+    const d = new Date(val.seconds * 1000);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === 'string') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+/**
+ * Determine which academic week (1..35) a student/user registered or joined.
+ * Weeks strictly before this registration week will never have any usage attributed to them.
+ */
+export function getStudentRegistrationWeek(
+  student?: UserProfile | null,
+  weeksOrConfig?: AcademicWeekConfig[] | AcademicCalendarConfig | null,
+  activeWeekNum?: number
+): number {
+  const calendarWeeks = Array.isArray(weeksOrConfig)
+    ? weeksOrConfig
+    : weeksOrConfig?.weeks || generateDefaultAcademicCalendar().weeks;
+  const fallbackActive = activeWeekNum || getActiveWeekNumber(calendarWeeks, new Date());
+
+  if (!student) return fallbackActive;
+
+  if (
+    typeof student.joinedAcademicWeek === 'number' &&
+    student.joinedAcademicWeek >= 1 &&
+    student.joinedAcademicWeek <= 35
+  ) {
+    return student.joinedAcademicWeek;
+  }
+
+  const createdDate = parseFirestoreTimestampToDate(student.createdAt);
+  if (createdDate) {
+    return getActiveWeekNumber(calendarWeeks, createdDate);
+  }
+
+  // Check if user has recorded past week keys
+  const recordedWeekNums = [
+    ...Object.keys(student.weeklyStages || {}).map(Number),
+    ...Object.keys(student.weeklyMinutes || {}).map(Number),
+  ].filter((n) => !isNaN(n) && n >= 1 && n <= 35);
+
+  if (recordedWeekNums.length > 0) {
+    return Math.min(...recordedWeekNums, fallbackActive);
+  }
+
+  const updatedDate = parseFirestoreTimestampToDate(student.updatedAt);
+  if (updatedDate) {
+    return getActiveWeekNumber(calendarWeeks, updatedDate);
+  }
+
+  return fallbackActive;
+}
+
+/**
+ * Get the true recorded stage and minutes for a student in a specific academic week.
+ * Strictly returns 0 for any week before the student's registration date/week,
+ * and never invents/simulates usage for unrecorded past weeks.
+ */
+export function getStudentStageForAcademicWeek(
+  student: UserProfile,
+  weekNum: number,
+  activeWeekNum: number,
+  weeksOrConfig?: AcademicWeekConfig[] | AcademicCalendarConfig | null
+): { stage: number; minutes: number; isBeforeRegistration: boolean } {
+  const regWeek = getStudentRegistrationWeek(student, weeksOrConfig, activeWeekNum);
+
+  // Üyelik tarihinden / haftasından önceki haftalarda kesinlikle kullanım olmasın
+  if (weekNum < regWeek) {
+    return { stage: 0, minutes: 0, isBeforeRegistration: true };
+  }
+
+  if (weekNum > activeWeekNum) {
+    return { stage: 0, minutes: 0, isBeforeRegistration: false };
+  }
+
+  if (weekNum === activeWeekNum) {
+    const stage = Math.min(
+      14,
+      Math.max(0, Number(student.currentWeekStage ?? student.weeklyStages?.[weekNum] ?? 0))
+    );
+    const minutes = student.currentWeekMinutes ?? student.weeklyMinutes?.[weekNum] ?? stage * 30;
+    return { stage, minutes, isBeforeRegistration: false };
+  }
+
+  // Geçmiş haftalar (üyelik haftası ve sonrası): yalnızca gerçek kayıt varsa göster, yoksa 0
+  if (student.weeklyStages && student.weeklyStages[weekNum] !== undefined) {
+    const stage = Math.min(14, Math.max(0, Number(student.weeklyStages[weekNum]) || 0));
+    const minutes = student.weeklyMinutes?.[weekNum] ?? stage * 30;
+    return { stage, minutes, isBeforeRegistration: false };
+  }
+
+  if (student.weeklyMinutes && student.weeklyMinutes[weekNum] !== undefined) {
+    const minutes = Math.max(0, Number(student.weeklyMinutes[weekNum]) || 0);
+    const stage = Math.min(14, Math.max(0, Math.round(minutes / 30)));
+    return { stage, minutes, isBeforeRegistration: false };
+  }
+
+  return { stage: 0, minutes: 0, isBeforeRegistration: false };
 }

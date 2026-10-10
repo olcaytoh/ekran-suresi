@@ -31,6 +31,12 @@ export interface UserProfile {
   currentWeekId: string;
   currentWeekMinutes: number;
   currentWeekStage: number; // 0 to 14
+  currentWeekStageDates?: Record<number, string>; // stageNumber (1..14) -> "GG.AA.YY" (e.g. "09.10.26")
+  currentWeekUnusedDays?: number; // 0 to 7 (ekran kullanılmayan gün yıldız sayısı)
+  weeklyStages?: Record<number, number>; // academic weekNum (1..35) -> stage (0..14)
+  weeklyMinutes?: Record<number, number>; // academic weekNum (1..35) -> minutes
+  weeklyUnusedDays?: Record<number, number>; // academic weekNum (1..35) -> unused days (0..7)
+  joinedAcademicWeek?: number; // academic week number when the user registered
   hasSeenParentGuide?: boolean;
   updatedAt?: any;
   createdAt?: any;
@@ -54,6 +60,7 @@ export interface ClassroomInfo {
 export interface WeekRecord {
   weekId: string;
   weekNumber: number;
+  academicWeekNumber?: number;
   year: number;
   weekLabel: string;
   completedStages: number; // 0 to 14

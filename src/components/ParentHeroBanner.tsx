@@ -1,17 +1,24 @@
 import React from 'react';
-import { ShieldCheck, Flame, AlertTriangle, Sparkles, Award } from 'lucide-react';
+import { ShieldCheck, Flame, AlertTriangle, Sparkles, Award, Star } from 'lucide-react';
 import { TransparentMascotVideo } from './TransparentMascotVideo';
 
 interface ParentHeroBannerProps {
   currentStage: number; // 0 to 14
   studentName?: string;
+  unusedDays?: number; // 0 to 7
+  onUpdateUnusedDays?: (newUnusedDays: number) => Promise<void>;
+  isUpdating?: boolean;
 }
 
 export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
   currentStage,
   studentName,
+  unusedDays = 0,
+  onUpdateUnusedDays,
+  isUpdating = false,
 }) => {
   const totalMinutes = currentStage * 30;
+  const clampedUnusedDays = Math.min(7, Math.max(0, unusedDays || 0));
   // 1-4: Yeşil, 5-8: Sarı, 9-13: Turuncu, 14: Kırmızı
   const isYellow = currentStage >= 5 && currentStage <= 8;
   const isOrange = currentStage >= 9 && currentStage <= 13;
@@ -55,7 +62,7 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
       />
 
       {/* Left Content */}
-      <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-between py-1">
+      <div className="relative z-10 flex-1 min-w-0 pr-1 flex flex-col justify-between py-0.5">
         {/* Rozet Etiketi: Haftalık Yıldız Rozeti: Altın */}
         <div className="flex items-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-amber-950 border border-amber-300 shadow-2xs select-none">
@@ -68,18 +75,39 @@ export const ParentHeroBanner: React.FC<ParentHeroBannerProps> = ({
           </div>
         </div>
 
-        {/* Center: Saat ve Kademe Bilgisi */}
-        <div className="text-center my-auto">
-          <span className="text-sm sm:text-base font-black text-white drop-shadow-2xs">
-            {hours > 0 ? `${hours}. Saat` : `${totalMinutes} dk`}{' '}
-            <span className="font-bold text-white/85 text-xs sm:text-sm">
-              ({currentStage}. Kademe)
+        {/* Center: Ekran Kullanılmayan Gün Yıldızları + Saat ve Kademe Bilgisi (Çerçeveyi büyütmeden aşağı kaydırılmış) */}
+        <div className="flex flex-col items-center justify-center my-auto pt-0.5">
+          {clampedUnusedDays > 0 && (
+            <div
+              onClick={() => {
+                if (!isUpdating && onUpdateUnusedDays && clampedUnusedDays > 0) {
+                  onUpdateUnusedDays(clampedUnusedDays - 1);
+                }
+              }}
+              title="Ekran kullanılmayan gün yıldızları (Geri almak için dokunun)"
+              className="flex items-center justify-center gap-0.5 sm:gap-1 flex-nowrap whitespace-nowrap w-full max-w-full overflow-hidden mb-0.5 cursor-pointer"
+            >
+              {Array.from({ length: clampedUnusedDays }).map((_, idx) => (
+                <Star
+                  key={idx}
+                  className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-300 text-amber-400 shrink-0 drop-shadow-[0_1px_3px_rgba(245,158,11,0.65)] animate-in zoom-in-75 duration-200"
+                />
+              ))}
+            </div>
+          )}
+
+          <div className={`text-center leading-tight ${clampedUnusedDays > 0 ? 'mt-0.5' : ''}`}>
+            <span className="text-sm sm:text-base font-black text-white drop-shadow-2xs">
+              {hours > 0 ? `${hours}. Saat` : `${totalMinutes} dk`}{' '}
+              <span className="font-bold text-white/85 text-xs sm:text-sm">
+                ({currentStage}. Kademe)
+              </span>
             </span>
-          </span>
+          </div>
         </div>
 
         {/* Progress Bar (Full Gradient: Yeşil -> Sarı -> Turuncu -> Kırmızı) */}
-        <div className="pb-1">
+        <div className="pb-0.5">
           <div className="w-full h-2.5 bg-white/40 rounded-full p-0.5 border border-white/60 shadow-inner overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-400 via-amber-300 via-orange-400 to-rose-500"

@@ -6,6 +6,7 @@ import {
   subscribeAcademicCalendar,
   getActiveWeekNumber,
   generateDefaultAcademicCalendar,
+  getStudentStageForAcademicWeek,
 } from '../lib/academicCalendar';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
 import { WeeklyStudentStatsModal } from './WeeklyStudentStatsModal';
@@ -238,11 +239,21 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
           );
           stage = Math.round(sum / activeStudentsForModal.length);
         } else if (isPast) {
-          const sum = activeStudentsForModal.reduce((acc, st, idx) => {
-            const pHash = (st.uid.charCodeAt(0) + idx * 7 + weekNum * 3) % 15;
-            return acc + Math.min(14, Math.max(0, pHash));
-          }, 0);
-          stage = Math.round(sum / activeStudentsForModal.length);
+          let sum = 0;
+          let count = 0;
+          activeStudentsForModal.forEach((st) => {
+            const res = getStudentStageForAcademicWeek(
+              st,
+              weekNum,
+              activeWeekIndex,
+              calendarConfig
+            );
+            if (!res.isBeforeRegistration) {
+              sum += res.stage;
+              count += 1;
+            }
+          });
+          stage = count > 0 ? Math.round(sum / count) : 0;
         } else {
           stage = 0;
         }
@@ -254,7 +265,12 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
         stage = currentStage;
       } else if (isPast) {
         const records = Object.values(pastWeeks) as WeekRecord[];
-        const matchingRecord = records.find((w) => w.weekNumber === weekNum);
+        const matchingRecord = records.find(
+          (w) =>
+            w.academicWeekNumber === weekNum ||
+            w.weekId === `academic_W${weekNum}` ||
+            w.weekNumber === weekNum
+        );
         if (matchingRecord) {
           stage = matchingRecord.completedStages;
         } else {
@@ -753,6 +769,7 @@ export const ParentBadgesView: React.FC<ParentBadgesViewProps> = ({
           institutionName="AKÇAKOCA İLKOKULU"
           isActiveWeek={selectedWeekNum === activeWeekIndex}
           activeWeekNumber={activeWeekIndex}
+          calendarConfig={calendarConfig}
           classNameTitle={activeClassNameTitle}
           onOpenExportReport={() => setIsExportModalOpen(true)}
         />

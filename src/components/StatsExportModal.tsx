@@ -5,6 +5,10 @@ import {
   AcademicCalendarConfig,
 } from '../types';
 import {
+  subscribeAcademicCalendar,
+  generateDefaultAcademicCalendar,
+} from '../lib/academicCalendar';
+import {
   ReportSortOption,
   ReportWeekRange,
   buildStudentReportData,
@@ -93,6 +97,23 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
   const isMobile = useMemo(() => isMobileDevice(), []);
   const hasShareApi = useMemo(() => canShareFiles(), []);
 
+  const [liveCalendarConfig, setLiveCalendarConfig] = useState<AcademicCalendarConfig>(
+    () => calendarConfig || generateDefaultAcademicCalendar()
+  );
+
+  React.useEffect(() => {
+    if (calendarConfig) {
+      setLiveCalendarConfig(calendarConfig);
+      return;
+    }
+    const unsub = subscribeAcademicCalendar((cfg) => {
+      setLiveCalendarConfig(cfg);
+    });
+    return () => unsub();
+  }, [calendarConfig]);
+
+  const effectiveCalendarConfig = calendarConfig || liveCalendarConfig;
+
   // Modal açıldığında varsayılan sınıfı güncelle
   React.useEffect(() => {
     if (defaultClassId) {
@@ -125,11 +146,11 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
   const reportData = useMemo(() => {
     return buildStudentReportData(
       filteredByClassStudents,
-      calendarConfig,
+      effectiveCalendarConfig,
       sortOption,
       weekRange
     );
-  }, [filteredByClassStudents, calendarConfig, sortOption, weekRange]);
+  }, [filteredByClassStudents, effectiveCalendarConfig, sortOption, weekRange]);
 
   // Önizleme tablosu için arama filtresi
   const previewRows = useMemo(() => {
@@ -151,7 +172,7 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
       setIsExporting(true);
       const res = exportStatisticsToExcel({
         students: filteredByClassStudents,
-        calendarConfig,
+        calendarConfig: effectiveCalendarConfig,
         sortOption,
         weekRange,
         institutionName,
@@ -187,7 +208,7 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
       setIsExporting(true);
       const res = exportStatisticsToPdf({
         students: filteredByClassStudents,
-        calendarConfig,
+        calendarConfig: effectiveCalendarConfig,
         sortOption,
         weekRange,
         institutionName,
@@ -253,7 +274,7 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
   const handlePrint = () => {
     printStatisticsReport({
       students: filteredByClassStudents,
-      calendarConfig,
+      calendarConfig: effectiveCalendarConfig,
       sortOption,
       weekRange,
       institutionName,

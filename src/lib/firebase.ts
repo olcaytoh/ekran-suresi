@@ -315,9 +315,11 @@ export async function registerWithEmailAndPassword(
           displayName: cleanName,
           role: role,
           userType: role === 'parent' ? 'parent' : 'teacher',
+          ...(role === 'parent' ? { parentName: cleanName } : {}),
           currentWeekId: weekId,
           currentWeekMinutes: 0,
           currentWeekStage: 0,
+          currentWeekUnusedDays: 0,
         };
 
         await setDoc(doc(db, 'users', safeUid), {
@@ -353,9 +355,11 @@ export async function registerWithEmailAndPassword(
         displayName: cleanName,
         role: role,
         userType: role === 'parent' ? 'parent' : 'teacher',
+        ...(role === 'parent' ? { parentName: cleanName } : {}),
         currentWeekId: weekId,
         currentWeekMinutes: 0,
         currentWeekStage: 0,
+        currentWeekUnusedDays: 0,
       };
 
       await setDoc(doc(db, 'users', safeUid), {
@@ -432,6 +436,8 @@ export async function signInWithEmailAndPasswordAuth(
             currentWeekId: docData.currentWeekId || getCurrentWeekInfo().weekId,
             currentWeekMinutes: docData.currentWeekMinutes ?? 0,
             currentWeekStage: docData.currentWeekStage ?? 0,
+            currentWeekStageDates: docData.currentWeekStageDates ?? {},
+            currentWeekUnusedDays: docData.currentWeekUnusedDays ?? 0,
           };
           setActiveAppProfile(profile, rememberMe);
           return profile;
@@ -503,6 +509,8 @@ export async function signInWithEmailAndPasswordAuth(
           currentWeekId: docData.currentWeekId || getCurrentWeekInfo().weekId,
           currentWeekMinutes: docData.currentWeekMinutes ?? 0,
           currentWeekStage: docData.currentWeekStage ?? 0,
+          currentWeekStageDates: docData.currentWeekStageDates ?? {},
+          currentWeekUnusedDays: docData.currentWeekUnusedDays ?? 0,
         };
 
         setActiveAppProfile(profile, rememberMe);
@@ -1078,7 +1086,10 @@ export async function syncUserProfile(
       role: role,
       userType: userType,
       studentName: role === 'parent' ? data.studentName : undefined,
-      parentName: role === 'parent' ? data.parentName : undefined,
+      parentName:
+        role === 'parent'
+          ? data.parentName || (!data.studentName ? data.displayName || customName : undefined)
+          : undefined,
       institutionId: data.institutionId,
       institutionCode: data.institutionCode,
       institutionAdminCode: role === 'admin' ? data.institutionAdminCode : undefined,
@@ -1089,6 +1100,8 @@ export async function syncUserProfile(
       currentWeekId: data.currentWeekId || weekId,
       currentWeekMinutes: data.currentWeekMinutes ?? 0,
       currentWeekStage: data.currentWeekStage ?? 0,
+      currentWeekStageDates: data.currentWeekStageDates ?? {},
+      currentWeekUnusedDays: data.currentWeekUnusedDays ?? 0,
       updatedAt: serverTimestamp(),
     };
 
@@ -1098,6 +1111,7 @@ export async function syncUserProfile(
       email: userProfile.email,
       role: userProfile.role,
       userType: userProfile.userType,
+      ...(role === 'parent' && userProfile.parentName ? { parentName: userProfile.parentName } : {}),
       updatedAt: serverTimestamp(),
       ...(user.photoURL ? { photoURL: user.photoURL } : {}),
     };
@@ -1119,16 +1133,23 @@ export async function syncUserProfile(
       userType = 'parent';
     }
 
+    const effectiveName =
+      user.displayName ||
+      customName ||
+      (role === 'admin' ? 'Yönetici' : role === 'teacher' ? 'Öğretmen' : 'Veli');
+
     userProfile = {
       uid: user.uid,
       email: emailOverride || user.email || 'misafir@ekran.takip',
-      displayName: user.displayName || customName || (role === 'admin' ? 'Yönetici' : role === 'teacher' ? 'Öğretmen' : 'Veli'),
+      displayName: effectiveName,
       photoURL: user.photoURL || undefined,
       role: role,
       userType: userType,
+      ...(role === 'parent' ? { parentName: effectiveName } : {}),
       currentWeekId: weekId,
       currentWeekMinutes: 0,
       currentWeekStage: 0,
+      currentWeekUnusedDays: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -1177,18 +1198,97 @@ export async function updateStageProgress(
   const totalMinutes = clampedStage * 30;
   const { weekId, weekLabel, weekNumber, year } = getCurrentWeekInfo();
 
+  // Compute current academic week number (1..35)
+  let academicWeekNumber = 1;
+  try {
+    const calSnap = await getDoc(doc(db, 'app_settings', 'academic_calendar'));
+    const weeks =
+      calSnap.exists() && Array.isArray(calSnap.data()?.weeks) && calSnap.data().weeks.length > 0
+        ? calSnap.data().weeks
+        : [];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (weeks.length > 0) {
+      const matched = weeks.find((w: any) => todayStr >= w.startDate && todayStr <= w.endDate);
+      if (matched) {
+        academicWeekNumber = matched.weekNum;
+      } else if (todayStr < weeks[0].startDate) {
+        academicWeekNumber = 1;
+      } else if (todayStr > weeks[weeks.length - 1].endDate) {
+        academicWeekNumber = weeks[weeks.length - 1].weekNum;
+      } else {
+        for (let i = 0; i < weeks.length; i++) {
+          if (todayStr <= weeks[i].endDate) {
+            academicWeekNumber = weeks[i].weekNum;
+            break;
+          }
+        }
+      }
+    } else {
+      // Default 2026-09-07 academic calendar
+      const base = new Date(2026, 8, 7);
+      const diffDays = Math.floor((Date.now() - base.getTime()) / (1000 * 60 * 60 * 24));
+      academicWeekNumber = Math.min(35, Math.max(1, Math.floor(diffDays / 7) + 1));
+    }
+  } catch {
+    const base = new Date(2026, 8, 7);
+    const diffDays = Math.floor((Date.now() - base.getTime()) / (1000 * 60 * 60 * 24));
+    academicWeekNumber = Math.min(35, Math.max(1, Math.floor(diffDays / 7) + 1));
+  }
+
   const userRef = doc(db, 'users', uid);
   const weekRef = doc(db, 'users', uid, 'weeks', weekId);
 
   const timestamp = Date.now();
-  const dateStr = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  const nowObj = new Date();
+  const dateStr = nowObj.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  const dd = String(nowObj.getDate()).padStart(2, '0');
+  const mm = String(nowObj.getMonth() + 1).padStart(2, '0');
+  const yy = String(nowObj.getFullYear()).slice(-2);
+  const shortDateStr = `${dd}.${mm}.${yy}`;
+
+  let existingWeeklyStages: Record<number, number> = {};
+  let existingWeeklyMinutes: Record<number, number> = {};
+  let existingStageDates: Record<number, string> = {};
+  let existingJoinedWeek: number | undefined;
+  try {
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const uData = userSnap.data() as Partial<UserProfile>;
+      if (uData.weeklyStages && typeof uData.weeklyStages === 'object') {
+        existingWeeklyStages = { ...uData.weeklyStages };
+      }
+      if (uData.weeklyMinutes && typeof uData.weeklyMinutes === 'object') {
+        existingWeeklyMinutes = { ...uData.weeklyMinutes };
+      }
+      if (
+        uData.currentWeekId === weekId &&
+        uData.currentWeekStageDates &&
+        typeof uData.currentWeekStageDates === 'object'
+      ) {
+        existingStageDates = { ...uData.currentWeekStageDates };
+      }
+      existingJoinedWeek = uData.joinedAcademicWeek;
+    }
+  } catch {}
+
+  const updatedStageDates: Record<number, string> = {};
+  for (let s = 1; s <= clampedStage; s++) {
+    updatedStageDates[s] = existingStageDates[s] || shortDateStr;
+  }
+
+  existingWeeklyStages[academicWeekNumber] = clampedStage;
+  existingWeeklyMinutes[academicWeekNumber] = totalMinutes;
 
   await setDoc(
     userRef,
     {
       currentWeekStage: clampedStage,
       currentWeekMinutes: totalMinutes,
+      currentWeekStageDates: updatedStageDates,
       currentWeekId: weekId,
+      weeklyStages: existingWeeklyStages,
+      weeklyMinutes: existingWeeklyMinutes,
+      ...(existingJoinedWeek ? {} : { joinedAcademicWeek: academicWeekNumber }),
       updatedAt: serverTimestamp(),
     },
     { merge: true }
@@ -1216,6 +1316,7 @@ export async function updateStageProgress(
     {
       weekId,
       weekNumber,
+      academicWeekNumber,
       year,
       weekLabel,
       completedStages: clampedStage,
@@ -1230,6 +1331,25 @@ export async function updateStageProgress(
 
 export async function resetCurrentWeekProgress(uid: string): Promise<void> {
   await updateStageProgress(uid, 0, 'Hafta sıfırlandı');
+}
+
+export async function updateUnusedDaysProgress(
+  uid: string,
+  newUnusedDaysCount: number
+): Promise<void> {
+  const clampedUnused = Math.max(0, Math.min(7, newUnusedDaysCount));
+  const { weekId } = getCurrentWeekInfo();
+  const userRef = doc(db, 'users', uid);
+
+  await setDoc(
+    userRef,
+    {
+      currentWeekUnusedDays: clampedUnused,
+      currentWeekId: weekId,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
 
 export function subscribeUserWeeks(

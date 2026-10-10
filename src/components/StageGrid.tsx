@@ -248,17 +248,20 @@ export const StageGrid: React.FC<StageGridProps> = ({
                   />
                 </div>
 
-                {/* Footer: Stage Name & Duration */}
+                {/* Footer: Clicked Date & Duration */}
                 <div className="text-center mt-1 pointer-events-none">
+                  {isCompleted && (
+                    <div className={`text-xs font-black leading-tight ${titleColor}`}>
+                      {(() => {
+                        const d = new Date();
+                        return `${String(d.getDate()).padStart(2, '0')}.${String(
+                          d.getMonth() + 1
+                        ).padStart(2, '0')}.${String(d.getFullYear()).slice(-2)}`;
+                      })()}
+                    </div>
+                  )}
                   <div
-                    className={`text-xs font-black leading-tight ${
-                      isCompleted ? titleColor : 'text-slate-400'
-                    }`}
-                  >
-                    {stage.stageNumber}. Kademe
-                  </div>
-                  <div
-                    className={`text-[10px] font-bold mt-0.5 ${
+                    className={`text-[10px] font-bold ${isCompleted ? 'mt-0.5' : ''} ${
                       isCompleted ? subColor : 'text-slate-300'
                     }`}
                   >

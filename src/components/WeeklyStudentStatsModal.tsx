@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { AcademicWeekConfig, UserProfile, AcademicCalendarConfig, ClassroomInfo } from '../types';
 import { getStageCategory } from '../lib/stagesData';
 import { formatMinutes } from '../lib/weekUtils';
+import { getStudentStageForAcademicWeek } from '../lib/academicCalendar';
 import {
   X,
   Users,
@@ -57,6 +58,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
   activeWeekNumber = 1,
   classNameTitle = 'Sınıf Detayı',
   institutionName = 'AKÇAKOCA İLKOKULU',
+  calendarConfig,
   onOpenExportReport,
   currentUserProfile,
 }) => {
@@ -84,45 +86,41 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
 
   // Öğrenci verilerini ve geçmiş haftalık renk geçmişini hesapla
   const studentStats = studentList.map((st, idx) => {
-    let stage = 0;
-    if (isActiveWeek) {
-      stage = st.currentWeekStage || 0;
-    } else if (isFuture || isHoliday) {
-      stage = 0;
-    } else {
-      // Geçmiş hafta simülasyonu
-      const pseudoHash = (st.uid.charCodeAt(0) + idx * 7 + weekConfig.weekNum * 3) % 15;
-      stage = Math.min(14, Math.max(0, pseudoHash));
-    }
+    const currentRes =
+      isFuture || isHoliday
+        ? { stage: 0, minutes: 0, isBeforeRegistration: false }
+        : getStudentStageForAcademicWeek(st, weekConfig.weekNum, activeWeekNumber, calendarConfig);
 
-    const minutes = stage * 30;
+    const stage = currentRes.stage;
+    const minutes = currentRes.minutes;
     const category = getStageCategory(stage);
 
-    // Bir önceki haftaya göre değişim trendi (Trend Okları için)
-    let prevMinutes = 0;
-    if (weekConfig.weekNum > 1 && !isHoliday) {
-      const prevHash = (st.uid.charCodeAt(0) + idx * 7 + (weekConfig.weekNum - 1) * 3) % 15;
-      prevMinutes = Math.min(14, Math.max(0, prevHash)) * 30;
+    // Bir önceki haftaya göre değişim trendi (Trend Okları için — üyelik öncesi haftalar karşılaştırılmaz)
+    let diff = 0;
+    if (weekConfig.weekNum > 1 && !isHoliday && !currentRes.isBeforeRegistration) {
+      const prevRes = getStudentStageForAcademicWeek(
+        st,
+        weekConfig.weekNum - 1,
+        activeWeekNumber,
+        calendarConfig
+      );
+      if (!prevRes.isBeforeRegistration) {
+        diff = minutes - prevRes.minutes;
+      }
     }
-    const diff = weekConfig.weekNum > 1 ? minutes - prevMinutes : 0;
 
     // Geçmiş haftaların renk geçmişi (1. haftadan bu haftaya kadar)
     const historyWeeks = Array.from(
       { length: Math.min(weekConfig.weekNum, 10) },
       (_, i) => i + 1
     ).map((wNum) => {
-      let wStage = 0;
-      if (wNum === activeWeekNumber) {
-        wStage = st.currentWeekStage || 0;
-      } else {
-        const wHash = (st.uid.charCodeAt(0) + idx * 7 + wNum * 3) % 15;
-        wStage = Math.min(14, Math.max(0, wHash));
-      }
+      const wRes = getStudentStageForAcademicWeek(st, wNum, activeWeekNumber, calendarConfig);
       return {
         weekNum: wNum,
-        stage: wStage,
-        minutes: wStage * 30,
+        stage: wRes.stage,
+        minutes: wRes.minutes,
         isCurrentWeek: wNum === weekConfig.weekNum,
+        isBeforeRegistration: wRes.isBeforeRegistration,
       };
     });
 
@@ -214,20 +212,13 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
         (s.classId === cls.id || s.className?.trim().toLowerCase() === cls.name.trim().toLowerCase())
     );
 
-    const cCount = cStudents.length > 0 ? cStudents.length : 10;
-    const cCalculatedStudents = (cStudents.length > 0 ? cStudents : Array.from({ length: 10 }, (_, idx) => ({
-      uid: `${cls.id}_st_${idx}`,
-      displayName: `Öğrenci ${idx + 1}`,
-      currentWeekStage: Math.min(14, Math.max(0, (cls.id.charCodeAt(0) + idx * 5 + weekConfig.weekNum * 2) % 15)),
-    }))).map((st: any, idx: number) => {
-      let stage = 0;
-      if (isActiveWeek && st.currentWeekStage !== undefined) {
-        stage = st.currentWeekStage;
-      } else {
-        const hash = (st.uid.charCodeAt(0) + idx * 5 + weekConfig.weekNum * 3 + cIdx * 4) % 15;
-        stage = Math.min(14, Math.max(0, hash));
-      }
-      return { stage, minutes: stage * 30 };
+    const cCount = cStudents.length;
+    const cCalculatedStudents = cStudents.map((st: UserProfile) => {
+      const res =
+        isFuture || isHoliday
+          ? { stage: 0, minutes: 0 }
+          : getStudentStageForAcademicWeek(st, weekConfig.weekNum, activeWeekNumber, calendarConfig);
+      return { stage: res.stage, minutes: res.minutes };
     });
 
     const cTotalMinutes = cCalculatedStudents.reduce((acc, s) => acc + s.minutes, 0);
@@ -246,10 +237,10 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
       studentCount: cCount,
       avgMinutes: cAvgMinutes,
       avgStage: cAvgStage,
-      safePercent: Math.round((cSafeCount / cCount) * 100),
-      moderatePercent: Math.round((cModerateCount / cCount) * 100),
-      warningPercent: Math.round((cWarningCount / cCount) * 100),
-      criticalPercent: Math.round((cCriticalCount / cCount) * 100),
+      safePercent: cCount > 0 ? Math.round((cSafeCount / cCount) * 100) : 0,
+      moderatePercent: cCount > 0 ? Math.round((cModerateCount / cCount) * 100) : 0,
+      warningPercent: cCount > 0 ? Math.round((cWarningCount / cCount) * 100) : 0,
+      criticalPercent: cCount > 0 ? Math.round((cCriticalCount / cCount) * 100) : 0,
       urgentCount: cUrgentCount,
       safeCount: cSafeCount,
     };

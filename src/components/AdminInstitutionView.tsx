@@ -719,6 +719,49 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     return list;
   }, [studentsByClass, allUsers, currentUser?.institutionId]);
 
+  // Sınıf kodu ve öğretmen adı çözümleme yardımcıları
+  const resolveClassroomCode = (cls?: ClassroomInfo | null): string => {
+    if (!cls) return '';
+    if (cls.code && cls.code.trim()) return cls.code.trim();
+    const matchedTeacher = (allUsers || []).find(
+      (u) =>
+        (cls.teacherUid && u.uid === cls.teacherUid) ||
+        (cls.teacherId && u.uid === cls.teacherId) ||
+        (u.role === 'teacher' && u.classId === cls.id)
+    );
+    if (matchedTeacher?.classCode && matchedTeacher.classCode.trim()) {
+      return matchedTeacher.classCode.trim();
+    }
+    const classStudents = studentsByClass[cls.id] || [];
+    const studentWithCode = classStudents.find((s) => s.classCode && s.classCode.trim());
+    if (studentWithCode?.classCode) {
+      return studentWithCode.classCode.trim();
+    }
+    return '';
+  };
+
+  const resolveTeacherDisplayName = (cls?: ClassroomInfo | null): string => {
+    if (!cls) return 'Atanmamış';
+    const matchedTeacher = (allUsers || []).find(
+      (u) =>
+        (cls.teacherUid && u.uid === cls.teacherUid) ||
+        (cls.teacherId && u.uid === cls.teacherId) ||
+        (u.role === 'teacher' && u.classId === cls.id)
+    );
+    const rawName =
+      (cls.teacherName && cls.teacherName.trim() && cls.teacherName.trim() !== 'Öğretmen'
+        ? cls.teacherName
+        : matchedTeacher?.displayName || cls.teacherName || '') || '';
+    const cleaned = rawName
+      .replace(/^Sayın\s+/i, '')
+      .replace(/^Sn\.?\s+/i, '')
+      .replace(/^Öğretmen:?\s*/i, '')
+      .replace(/\s*\(Öğretmen\)\s*/gi, '')
+      .replace(/\s*Öğretmen\s*$/i, '')
+      .trim();
+    return cleaned || 'Atanmamış';
+  };
+
   // --------------------------------------------------------------
   // 1. TEK BİR SINIFIN İÇİNE GİRİLDİĞİNDE GÖSTERİLECEK DETAY GÖRÜNÜMÜ
   // --------------------------------------------------------------
@@ -726,6 +769,8 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     const selectedClassroom = classrooms.find((c) => c.id === selectedClassId);
     const students = studentsByClass[selectedClassId] || [];
     const stats = computeClassStats(students);
+    const resolvedSelectedClassCode = resolveClassroomCode(selectedClassroom);
+    const resolvedSelectedTeacherName = resolveTeacherDisplayName(selectedClassroom);
 
     const sortedStudents = [...students].sort((a, b) => {
       const stageA = a.currentWeekStage || 0;
@@ -781,11 +826,18 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
               </button>
               <div className="min-w-0 flex-1">
-                <h2 className="text-xs sm:text-sm font-black text-slate-900 truncate [font-family:inherit]">
-                  {selectedClassroom?.name || 'Sınıf Detayı'}
-                </h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xs sm:text-sm font-black text-slate-900 truncate [font-family:inherit]">
+                    {selectedClassroom?.name || 'Sınıf Detayı'}
+                  </h2>
+                  {resolvedSelectedClassCode && (
+                    <span className="text-[10px] sm:text-xs font-mono font-black px-2 py-0.5 rounded-lg bg-white/85 text-indigo-950 border border-indigo-300 shadow-2xs shrink-0">
+                      {resolvedSelectedClassCode}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] sm:text-xs text-slate-800 truncate font-bold mt-0.5">
-                  Öğretmen: {selectedClassroom?.teacherName || 'Atanmamış'} • {stats.totalStudents} Kayıtlı Öğrenci
+                  Sn. {resolvedSelectedTeacherName} • {stats.totalStudents} Kayıtlı Öğrenci
                 </p>
               </div>
             </div>
@@ -1009,6 +1061,11 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       <div className="text-[11px] sm:text-xs font-black text-slate-900 leading-none">{minutes} dk</div>
                       <div className="text-[8.5px] font-bold text-slate-800 leading-none mt-1">
                         {timeInfo.longStr} • {stage}. Kademe
+                        {stage > 0 && user.currentWeekStageDates?.[stage] && (
+                          <span className="ml-1 font-black text-indigo-800">
+                            ({user.currentWeekStageDates[stage]})
+                          </span>
+                        )}
                       </div>
                     </div>
                     <button
@@ -1884,9 +1941,18 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             <School className="w-4 h-4" />
                           </div>
                           <div className="min-w-0 leading-none">
-                            <h4 className="text-xs font-black text-slate-900 truncate leading-none [font-family:inherit]">{classroom.name}</h4>
+                            <div className="flex items-center gap-1.5 flex-wrap leading-none">
+                              <h4 className="text-xs font-black text-slate-900 truncate leading-none [font-family:inherit]">
+                                {classroom.name}
+                              </h4>
+                              {resolveClassroomCode(classroom) && (
+                                <span className="text-[9.5px] font-mono font-black px-1.5 py-0.5 rounded-md bg-white/80 text-indigo-950 border border-indigo-200/90 shadow-2xs shrink-0 leading-none">
+                                  {resolveClassroomCode(classroom)}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[9.5px] text-slate-800 truncate font-semibold leading-none mt-1">
-                              Öğretmen: {classroom.teacherName} • {stats.totalStudents}/
+                              Sn. {resolveTeacherDisplayName(classroom)} • {stats.totalStudents}/
                               {classroom.studentTargetCount || 25} öğr.
                             </p>
                             <div className="flex items-center gap-1 mt-1 flex-wrap">

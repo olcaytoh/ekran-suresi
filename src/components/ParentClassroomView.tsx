@@ -59,8 +59,8 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
   onForgetAccount,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
-  const [nameVal, setNameVal] = useState(userProfile?.studentName || userProfile?.displayName || '');
-  const [parentNameVal, setParentNameVal] = useState(userProfile?.parentName || '');
+  const [nameVal, setNameVal] = useState(userProfile?.studentName || '');
+  const [parentNameVal, setParentNameVal] = useState(userProfile?.parentName || userProfile?.displayName || '');
   const [savingName, setSavingName] = useState(false);
   const [nameSaveFeedback, setNameSaveFeedback] = useState<string | null>(null);
   const [showForgetModal, setShowForgetModal] = useState(false);
@@ -142,8 +142,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
   const handleCopyTeacherClassCode = () => {
     const code = userProfile?.classCode || classroom?.code;
     if (!code) return;
-    const msg = `Sayın Velilerimiz,\n${userProfile?.className || classroom?.name || 'Sınıfımız'} Dijital Ekran Süresi Takip Sistemimize katılmak için Sınıf Kodumuz: ${code}\n\nUygulamada "Sınıfım" bölümünden bu 6 haneli Sınıf Kodunu ve öğrencinizin adını girerek sınıfımıza bağlanabilirsiniz.`;
-    navigator.clipboard.writeText(msg);
+    navigator.clipboard.writeText(code);
     setCopiedTeacherClassCode(true);
     setTimeout(() => setCopiedTeacherClassCode(false), 2500);
   };
@@ -151,9 +150,11 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
   // PARENT: Sınıf Kodu ile Sınıfa Bağlanma
   const [parentClassCodeInput, setParentClassCodeInput] = useState('');
   const [parentStudentNameInput, setParentStudentNameInput] = useState(
-    userProfile?.studentName || userProfile?.displayName || ''
+    userProfile?.studentName || ''
   );
-  const [parentNameInput, setParentNameInput] = useState(userProfile?.parentName || '');
+  const [parentNameInput, setParentNameInput] = useState(
+    userProfile?.parentName || (!userProfile?.studentName ? userProfile?.displayName : '') || ''
+  );
   const [isJoiningClass, setIsJoiningClass] = useState(false);
   const [showChangeClass, setShowChangeClass] = useState(!userProfile?.classId && !classroom?.id);
   const [parentClassFeedback, setParentClassFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -391,7 +392,7 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
       {/* Yalnızca Öğretmen için Admin Moduna Geçiş (Admin Kodu Doğrulamasıyla - Velilere Kesinlikle Gösterilmez) */}
       {isTeacher && !isSuperAdmin && (
         <div
-          className="rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-2.5 flex-wrap"
+          className="rounded-2xl p-3 sm:p-3.5 flex flex-col gap-2.5 overflow-hidden"
           style={{
             backgroundImage: 'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.55) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.50) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.30), rgba(255,255,255,0.30))',
             backdropFilter: 'blur(20px)',
@@ -417,17 +418,17 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+          <div className="grid grid-cols-2 gap-2 w-full">
             {userProfile?.institutionAdminCode && onSwitchRole && (
               <button
                 type="button"
                 id="btn-direct-return-admin"
                 onClick={() => onSwitchRole('admin')}
-                className="btn-3d-rose px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="btn-3d-rose px-2.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold inline-flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer active:scale-95 min-w-0 w-full"
                 title="Kayıtlı Admin yetkinizle doğrudan yönetici paneline dönün"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Yönetici Paneline Dön</span>
+                <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">Yönetici Paneline Dön</span>
               </button>
             )}
             <button
@@ -439,7 +440,9 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                 setAdminCodeSuccess(null);
                 setShowAdminCodeModal(true);
               }}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold text-sky-950 flex-shrink-0 cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
+              className={`px-2.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold text-sky-950 min-w-0 w-full cursor-pointer active:scale-95 transition-all inline-flex items-center justify-center gap-1 sm:gap-1.5 ${
+                !(userProfile?.institutionAdminCode && onSwitchRole) ? 'col-span-2' : ''
+              }`}
               style={{
                 background: 'linear-gradient(135deg, rgba(186,230,253,0.95), rgba(125,211,252,0.75))',
                 backdropFilter: 'blur(12px)',
@@ -449,8 +452,8 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                   '0 4px 14px rgba(14, 165, 233, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
               }}
             >
-              <KeyRound className="w-3.5 h-3.5 text-sky-800" />
-              <span>{userProfile?.institutionAdminCode ? 'Kodu Doğrula / Değiştir' : 'Admin Kodunu Gir'}</span>
+              <KeyRound className="w-3.5 h-3.5 text-sky-800 flex-shrink-0" />
+              <span className="truncate">{userProfile?.institutionAdminCode ? 'Kodu Doğrula / Değiştir' : 'Admin Kodunu Gir'}</span>
             </button>
           </div>
         </div>
@@ -509,6 +512,11 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                     ? userProfile?.institutionName || 'Kurum Yöneticisi'
                     : userProfile?.className || classroom?.name || 'Bağlı Sınıf Yok'}
                 </h4>
+                {!isSuperAdmin && (userProfile?.classCode || classroom?.code) && (
+                  <span className="text-[11px] font-mono font-black text-indigo-950 bg-white/80 px-2 py-0.5 rounded-lg border border-indigo-200 shadow-2xs">
+                    {userProfile?.classCode || classroom?.code}
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   <ShieldCheck className="w-3 h-3" />
                   Aktif
@@ -518,7 +526,11 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
               <p className="text-xs font-bold text-slate-900 mt-0.5">
                 {isSuperAdmin
                   ? `Yönetici: ${userProfile?.displayName || userProfile?.email || 'Yönetici'}`
-                  : `Öğretmen: ${classroom?.teacherName || userProfile?.displayName || 'Sınıf Öğretmeni'}`}
+                  : `Sn. ${(classroom?.teacherName || userProfile?.displayName || 'Sınıf Öğretmeni')
+                      .replace(/^Öğretmen:?\s*/i, '')
+                      .replace(/\s*\(Öğretmen\)\s*/gi, '')
+                      .replace(/\s*Öğretmen\s*$/i, '')
+                      .trim()}`}
               </p>
 
               {(userProfile?.institutionName || classroom?.institutionName) && (
@@ -727,12 +739,12 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                   id="btn-copy-teacher-class-code"
                   onClick={handleCopyTeacherClassCode}
                   className="btn-3d-palette-primary px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
-                  title="Veliler için sınıf davetini kopyala"
+                  title="Veliler için sınıf kodunu kopyala"
                 >
                   {copiedTeacherClassCode ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-                      <span>Davet Kopyalandı!</span>
+                      <span>Kod Kopyalandı!</span>
                     </>
                   ) : (
                     <>
@@ -972,8 +984,8 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                   type="button"
                   id="btn-edit-student-parent"
                   onClick={() => {
-                    setNameVal(userProfile?.studentName || userProfile?.displayName || '');
-                    setParentNameVal(userProfile?.parentName || '');
+                    setNameVal(userProfile?.studentName || '');
+                    setParentNameVal(userProfile?.parentName || (!userProfile?.studentName ? userProfile?.displayName : '') || '');
                     setIsEditingName(true);
                   }}
                   className="px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
@@ -1025,8 +1037,8 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                     type="button"
                     onClick={() => {
                       setIsEditingName(false);
-                      setNameVal(userProfile?.studentName || userProfile?.displayName || '');
-                      setParentNameVal(userProfile?.parentName || '');
+                      setNameVal(userProfile?.studentName || '');
+                      setParentNameVal(userProfile?.parentName || (!userProfile?.studentName ? userProfile?.displayName : '') || '');
                     }}
                     disabled={savingName}
                     className="btn-3d-white py-2 px-3.5 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
@@ -1059,13 +1071,13 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
                 <div className="bg-white/80 p-2.5 rounded-2xl border border-indigo-200/80 space-y-0.5 shadow-2xs">
                   <span className="text-[10px] font-bold text-slate-600 block">Öğrenci Adı</span>
                   <div className="text-sm font-bold text-slate-950">
-                    {userProfile?.studentName || userProfile?.displayName || 'Öğrenci Adı Belirtilmedi'}
+                    {userProfile?.studentName || 'Öğrenci Adı Belirtilmedi'}
                   </div>
                 </div>
                 <div className="bg-white/80 p-2.5 rounded-2xl border border-indigo-200/80 space-y-0.5 shadow-2xs">
                   <span className="text-[10px] font-bold text-slate-600 block">Veli Adı</span>
                   <div className="text-sm font-bold text-slate-950">
-                    {userProfile?.parentName || 'Veli Adı Belirtilmedi'}
+                    {userProfile?.parentName || (!userProfile?.studentName ? userProfile?.displayName : '') || 'Veli Adı Belirtilmedi'}
                   </div>
                 </div>
               </div>

@@ -616,15 +616,6 @@ export const StageGaugeDial: React.FC<StageGaugeDialProps> = ({
               fill="url(#student-zone-specular)"
             />
 
-            {/* Alt İç Ambiyans Yansıma Çizgisi */}
-            <path
-              d={`M ${frameX + 20} ${frameY + frameHeight - 4} H ${frameX + frameWidth - 20}`}
-              stroke="#ffffff"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              opacity="0.3"
-            />
-
             {/* Öğrenci İsmi - Kalın, Net Beyaz Yazı */}
             <text
               x={frameX + frameWidth / 2}

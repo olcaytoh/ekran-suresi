@@ -162,7 +162,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
     }
 
     if (mode === 'register') {
-      const cleanName = fullName.trim() || cleanEmail.split('@')[0];
+      const cleanName = fullName.trim();
+      if (!cleanName) {
+        setError(
+          role === 'parent'
+            ? 'Lütfen veli adını ve soyadını giriniz.'
+            : 'Lütfen adınızı ve soyadınızı giriniz.'
+        );
+        return;
+      }
       try {
         setLoading(true);
         const userProfile = await registerWithEmailAndPassword(
@@ -560,7 +568,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Adınız Soyadınız"
+                  placeholder={role === 'parent' ? 'Veli Adı Soyadı' : 'Adınız Soyadınız'}
                   className={`w-full pl-9 pr-3 py-1.5 sm:py-2 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl text-xs sm:text-sm font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 ${
                     role === 'parent' ? 'focus:ring-emerald-500' : role === 'admin' ? 'focus:ring-rose-500' : 'focus:ring-indigo-500'
                   } transition-all placeholder:text-slate-400 placeholder:font-medium`}

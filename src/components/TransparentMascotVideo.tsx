@@ -19,6 +19,8 @@ interface TransparentMascotVideoProps {
   cropBottom?: number;
   /** Silinecek arka plan rengi türü ('blue' | 'green' | 'auto') */
   chromaKeyType?: 'blue' | 'green' | 'auto';
+  /** Video tamamlandığında tetiklenecek callback (loop=false olduğunda kullanışlıdır) */
+  onEnded?: () => void;
 }
 
 /**
@@ -41,6 +43,7 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
   cropTop = 0.08,
   cropBottom = 0.08,
   chromaKeyType = 'auto',
+  onEnded,
 }) => {
   const isBlueKey = chromaKeyType === 'blue' || (chromaKeyType !== 'green' && src.includes('kss'));
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -48,15 +51,20 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
   const rafIdRef = useRef<number | null>(null);
   const [hasDrawnFrame, setHasDrawnFrame] = useState(false);
   const hasDrawnRef = useRef(false);
+  const onEndedRef = useRef(onEnded);
+
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  }, [onEnded]);
 
   useEffect(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
 
-    // Mobil ve WebKit autoplay kısıtlamalarını aşmak için muted ve inline zorla
-    video.defaultMuted = true;
-    video.muted = true;
+    // Mobil ve WebKit kısıtlamaları için inline oynatmayı zorla
+    video.defaultMuted = muted;
+    video.muted = muted;
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
     video.setAttribute('x5-playsinline', '');
@@ -109,14 +117,19 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
               data[i + 2] = Math.max(r, g); // Mavi yansımasını azalt
             }
           } else {
-            // YEŞİL EKRAN SİLME (Yeşil perdeli videolar için)
+            // YEŞİL EKRAN SİLME (Yeşil perdeli videolar ve kullan.mp4 zümrüt yeşil perde için)
             const maxRB = r > b ? r : b;
             const greenDominance = g - maxRB;
+            const greenOverRed = g - r;
+            const greenOverBlue = g - b;
 
-            if (greenDominance > 33) {
+            if (greenDominance > 33 || (greenOverRed > 75 && greenOverBlue > 38 && g > 95)) {
               data[i + 3] = 0;
-            } else if (greenDominance > 16) {
-              const alpha = 1 - (greenDominance - 16) / (33 - 16);
+            } else if (greenDominance > 16 || (greenOverRed > 50 && greenOverBlue > 22 && g > 80)) {
+              const alpha =
+                greenDominance > 16
+                  ? 1 - (greenDominance - 16) / (33 - 16)
+                  : 1 - (greenOverBlue - 22) / (38 - 22);
               data[i + 3] = Math.max(0, Math.min(255, Math.round(alpha * 255)));
               data[i + 1] = Math.min(g, maxRB + 10);
             }
@@ -142,19 +155,30 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
 
     const handleCanPlay = () => {
       if (autoPlay && video) {
-        video.muted = true;
+        video.muted = muted;
         const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch(() => {
-            // Autoplay deferred until user interaction
+            // Sesli oynatma engellenirse sessiz başlat
+            if (!video.muted) {
+              video.muted = true;
+              video.play().catch(() => {});
+            }
           });
         }
       }
       startLoop();
     };
 
+    const handleVideoEnded = () => {
+      if (onEndedRef.current) {
+        onEndedRef.current();
+      }
+    };
+
     video.addEventListener('loadeddata', handleCanPlay);
     video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('ended', handleVideoEnded);
 
     if (video.readyState >= 2) {
       handleCanPlay();
@@ -162,8 +186,11 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
 
     const handleFirstInteraction = () => {
       if (video) {
-        video.muted = true;
-        video.play().catch(() => {});
+        video.muted = muted;
+        video.play().catch(() => {
+          video.muted = true;
+          video.play().catch(() => {});
+        });
       }
       window.removeEventListener('touchstart', handleFirstInteraction);
       window.removeEventListener('click', handleFirstInteraction);
@@ -176,6 +203,7 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
       cancelled = true;
       video.removeEventListener('loadeddata', handleCanPlay);
       video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('ended', handleVideoEnded);
       window.removeEventListener('touchstart', handleFirstInteraction);
       window.removeEventListener('click', handleFirstInteraction);
       if (rafIdRef.current != null) {
@@ -183,7 +211,7 @@ export const TransparentMascotVideo: React.FC<TransparentMascotVideoProps> = ({
         rafIdRef.current = null;
       }
     };
-  }, [src, autoPlay, renderWidth, cropTop, cropBottom]);
+  }, [src, autoPlay, loop, muted, renderWidth, cropTop, cropBottom, isBlueKey]);
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>

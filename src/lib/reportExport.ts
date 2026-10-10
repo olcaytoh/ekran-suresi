@@ -1,7 +1,11 @@
 import { UserProfile, ClassroomInfo, AcademicCalendarConfig } from '../types';
 import { formatMinutes } from './weekUtils';
 import { getStageCategory } from './stagesData';
-import { generateDefaultAcademicCalendar, getActiveWeekNumber } from './academicCalendar';
+import {
+  generateDefaultAcademicCalendar,
+  getActiveWeekNumber,
+  getStudentStageForAcademicWeek,
+} from './academicCalendar';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -124,19 +128,20 @@ export function buildStudentReportData(
       const isHoliday = !!weekCfg?.isHoliday;
 
       let stage = 0;
-      if (wNum === activeWeekNum) {
-        stage = st.currentWeekStage ?? 0;
-      } else if (isHoliday || wNum > activeWeekNum) {
+      let minutes = 0;
+      let isBeforeRegistration = false;
+      if (isHoliday || wNum > activeWeekNum) {
         stage = 0;
+        minutes = 0;
       } else {
-        // Geçmiş hafta: deterministik tutarlı simülasyon/kayıt
-        const pseudoHash = (st.uid.charCodeAt(0) + idx * 7 + wNum * 3) % 15;
-        stage = Math.min(14, Math.max(0, pseudoHash));
+        const res = getStudentStageForAcademicWeek(st, wNum, activeWeekNum, calendar);
+        stage = res.stage;
+        minutes = res.minutes;
+        isBeforeRegistration = res.isBeforeRegistration;
       }
 
-      const minutes = stage * 30;
       weeklyMinutes[wNum] = minutes;
-      if (!isHoliday) {
+      if (!isHoliday && !isBeforeRegistration) {
         sumMinutes += minutes;
         countedWeeks += 1;
       }

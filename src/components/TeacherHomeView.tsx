@@ -697,6 +697,11 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                       </div>
                       <div className="text-[10px] font-medium text-slate-500 leading-tight mt-1 tabular-nums">
                         {timeInfo.longStr} • {stage}. Kademe
+                        {stage > 0 && user.currentWeekStageDates?.[stage] && (
+                          <span className="ml-1 font-bold text-indigo-700">
+                            ({user.currentWeekStageDates[stage]})
+                          </span>
+                        )}
                       </div>
                     </div>
 

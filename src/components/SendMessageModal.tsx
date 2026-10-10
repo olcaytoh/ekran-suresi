@@ -63,14 +63,26 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
       let targetClassName: string | undefined;
 
       if (targetType === 'student') {
-        const foundStudent = students.find((s) => s.uid === (selectedStudentUid || targetStudent?.uid));
+        const effectiveStudentUid = selectedStudentUid || targetStudent?.uid;
+        if (!effectiveStudentUid) {
+          setError('Lütfen mesaj gönderilecek öğrenciyi/veliyi seçiniz.');
+          setSending(false);
+          return;
+        }
+        const foundStudent = students.find((s) => s.uid === effectiveStudentUid);
         targetStudentName =
           foundStudent?.studentName ||
           foundStudent?.displayName ||
           targetStudent?.studentName ||
           targetStudent?.displayName;
       } else if (targetType === 'class') {
-        const foundClass = classrooms.find((c) => c.id === (selectedClassId || targetClassroom?.id));
+        const effectiveClassId = selectedClassId || targetClassroom?.id;
+        if (!effectiveClassId) {
+          setError('Lütfen mesaj gönderilecek sınıfı seçiniz.');
+          setSending(false);
+          return;
+        }
+        const foundClass = classrooms.find((c) => c.id === effectiveClassId);
         targetClassName = foundClass?.name || targetClassroom?.name;
       }
 
@@ -171,7 +183,12 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTargetType('class')}
+                    onClick={() => {
+                      setTargetType('class');
+                      if (!selectedClassId && classrooms.length > 0) {
+                        setSelectedClassId(classrooms[0].id);
+                      }
+                    }}
                     className={`py-1.5 rounded-xl transition-all cursor-pointer ${
                       targetType === 'class'
                         ? 'bg-white text-indigo-900 shadow-2xs'
@@ -182,7 +199,12 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTargetType('student')}
+                    onClick={() => {
+                      setTargetType('student');
+                      if (!selectedStudentUid && students.length > 0) {
+                        setSelectedStudentUid(students[0].uid);
+                      }
+                    }}
                     className={`py-1.5 rounded-xl transition-all cursor-pointer ${
                       targetType === 'student'
                         ? 'bg-white text-indigo-900 shadow-2xs'
@@ -281,22 +303,22 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
               />
             </div>
 
-            <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+            <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={sending}
-                className="btn-3d-white py-2 px-3.5 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
+                className="btn-3d-white py-2.5 px-4 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
               >
                 Vazgeç
               </button>
               <button
                 type="submit"
                 disabled={sending || !content.trim()}
-                className="btn-3d-indigo py-2 px-4 rounded-xl text-xs font-black text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="btn-3d-indigo bg-indigo-600 hover:bg-indigo-700 py-2.5 px-5 rounded-xl text-xs font-black text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{sending ? 'Gönderiliyor...' : 'Uygulama İçi Gönder'}</span>
+                <span>{sending ? 'Gönderiliyor...' : 'Gönder'}</span>
               </button>
             </div>
           </form>
