@@ -2205,7 +2205,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 value={emailSearchQuery}
                 onChange={(e) => setEmailSearchQuery(e.target.value)}
                 placeholder="E-posta adresi, kullanıcı adı, öğrenci veya sınıf ara..."
-                className="w-full pl-9 pr-3 py-2.5 text-xs rounded-2xl font-bold text-slate-900 placeholder:text-slate-500 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-rose-500"
+                className="w-full pl-9 pr-20 py-2.5 text-xs rounded-2xl font-bold text-slate-900 placeholder:text-slate-500 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-rose-500"
                 style={{
                   background: 'rgba(255, 255, 255, 0.38)',
                   backdropFilter: 'blur(16px)',
@@ -2213,6 +2213,24 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   border: '1px solid rgba(255, 255, 255, 0.65)',
                 }}
               />
+              <button
+                type="button"
+                onClick={() => {
+                  const clean = emailSearchQuery.trim();
+                  if (!clean || clean.toLowerCase() === 'horocis321@aahzz.com' || clean.toLowerCase().endsWith('@aahzz.com')) {
+                    setEmailSearchQuery('@gmail.com');
+                  } else if (!clean.includes('@')) {
+                    setEmailSearchQuery(`${clean}@gmail.com`);
+                  } else {
+                    const prefix = clean.split('@')[0];
+                    setEmailSearchQuery(prefix ? `${prefix}@gmail.com` : '@gmail.com');
+                  }
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-20 px-2 py-1 rounded-xl bg-emerald-50/90 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black cursor-pointer transition-colors"
+                title="@gmail.com ile filtrele"
+              >
+                @gmail.com
+              </button>
             </div>
 
             {/* Rol Filtre Butonları */}
