@@ -972,7 +972,7 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
 
         {/* 4. ALT AKSİYON / İNDİRME ÇUBUĞU — Cam Efekti */}
         <div
-          className="px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 flex-wrap flex-shrink-0"
+          className="px-4 sm:px-6 py-3 flex items-center justify-center sm:justify-end gap-2 sm:gap-3 flex-shrink-0"
           style={{
             backgroundImage:
               'radial-gradient(140% 140% at 0% 0%, rgba(196,181,253,0.45) 0%, rgba(196,181,253,0) 55%), radial-gradient(140% 140% at 100% 100%, rgba(94,234,212,0.40) 0%, rgba(94,234,212,0) 55%), linear-gradient(rgba(255,255,255,0.45), rgba(255,255,255,0.45))',
@@ -983,27 +983,17 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
               '0 -4px 20px rgba(31, 38, 135, 0.06), inset 0 1.5px 1px rgba(255, 255, 255, 0.9)',
           }}
         >
-          <div className="text-xs text-slate-600 flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-slate-800">{summary.totalStudents} Öğrenci</span>
-            <span>analiz edildi •</span>
-            <span className="font-semibold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-lg border border-indigo-200/60 flex items-center gap-1">
-              <Smartphone className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-              <span>Telefonda &quot;Telefona Kaydet / Paylaş&quot; ile Dosyalar veya Drive&apos;a kaydedebilirsiniz.</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 w-full sm:w-auto">
             {/* EXCEL BUTONU */}
             <button
               type="button"
               id="btn-export-excel"
               onClick={handleExportExcel}
               disabled={isExporting || previewRows.length === 0}
-              className="btn-3d-emerald px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
-              title="Öğrenci haftalık sürelerini ve özet istatistikleri Excel (.xlsx) olarak indir"
+              className="btn-3d-emerald px-3 sm:px-4 py-2.5 rounded-2xl text-xs font-black inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Excel (.xlsx) İndir</span>
+              <FileSpreadsheet className="w-4 h-4 shrink-0" />
+              <span className="truncate">Excel İndir</span>
             </button>
 
             {/* PDF BUTONU */}
@@ -1012,74 +1002,21 @@ export const StatsExportModal: React.FC<StatsExportModalProps> = ({
               id="btn-export-pdf"
               onClick={handleExportPdf}
               disabled={isExporting || previewRows.length === 0}
-              className="btn-3d-rose px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
-              title="Formatlı PDF Raporu Oluştur ve İndir"
+              className="btn-3d-rose px-3 sm:px-4 py-2.5 rounded-2xl text-xs font-black inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
             >
-              <FileText className="w-4 h-4" />
-              <span>PDF Raporu İndir</span>
+              <FileText className="w-4 h-4 shrink-0" />
+              <span className="truncate">PDF İndir</span>
             </button>
-
-            {/* YAZDIR / TARAYICI PDF BUTONU */}
-            <button
-              type="button"
-              id="btn-print-report"
-              onClick={handlePrint}
-              disabled={isExporting || previewRows.length === 0}
-              className="btn-3d-palette-primary px-3 sm:px-3.5 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
-              title="Renkli Yazıcı / Tarayıcı PDF Diyaloğunu Aç"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Yazdır / PDF Kaydet</span>
-            </button>
-
-            {/* DOĞRUDAN DOSYA İNDİR / TELEFONA KAYDET BUTONLARI */}
-            {downloadedFile && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {(isMobile || hasShareApi) && (
-                  <button
-                    type="button"
-                    onClick={() => handleShareFile()}
-                    className="btn-3d-emerald px-3 sm:px-3.5 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 text-white ring-2 ring-emerald-300 ring-offset-1 animate-pulse"
-                    title="Dosyayı telefona kaydet veya paylaş"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    <span>Telefona Kaydet</span>
-                  </button>
-                )}
-
-                {downloadedFile.type === 'pdf' && (
-                  <button
-                    type="button"
-                    onClick={() => handleViewPdf()}
-                    className="btn-3d-cyan px-3 sm:px-3.5 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 text-white"
-                    title="PDF'i Görüntüle"
-                  >
-                    <Eye className="w-4 h-4" />
-                    <span>Önizle</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => handleDirectDownload()}
-                  className="btn-3d-emerald px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-2 cursor-pointer active:scale-95 text-white shadow-md"
-                  title="Dosyayı hemen cihazınıza indirin"
-                >
-                  <Download className="w-4 h-4 stroke-[2.5]" />
-                  <span>Dosyayı İndir</span>
-                </button>
-              </div>
-            )}
 
             {/* KAPAT BUTONU */}
             <button
               type="button"
               id="btn-close-export-modal"
               onClick={onClose}
-              className="btn-3d-cyan px-4 py-2 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 cursor-pointer active:scale-95 ml-1"
+              className="btn-3d-cyan px-3 sm:px-4 py-2.5 rounded-2xl text-xs font-black inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
             >
-              <X className="w-4 h-4 stroke-[3]" />
-              <span>Kapat</span>
+              <X className="w-4 h-4 stroke-[3] shrink-0" />
+              <span className="truncate">Kapat</span>
             </button>
           </div>
         </div>

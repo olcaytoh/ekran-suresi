@@ -1,36 +1,31 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Add project specific ProGuard / R8 rules here.
+# Enable aggressive R8 optimization, shrinking, and obfuscation while keeping Capacitor entry points safe.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+-optimizationpasses 5
+-allowaccessmodification
+-repackageclasses 'o'
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
-
-# Capacitor Core and Plugins (allow obfuscation of non-reflective internals while keeping plugin entry points)
+# Keep Capacitor Plugin constructors and @PluginMethod methods (referenced via reflection by Capacitor bridge)
 -keep @com.getcapacitor.annotation.CapacitorPlugin class * extends com.getcapacitor.Plugin {
-    <init>();
+    public <init>();
     @com.getcapacitor.PluginMethod public void *(com.getcapacitor.PluginCall);
 }
 -keep class * extends com.getcapacitor.Plugin {
-    <init>();
+    public <init>();
     @com.getcapacitor.PluginMethod public void *(com.getcapacitor.PluginCall);
 }
--keep class com.getcapacitor.BridgeActivity { *; }
--keep class com.olcico.ekransuresi.MainActivity { *; }
+
+# Keep WebView JavaScript interface methods
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Keep MainActivity entry point
+-keep public class com.olcico.ekransuresi.MainActivity {
+    public <init>();
+    protected void onCreate(android.os.Bundle);
+}
+
 -keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
 -dontwarn **
 -ignorewarnings

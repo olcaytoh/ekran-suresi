@@ -62,7 +62,8 @@ interface AdminInstitutionViewProps {
     classId: string,
     newClassName: string,
     teacherUid?: string,
-    newTeacherName?: string
+    newTeacherName?: string,
+    studentTargetCount?: number
   ) => Promise<void> | void;
   onDeleteUser?: (userUid: string, classId?: string) => Promise<void> | void;
   onUpdateUser?: (userUid: string, updates: Partial<UserProfile>) => Promise<void> | void;
@@ -197,10 +198,11 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [sendingResetForUid, setSendingResetForUid] = useState<string | null>(null);
   const [roleChangingUser, setRoleChangingUser] = useState<UserProfile | null>(null);
 
-  // Sınıf Adı & Öğretmen Adı Düzenleme State'leri
+  // Sınıf Adı & Öğretmen Adı & Maksimum Öğrenci Sayısı Düzenleme State'leri
   const [classToEdit, setClassToEdit] = useState<ClassroomInfo | null>(null);
   const [editClassNameInput, setEditClassNameInput] = useState('');
   const [editTeacherNameInput, setEditTeacherNameInput] = useState('');
+  const [editStudentTargetCountInput, setEditStudentTargetCountInput] = useState<string>('25');
   const [isSavingClassEdit, setIsSavingClassEdit] = useState(false);
   const [editClassError, setEditClassError] = useState<string | null>(null);
 
@@ -209,6 +211,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [editStudentNameInput, setEditStudentNameInput] = useState('');
   const [editParentNameInput, setEditParentNameInput] = useState('');
   const [editUserClassNameInput, setEditUserClassNameInput] = useState('');
+  const [editUserTargetCountInput, setEditUserTargetCountInput] = useState<string>('25');
   const [editUserNewPasswordInput, setEditUserNewPasswordInput] = useState('');
   const [isSavingUserEdit, setIsSavingUserEdit] = useState(false);
   const [editUserError, setEditUserError] = useState<string | null>(null);
@@ -217,6 +220,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     setClassToEdit(classroom);
     setEditClassNameInput(classroom.name || '');
     setEditTeacherNameInput(resolveTeacherDisplayName(classroom) === 'Atanmamış' ? '' : resolveTeacherDisplayName(classroom));
+    setEditStudentTargetCountInput(String(classroom.studentTargetCount || 25));
     setEditClassError(null);
   };
 
@@ -225,8 +229,13 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     if (!classToEdit) return;
     const cleanClassName = editClassNameInput.trim();
     const cleanTeacherName = editTeacherNameInput.trim();
+    const parsedTargetCount = parseInt(editStudentTargetCountInput, 10);
     if (!cleanClassName) {
       setEditClassError('Lütfen sınıf adını giriniz.');
+      return;
+    }
+    if (isNaN(parsedTargetCount) || parsedTargetCount < 1 || parsedTargetCount > 200) {
+      setEditClassError('Lütfen maksimum öğrenci sayısını 1 ile 200 arasında giriniz.');
       return;
     }
 
@@ -237,14 +246,15 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         classToEdit.id,
         cleanClassName,
         classToEdit.teacherUid,
-        cleanTeacherName || undefined
+        cleanTeacherName || undefined,
+        parsedTargetCount
       );
       setClassToEdit(null);
       setFeedback({ type: 'success', text: `"${cleanClassName}" sınıf bilgileri güncellendi.` });
       setTimeout(() => setFeedback(null), 3000);
     } catch (err: any) {
       console.error('Error updating classroom:', err);
-      setEditClassError(err?.message || 'Sınıf adı güncellenirken bir hata oluştu.');
+      setEditClassError(err?.message || 'Sınıf bilgileri güncellenirken bir hata oluştu.');
     } finally {
       setIsSavingClassEdit(false);
     }
@@ -263,6 +273,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         c.teacherId === user.uid
     );
     setEditUserClassNameInput(user.className || matchedClassroom?.name || '');
+    setEditUserTargetCountInput(String(matchedClassroom?.studentTargetCount || user.studentTargetCount || 25));
     setEditUserError(null);
   };
 
@@ -274,6 +285,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     const cleanParentName = editParentNameInput.trim();
     const cleanUserClassName = editUserClassNameInput.trim();
     const cleanNewPwd = editUserNewPasswordInput.trim();
+    const parsedUserTargetCount = parseInt(editUserTargetCountInput, 10);
 
     if (!cleanMainName) {
       setEditUserError(isStaff ? 'Lütfen ad ve soyad giriniz.' : 'Lütfen öğrencinin adını ve soyadını giriniz.');
@@ -301,17 +313,23 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         );
         const targetClassId = userToEdit.classId || matchedClassroom?.id;
         const finalClassName = cleanUserClassName || userToEdit.className || matchedClassroom?.name;
+        const validTargetCount =
+          !isNaN(parsedUserTargetCount) && parsedUserTargetCount >= 1 && parsedUserTargetCount <= 200
+            ? parsedUserTargetCount
+            : matchedClassroom?.studentTargetCount;
 
         await onUpdateUser?.(userToEdit.uid, {
           displayName: cleanMainName,
           ...(finalClassName ? { className: finalClassName } : {}),
+          ...(validTargetCount ? { studentTargetCount: validTargetCount } : {}),
         });
         if (targetClassId && finalClassName) {
           await onUpdateClassroom?.(
             targetClassId,
             finalClassName,
             userToEdit.uid,
-            cleanMainName
+            cleanMainName,
+            validTargetCount
           );
         }
       } else {
@@ -898,7 +916,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   )}
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-800 truncate font-bold mt-0.5">
-                  Sn. {resolvedSelectedTeacherName} • {stats.totalStudents} Kayıtlı Öğrenci
+                  Sn. {resolvedSelectedTeacherName} • {stats.totalStudents}/{selectedClassroom?.studentTargetCount || 25} Öğrenci
                 </p>
               </div>
             </div>
@@ -1062,7 +1080,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               return (
                 <div
                   key={user.uid}
-                  className="relative rounded-xl p-2 sm:p-2.5 shadow-xs flex items-center justify-between gap-2 backdrop-blur-md overflow-hidden transition-all duration-150"
+                  className="relative rounded-xl p-2 sm:p-2.5 shadow-xs flex flex-col gap-1.5 backdrop-blur-md overflow-hidden transition-all duration-150"
                   style={{
                     background: isRed
                       ? 'rgba(255, 241, 242, 0.38)'
@@ -1092,11 +1110,12 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                     }}
                   />
 
-                  <div className="relative z-10 min-w-0 leading-none">
-                    <div className="flex items-center gap-1.5 flex-wrap leading-none">
+                  {/* Üst Satır: Sol tarafta Öğrenci Adı ve Kategori, En Sağda Zaman Bilgisi (örn: 2 saat önce) */}
+                  <div className="relative z-10 flex items-center justify-between gap-2 leading-none">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap leading-none">
                       <span className="text-[11px] sm:text-xs font-black text-slate-900 truncate leading-none">{sName}</span>
                       <span
-                        className={`text-[8px] font-black px-1 py-0.5 rounded leading-none ${
+                        className={`text-[8px] font-black px-1 py-0.5 rounded leading-none shrink-0 ${
                           isRed
                             ? 'bg-rose-600 text-white'
                             : isOrange
@@ -1108,51 +1127,59 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       >
                         {category.name}
                       </span>
-                      {isRed && <Flame className="w-2.5 h-2.5 text-rose-600" />}
+                      {isRed && <Flame className="w-2.5 h-2.5 text-rose-600 shrink-0" />}
                     </div>
 
-                    <div className="text-[9px] font-bold text-slate-800 truncate mt-1 leading-none flex items-center gap-1.5 flex-wrap">
-                      <span>Veli: <strong className="text-slate-900">{pName}</strong></span>
-                      <span>• {formatTimeAgo(user.updatedAt)}</span>
+                    <div className="text-[9px] font-bold text-slate-700 shrink-0 flex items-center gap-1 leading-none">
+                      <span>{formatTimeAgo(user.updatedAt)}</span>
+                      {stage > 0 && user.currentWeekStageDates?.[stage] && (
+                        <span className="font-black text-indigo-800">
+                          ({user.currentWeekStageDates[stage]})
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="relative z-10 flex items-center gap-1.5 flex-shrink-0">
-                    <div className="text-right leading-none">
-                      <div className="text-[11px] sm:text-xs font-black text-slate-900 leading-none">{minutes} dk</div>
-                      <div className="text-[8.5px] font-bold text-slate-800 leading-none mt-1">
-                        {timeInfo.longStr} • {stage}. Kademe
-                        {stage > 0 && user.currentWeekStageDates?.[stage] && (
-                          <span className="ml-1 font-black text-indigo-800">
-                            ({user.currentWeekStageDates[stage]})
-                          </span>
-                        )}
-                      </div>
+                  {/* Alt Satır: Sol tarafta Veli Adı, Sağ tarafta Süre ve İşlem Butonları */}
+                  <div className="relative z-10 flex items-center justify-between gap-2 leading-none">
+                    <div className="text-[9.5px] font-bold text-slate-800 truncate leading-none">
+                      Veli: <strong className="text-slate-900">{pName}</strong>
                     </div>
-                    <button
-                      type="button"
-                      id={`btn-edit-student-${user.uid}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenEditUser(user);
-                      }}
-                      title="Öğrenci & Veli Adını Düzenle"
-                      className="p-1 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white/50 border border-transparent hover:border-indigo-200 transition-colors cursor-pointer"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      id={`btn-reset-student-${user.uid}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setUserToReset(user);
-                      }}
-                      title="Bu e-postayı ve hesabı tamamen sıfırla/sil"
-                      className="p-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white/50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="text-right leading-none flex items-center gap-1.5">
+                        <span className="text-[9px] font-bold text-slate-700">
+                          {stage}. Kademe
+                        </span>
+                        <span className="text-[11px] sm:text-xs font-black text-slate-900">
+                          {minutes} dk
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        id={`btn-edit-student-${user.uid}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEditUser(user);
+                        }}
+                        title="Öğrenci & Veli Adını Düzenle"
+                        className="p-1 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white/50 border border-transparent hover:border-indigo-200 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        id={`btn-reset-student-${user.uid}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUserToReset(user);
+                        }}
+                        title="Bu e-postayı ve hesabı tamamen sıfırla/sil"
+                        className="p-1 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white/50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1253,7 +1280,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   Sınıf &amp; Öğretmen Bilgilerini Düzenle
                 </h4>
                 <p className="text-xs text-slate-500">
-                  Sınıf adını veya öğretmenin görünen adını güncelleyebilirsiniz.
+                  Sınıf adını, öğretmenin görünen adını veya maksimum öğrenci sayısını güncelleyebilirsiniz.
                 </p>
               </div>
 
@@ -1278,6 +1305,20 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                     onChange={(e) => setEditTeacherNameInput(e.target.value)}
                     placeholder="Örn: Ayşe Yılmaz"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Maksimum Öğrenci Sayısı (Mevcut):</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={editStudentTargetCountInput}
+                    onChange={(e) => setEditStudentTargetCountInput(e.target.value)}
+                    placeholder="Örn: 25"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    required
                   />
                 </div>
 
@@ -1369,16 +1410,30 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 </div>
 
                 {userToEdit.role === 'teacher' && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Sınıf Adı:</label>
-                    <input
-                      type="text"
-                      value={editUserClassNameInput}
-                      onChange={(e) => setEditUserClassNameInput(e.target.value)}
-                      placeholder="Örn: 4-A Sınıfı"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                    />
-                  </div>
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Sınıf Adı:</label>
+                      <input
+                        type="text"
+                        value={editUserClassNameInput}
+                        onChange={(e) => setEditUserClassNameInput(e.target.value)}
+                        placeholder="Örn: 4-A Sınıfı"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Maksimum Öğrenci Sayısı:</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={200}
+                        value={editUserTargetCountInput}
+                        onChange={(e) => setEditUserTargetCountInput(e.target.value)}
+                        placeholder="Örn: 25"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                      />
+                    </div>
+                  </>
                 )}
 
                 {userToEdit.role !== 'teacher' && userToEdit.role !== 'admin' && (
@@ -2369,6 +2424,47 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 const isAdminRole = user.role === 'admin';
                 const isParentRole = !isTeacherRole && !isAdminRole;
 
+                const stage = user.currentWeekStage ?? 0;
+                const minutes = user.currentWeekMinutes ?? stage * 30;
+                const isRed = isParentRole && (stage >= 14 || minutes >= 420);
+                const isOrange = isParentRole && !isRed && ((stage >= 11 && stage <= 13) || (minutes >= 330 && minutes < 420));
+                const isYellow = isParentRole && !isRed && !isOrange && ((stage >= 8 && stage <= 10) || (minutes >= 240 && minutes < 330));
+
+                // Extract student name and parent name cleanly
+                let studentDisplay = (user.studentName || '').trim();
+                let parentDisplay = (user.parentName || '').trim();
+                const rawDisplay = (user.displayName || '').trim();
+
+                if (isParentRole) {
+                  if (!studentDisplay && rawDisplay) {
+                    const parenMatch = rawDisplay.match(/^(.+?)\s*\((.+?)\)\s*$/);
+                    if (parenMatch) {
+                      studentDisplay = parenMatch[1].trim();
+                      if (!parentDisplay) parentDisplay = parenMatch[2].trim();
+                    } else {
+                      studentDisplay = rawDisplay;
+                    }
+                  }
+                  if (parentDisplay && studentDisplay && parentDisplay.toLowerCase() === studentDisplay.toLowerCase()) {
+                    const parenMatch = rawDisplay.match(/^(.+?)\s*\((.+?)\)\s*$/);
+                    if (parenMatch && parenMatch[2].trim().toLowerCase() !== studentDisplay.toLowerCase()) {
+                      parentDisplay = parenMatch[2].trim();
+                    }
+                  }
+                }
+
+                const personIconColorClass = isAdminRole
+                  ? 'bg-violet-100/80 text-violet-700 border-violet-300'
+                  : isTeacherRole
+                  ? 'bg-indigo-100/80 text-indigo-700 border-indigo-300'
+                  : isRed
+                  ? 'bg-rose-500 text-white border-rose-300 shadow-xs'
+                  : isOrange
+                  ? 'bg-orange-500 text-white border-orange-300 shadow-xs'
+                  : isYellow
+                  ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-xs'
+                  : 'bg-emerald-500 text-white border-emerald-300 shadow-xs';
+
                 return (
                   <div
                     key={user.uid}
@@ -2394,17 +2490,12 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       }}
                     />
 
-                    <div className="relative z-10 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {/* Rol İkonu */}
+                    <div className="relative z-10 flex flex-col gap-2">
+                      {/* 1. ÜST KISIM: Sol Süre Rengine Göre Kişi İkonu + Sağda İsim ve Sınıf/Süre Bilgileri */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {/* Sol Kişi İkonu (Süre kullanım rengine göre) */}
                         <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 border backdrop-blur-xs ${
-                            isAdminRole
-                              ? 'bg-violet-100/70 text-violet-700 border-violet-200/80'
-                              : isTeacherRole
-                              ? 'bg-indigo-100/70 text-indigo-700 border-indigo-200/80'
-                              : 'bg-emerald-100/70 text-emerald-700 border-emerald-200/80'
-                          }`}
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border backdrop-blur-xs ${personIconColorClass}`}
                         >
                           {isAdminRole ? (
                             <ShieldCheck className="w-4 h-4" />
@@ -2415,75 +2506,69 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           )}
                         </div>
 
-                        {/* Bilgiler */}
-                        <div className="min-w-0 leading-none">
-                          {/* E-Posta Adresi & Kopyalama */}
-                          <div className="flex items-center gap-1 flex-wrap leading-none">
-                            <span className="font-mono font-black text-[11px] sm:text-xs text-slate-900 truncate leading-none">
-                              {user.email || user.displayName || 'Kullanıcı'}
-                            </span>
-                            {user.email && (
-                              <button
-                                type="button"
-                                onClick={() => handleCopyEmail(user.email!)}
-                                className="p-0.5 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-white/50 transition-colors cursor-pointer"
-                                title="E-postayı Kopyala"
-                              >
-                                {copiedEmail === user.email ? (
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                ) : (
-                                  <Copy className="w-3 h-3" />
+                        {/* Sağ Üst Bilgiler: En üstte Öğrenci Adı + Yanında Veli Adı, Altında Sınıf ve Süre Bilgisi */}
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap leading-tight">
+                            {isParentRole ? (
+                              <>
+                                <span className="text-xs sm:text-[13px] font-black text-slate-900">
+                                  {studentDisplay || rawDisplay || 'Öğrenci'}
+                                </span>
+                                {parentDisplay && (
+                                  <span className="text-[11px] font-bold text-slate-700">
+                                    • Veli: <strong className="text-slate-900">{parentDisplay}</strong>
+                                  </span>
                                 )}
-                              </button>
+                              </>
+                            ) : (
+                              <span className="text-xs sm:text-[13px] font-black text-slate-900">
+                                {rawDisplay || 'Kullanıcı'}
+                              </span>
                             )}
 
                             {/* Rol Rozeti */}
                             <span
-                              className={`text-[8px] font-black px-1.5 py-0.5 rounded leading-none border backdrop-blur-xs ${
+                              className={`text-[8.5px] font-black px-1.5 py-0.5 rounded leading-none border backdrop-blur-xs ${
                                 isAdminRole
-                                  ? 'bg-violet-100/60 text-violet-800 border-violet-300/70'
+                                  ? 'bg-violet-100/70 text-violet-800 border-violet-300/80'
                                   : isTeacherRole
-                                  ? 'bg-indigo-100/60 text-indigo-800 border-indigo-300/70'
-                                  : 'bg-emerald-100/60 text-emerald-800 border-emerald-300/70'
+                                  ? 'bg-indigo-100/70 text-indigo-800 border-indigo-300/80'
+                                  : 'bg-emerald-100/70 text-emerald-800 border-emerald-300/80'
                               }`}
                             >
                               {isAdminRole ? 'Yönetici' : isTeacherRole ? 'Öğretmen' : 'Veli'}
                             </span>
 
                             {isCurrentAdminAccount && (
-                              <span className="text-[8px] font-black px-1 py-0.5 rounded bg-amber-100/70 text-amber-900 border border-amber-300/80 backdrop-blur-xs">
+                              <span className="text-[8.5px] font-black px-1.5 py-0.5 rounded bg-amber-100/80 text-amber-900 border border-amber-300/80 backdrop-blur-xs leading-none">
                                 Sizin Hesabınız
                               </span>
                             )}
                           </div>
 
-                          {/* İsim & Detaylar */}
-                          <div className="text-[9.5px] text-slate-800 flex items-center gap-1.5 flex-wrap font-semibold leading-none mt-1">
-                            <span>Ad: <strong className="text-slate-900">{user.displayName || 'İsimsiz'}</strong></span>
-                            {user.studentName && (
-                              <span>• Öğr: <strong className="text-slate-900">{user.studentName}</strong></span>
-                            )}
+                          {/* Sınıf ve Süre Bilgisi (Kademe yok) */}
+                          <div className="text-[10.5px] text-slate-800 flex items-center gap-1.5 flex-wrap font-bold leading-none">
                             {user.className ? (
-                              <span className="text-indigo-800 font-bold bg-white/60 px-1 py-0.5 rounded border border-white/80 backdrop-blur-xs leading-none">
+                              <span className="text-indigo-900 font-black bg-white/75 px-1.5 py-0.5 rounded-md border border-white/90 backdrop-blur-xs leading-none">
                                 {user.className}
                               </span>
                             ) : !isAdminRole ? (
-                              <span className="text-amber-800 font-medium bg-amber-100/50 px-1 py-0.5 rounded border border-amber-200/70 text-[8.5px] backdrop-blur-xs leading-none">
+                              <span className="text-amber-800 font-bold bg-amber-100/60 px-1.5 py-0.5 rounded-md border border-amber-200/80 text-[9.5px] backdrop-blur-xs leading-none">
                                 Sınıfa katılmadı
                               </span>
                             ) : null}
-                            {isParentRole && (user.currentWeekMinutes !== undefined || user.currentWeekStage !== undefined) && (
-                              <>
-                                <span>• {user.currentWeekMinutes ?? (user.currentWeekStage || 0) * 30} dk</span>
-                                <span>• {user.currentWeekStage || 0}. Kademe</span>
-                              </>
+
+                            {isParentRole && (
+                              <span className="font-black text-slate-900">
+                                • {minutes} dk
+                              </span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Sağ Taraf: Admin Aksiyon Butonları */}
-                      <div className="relative z-10 flex items-center gap-1 flex-shrink-0">
+                      {/* 2. ORTA KISIM: 5 Minik Aksiyon Butonu */}
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-white/35">
                         {/* Uygulama İçi Mesaj Gönder */}
                         <button
                           type="button"
@@ -2493,7 +2578,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             setMessagingTargetClass(null);
                             setIsSendMessageModalOpen(true);
                           }}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-xs font-bold backdrop-blur-xs shadow-2xs"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/45 hover:bg-white/75 border border-white/65 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center justify-center text-xs font-bold backdrop-blur-xs shadow-2xs"
                           title="Kullanıcıya / Veliye Uygulama İçi Mesaj Gönder"
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
@@ -2506,7 +2591,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             id={`btn-send-reset-${user.uid}`}
                             onClick={() => handleSendPasswordReset(user.email, user.uid)}
                             disabled={sendingResetForUid === user.uid}
-                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center gap-1 text-xs font-bold backdrop-blur-xs shadow-2xs"
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/45 hover:bg-white/75 border border-white/65 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center justify-center text-xs font-bold backdrop-blur-xs shadow-2xs"
                             title="Kullanıcıya 6 Haneli Şifre Sıfırlama Kodu Gönder"
                           >
                             <Send className={`w-3.5 h-3.5 ${sendingResetForUid === user.uid ? 'animate-bounce text-indigo-600' : ''}`} />
@@ -2518,7 +2603,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           type="button"
                           id={`btn-edit-user-${user.uid}`}
                           onClick={() => handleOpenEditUser(user)}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 backdrop-blur-xs shadow-2xs"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/45 hover:bg-white/75 border border-white/65 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center justify-center backdrop-blur-xs shadow-2xs"
                           title="Öğrenci / Veli / Kullanıcı Adını Düzenle"
                         >
                           <Edit2 className="w-3.5 h-3.5 text-indigo-600" />
@@ -2530,7 +2615,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                             type="button"
                             id={`btn-change-role-${user.uid}`}
                             onClick={() => setRoleChangingUser(user)}
-                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/40 hover:bg-white/70 border border-white/60 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 backdrop-blur-xs shadow-2xs"
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/45 hover:bg-white/75 border border-white/65 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center justify-center backdrop-blur-xs shadow-2xs"
                             title="Kullanıcı Rolünü Değiştir (Veli / Öğretmen)"
                           >
                             <UserCheck className="w-3.5 h-3.5" />
@@ -2543,10 +2628,10 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           id={`btn-reset-and-delete-${user.uid}`}
                           onClick={() => setUserToReset(user)}
                           disabled={isCurrentAdminAccount}
-                          className={`p-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 backdrop-blur-xs ${
+                          className={`p-1.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer active:scale-95 backdrop-blur-xs ${
                             isCurrentAdminAccount
                               ? 'opacity-30 cursor-not-allowed bg-white/20 text-slate-400 border border-white/30'
-                              : 'bg-rose-50/70 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 shadow-2xs'
+                              : 'bg-rose-50/75 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 hover:border-rose-600 shadow-2xs'
                           }`}
                           title={
                             isCurrentAdminAccount
@@ -2557,6 +2642,27 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
+
+                      {/* 3. ALT KISIM: E-Posta Bilgisi (5 butonun hemen altında) */}
+                      {user.email && (
+                        <div className="flex items-center gap-1.5 leading-none pt-0.5">
+                          <span className="font-mono font-bold text-[10.5px] sm:text-[11px] text-slate-800 truncate">
+                            {user.email}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyEmail(user.email!)}
+                            className="p-0.5 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-white/50 transition-colors cursor-pointer flex-shrink-0"
+                            title="E-postayı Kopyala"
+                          >
+                            {copiedEmail === user.email ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -2747,7 +2853,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 Sınıf &amp; Öğretmen Bilgilerini Düzenle
               </h4>
               <p className="text-xs text-slate-500">
-                Sınıf adını veya öğretmenin görünen adını güncelleyebilirsiniz.
+                Sınıf adını, öğretmenin görünen adını veya maksimum öğrenci sayısını güncelleyebilirsiniz.
               </p>
             </div>
 
@@ -2772,6 +2878,20 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   onChange={(e) => setEditTeacherNameInput(e.target.value)}
                   placeholder="Örn: Ayşe Yılmaz"
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">Maksimum Öğrenci Sayısı (Mevcut):</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={editStudentTargetCountInput}
+                  onChange={(e) => setEditStudentTargetCountInput(e.target.value)}
+                  placeholder="Örn: 25"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  required
                 />
               </div>
 
@@ -2838,7 +2958,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               </h4>
               <p className="text-xs text-slate-500">
                 {userToEdit.role === 'teacher'
-                  ? 'Öğretmen adını ve bağlı olduğu sınıf adını güncelleyebilirsiniz.'
+                  ? 'Öğretmen adını, bağlı olduğu sınıf adını ve maksimum öğrenci sayısını güncelleyebilirsiniz.'
                   : userToEdit.role === 'admin'
                   ? 'Yönetici adında düzeltme yapabilirsiniz.'
                   : 'Öğrenci veya veli adında düzeltme yapabilirsiniz.'}
@@ -2865,16 +2985,30 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               </div>
 
               {userToEdit.role === 'teacher' && (
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Sınıf Adı:</label>
-                  <input
-                    type="text"
-                    value={editUserClassNameInput}
-                    onChange={(e) => setEditUserClassNameInput(e.target.value)}
-                    placeholder="Örn: 4-A Sınıfı"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                  />
-                </div>
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Sınıf Adı:</label>
+                    <input
+                      type="text"
+                      value={editUserClassNameInput}
+                      onChange={(e) => setEditUserClassNameInput(e.target.value)}
+                      placeholder="Örn: 4-A Sınıfı"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Maksimum Öğrenci Sayısı:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={editUserTargetCountInput}
+                      onChange={(e) => setEditUserTargetCountInput(e.target.value)}
+                      placeholder="Örn: 25"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                    />
+                  </div>
+                </>
               )}
 
               {userToEdit.role !== 'teacher' && userToEdit.role !== 'admin' && (

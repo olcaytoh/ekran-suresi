@@ -442,11 +442,16 @@ export default function App() {
     classId: string,
     newClassName: string,
     teacherUid?: string,
-    newTeacherName?: string
+    newTeacherName?: string,
+    studentTargetCount?: number
   ) => {
     try {
       const cleanName = newClassName.trim();
       const cleanTeacher = newTeacherName?.trim();
+      const validTargetCount =
+        typeof studentTargetCount === 'number' && !isNaN(studentTargetCount) && studentTargetCount > 0
+          ? Math.round(studentTargetCount)
+          : undefined;
 
       setInstitutionClassrooms((prev) =>
         prev.map((c) =>
@@ -455,10 +460,24 @@ export default function App() {
                 ...c,
                 name: cleanName,
                 ...(cleanTeacher ? { teacherName: cleanTeacher } : {}),
+                ...(validTargetCount !== undefined ? { studentTargetCount: validTargetCount } : {}),
               }
             : c
         )
       );
+
+      if (classroom?.id === classId) {
+        setClassroom((prev) =>
+          prev
+            ? {
+                ...prev,
+                name: cleanName,
+                ...(cleanTeacher ? { teacherName: cleanTeacher } : {}),
+                ...(validTargetCount !== undefined ? { studentTargetCount: validTargetCount } : {}),
+              }
+            : prev
+        );
+      }
 
       setClassStudentsMap((prev) => {
         const existing = prev[classId];
@@ -486,7 +505,7 @@ export default function App() {
       );
 
       if (authUser || activeLocalProfile) {
-        await adminUpdateClassroom(classId, cleanName, teacherUid, cleanTeacher);
+        await adminUpdateClassroom(classId, cleanName, teacherUid, cleanTeacher, validTargetCount);
       }
     } catch (err) {
       console.error('Failed to update classroom:', err);

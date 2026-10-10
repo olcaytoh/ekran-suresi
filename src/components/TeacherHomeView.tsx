@@ -655,79 +655,85 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                 <div
                   key={user.uid}
                   id={`teacher-student-card-${user.uid}`}
-                  className={`relative backdrop-blur-md rounded-xl border p-1.5 sm:p-2 transition-all hover:bg-white/40 flex items-center justify-between gap-2 ${cardTint}`}
+                  className={`relative backdrop-blur-md rounded-xl border p-2 sm:p-2.5 transition-all hover:bg-white/40 flex flex-col gap-1.5 ${cardTint}`}
                   style={{
                     background: 'rgba(255, 255, 255, 0.32)',
                     borderColor: 'rgba(255, 255, 255, 0.55)',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.6)',
                   }}
                 >
-                  {/* Sol: Maskot ve İsim Bilgileri */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg overflow-hidden bg-white border border-white flex-shrink-0 flex items-center justify-center shadow-sm">
-                      <img
-                        src={mascotSrc}
-                        alt="Öğrenci Maskotu"
-                        className="w-full h-full object-contain"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
+                  {/* Üst Satır: Sol tarafta Maskot, Öğrenci Adı ve Kategori; En Sağda Zaman Bilgileri */}
+                  <div className="flex items-center justify-between gap-2 leading-none">
+                    <div className="flex items-center gap-2 min-w-0 leading-none">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg overflow-hidden bg-white border border-white flex-shrink-0 flex items-center justify-center shadow-sm">
+                        <img
+                          src={mascotSrc}
+                          alt="Öğrenci Maskotu"
+                          className="w-full h-full object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
 
-                    <div className="min-w-0 leading-none">
-                      <div className="flex items-center gap-1.5 flex-wrap leading-none">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap leading-none">
                         <h4 className="text-xs sm:text-[13px] font-black tracking-tight text-slate-900 leading-tight truncate [font-family:inherit]">
                           {sName}
                         </h4>
-                        <span className={`text-[10px] font-semibold tracking-wide px-1.5 py-0.5 rounded-md leading-none ${badgeColorClass}`}>
+                        <span className={`text-[9.5px] font-semibold tracking-wide px-1.5 py-0.5 rounded-md leading-none shrink-0 ${badgeColorClass}`}>
                           {category.name}
                         </span>
                       </div>
+                    </div>
 
-                      <div className="text-[11px] font-medium text-slate-500 truncate leading-tight mt-1">
-                        Veli: <span className="text-slate-700">{pName}</span>
-                      </div>
+                    <div className="text-[9.5px] font-bold text-slate-600 shrink-0 flex items-center gap-1 leading-none">
+                      <span>{formatTimeAgo(user.updatedAt)}</span>
+                      {stage > 0 && user.currentWeekStageDates?.[stage] && (
+                        <span className="font-bold text-indigo-700">
+                          ({user.currentWeekStageDates[stage]})
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Sağ: Süre, Kademe, Düzenleme ve Silme Butonu */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <div className="text-right leading-none">
-                      <div className="text-xs sm:text-[13px] font-semibold text-slate-900 leading-tight tabular-nums">
-                        {minutes} dk
-                      </div>
-                      <div className="text-[10px] font-medium text-slate-500 leading-tight mt-1 tabular-nums">
-                        {timeInfo.longStr} • {stage}. Kademe
-                        {stage > 0 && user.currentWeekStageDates?.[stage] && (
-                          <span className="ml-1 font-bold text-indigo-700">
-                            ({user.currentWeekStageDates[stage]})
-                          </span>
-                        )}
-                      </div>
+                  {/* Alt Satır: Sol tarafta Veli Adı, Sağ tarafta Süre ve İşlem Butonları */}
+                  <div className="flex items-center justify-between gap-2 leading-none pl-8 sm:pl-9">
+                    <div className="text-[11px] font-medium text-slate-500 truncate leading-tight">
+                      Veli: <span className="text-slate-700 font-bold">{pName}</span>
                     </div>
 
-                    {onUpdateUser && (
-                      <button
-                        type="button"
-                        id={`btn-teacher-edit-student-${user.uid}`}
-                        onClick={() => handleOpenEditStudent(user)}
-                        title="Öğrenci & Veli Bilgilerini Düzenle"
-                        className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="text-right leading-none flex items-center gap-1.5">
+                        <span className="text-[10px] font-medium text-slate-500 tabular-nums">
+                          {stage}. Kademe
+                        </span>
+                        <span className="text-xs sm:text-[13px] font-bold text-slate-900 leading-tight tabular-nums">
+                          {minutes} dk
+                        </span>
+                      </div>
 
-                    {onDeleteUser && (
-                      <button
-                        type="button"
-                        id={`btn-teacher-delete-student-${user.uid}`}
-                        onClick={() => setStudentToDelete(user)}
-                        title="Öğrenciyi Sınıftan Sil"
-                        className="p-1 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
+                      {onUpdateUser && (
+                        <button
+                          type="button"
+                          id={`btn-teacher-edit-student-${user.uid}`}
+                          onClick={() => handleOpenEditStudent(user)}
+                          title="Öğrenci & Veli Bilgilerini Düzenle"
+                          className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+
+                      {onDeleteUser && (
+                        <button
+                          type="button"
+                          id={`btn-teacher-delete-student-${user.uid}`}
+                          onClick={() => setStudentToDelete(user)}
+                          title="Öğrenciyi Sınıftan Sil"
+                          className="p-1 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

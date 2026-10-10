@@ -2606,7 +2606,8 @@ export async function adminUpdateClassroom(
   classId: string,
   newClassName: string,
   teacherUid?: string,
-  newTeacherName?: string
+  newTeacherName?: string,
+  studentTargetCount?: number
 ): Promise<void> {
   const cleanClassId = (classId || '').trim();
   const cleanName = (newClassName || '').trim();
@@ -2621,6 +2622,9 @@ export async function adminUpdateClassroom(
   };
   if (newTeacherName && newTeacherName.trim()) {
     classPayload.teacherName = newTeacherName.trim();
+  }
+  if (typeof studentTargetCount === 'number' && !isNaN(studentTargetCount) && studentTargetCount > 0) {
+    classPayload.studentTargetCount = Math.round(studentTargetCount);
   }
   await setDoc(classRef, removeUndefined(classPayload), { merge: true });
 

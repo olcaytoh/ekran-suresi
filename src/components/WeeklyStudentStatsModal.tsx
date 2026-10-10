@@ -354,7 +354,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
     >
       <div className="relative w-full max-w-2xl bg-gradient-to-b from-sky-400 via-indigo-500 to-purple-600 rounded-3xl border border-white/40 ring-1 ring-white/20 shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-5rem)] sm:max-h-[90vh] my-auto animate-in zoom-in-95 duration-150">
         {/* 1. Modal Başlık Çubuğu — Açık Cam (Glass) Çerçeve */}
-        <div className="flex items-center justify-between gap-2 m-3 sm:m-4 mb-0 p-3.5 sm:p-4 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex-shrink-0">
+        <div className="flex items-center justify-between gap-2 m-3 sm:m-4 mb-0 p-3 sm:p-4 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex-shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm sm:text-base shadow-md flex-shrink-0">
               {weekConfig.weekNum}.H
@@ -409,544 +409,547 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
           </div>
         </div>
 
-        {/* Görünüm Sekmeleri: Öğrenci Listesi & Sınıf Karşılaştırması — Açık Cam Çerçeve */}
-        <div className="mx-3 sm:mx-4 mt-3 p-2.5 sm:p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex items-center justify-between gap-2 flex-shrink-0">
-          <div className="flex items-center gap-1.5 p-1 bg-gradient-to-b from-white/55 to-white/25 rounded-2xl border border-white/50 ring-1 ring-white/20">
-            <button
-              type="button"
-              onClick={() => setActiveTab('students')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer transition-all flex items-center gap-1.5 ${
-                activeTab === 'students'
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Öğrenci Listesi ({totalStudents})</span>
-            </button>
+        {/* Kaydırılabilir Ana Gövde */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-3 space-y-3">
+          {/* Görünüm Sekmeleri: Öğrenci Listesi & Sınıf Karşılaştırması — Açık Cam Çerçeve */}
+          <div className="p-2.5 sm:p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 p-1 bg-gradient-to-b from-white/55 to-white/25 rounded-2xl border border-white/50 ring-1 ring-white/20">
+              <button
+                type="button"
+                onClick={() => setActiveTab('students')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer transition-all flex items-center gap-1.5 ${
+                  activeTab === 'students'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Öğrenci Listesi ({totalStudents})</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('comparison')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer transition-all flex items-center gap-1.5 ${
-                activeTab === 'comparison'
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Sınıf Karşılaştırması ({effectiveClassroomsList.length})</span>
-            </button>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-500">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>AKÇAKOCA İLKOKULU</span>
-          </div>
-        </div>
-
-        {/* Tatil Bildirimi — Açık Cam Çerçeve */}
-        {isHoliday && (
-          <div className="mx-3 sm:mx-4 mt-3 p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] text-purple-900 flex items-center gap-2.5 flex-shrink-0 text-xs">
-            <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center flex-shrink-0">
-              <Palmtree className="w-4 h-4" />
+              <button
+                type="button"
+                onClick={() => setActiveTab('comparison')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer transition-all flex items-center gap-1.5 ${
+                  activeTab === 'comparison'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Sınıf Karşılaştırması ({effectiveClassroomsList.length})</span>
+              </button>
             </div>
-            <div>
-              <h4 className="font-black text-slate-900">
-                {weekConfig.holidayName || 'Tatil Haftası'}
-              </h4>
-              <p className="text-purple-700/80 text-[11px]">
-                Okullar tatilde olduğu için bu haftada sınıf ekran kısıtlaması uygulanmamaktadır.
-              </p>
+
+            <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-500">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>{institutionName}</span>
             </div>
           </div>
-        )}
 
-        {activeTab === 'students' ? (
-          <>
-            {/* 2. Sınıf Dağılım Çubuğu & Özet Renkler — Açık Cam Çerçeve */}
-            <div className="mx-3 sm:mx-4 mt-3 p-3 sm:p-3.5 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex-shrink-0 space-y-2">
-              <div className="flex items-center justify-between text-[11px] font-black">
-                <span className="text-slate-700 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Sınıf Ekran Süresi Dağılımı</span>
-                </span>
-                <span className="text-slate-500 font-bold">
-                  Ortalama: <strong className="text-slate-900">{avgMinutes} dk</strong> ({avgStage}. Kademe)
-                </span>
+          {/* Tatil Bildirimi — Açık Cam Çerçeve */}
+          {isHoliday && (
+            <div className="p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] text-purple-900 flex items-center gap-2.5 text-xs">
+              <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center flex-shrink-0">
+                <Palmtree className="w-4 h-4" />
               </div>
-
-              {/* Çok Renkli Progress Bar */}
-              <div className="h-2.5 w-full bg-slate-200/70 rounded-full overflow-hidden flex shadow-inner">
-                {safePercent > 0 && (
-                  <div
-                    style={{ width: `${safePercent}%` }}
-                    className="bg-emerald-500 transition-all duration-300"
-                    title={`Yeşil: %${safePercent}`}
-                  />
-                )}
-                {moderatePercent > 0 && (
-                  <div
-                    style={{ width: `${moderatePercent}%` }}
-                    className="bg-sky-500 transition-all duration-300"
-                    title={`Mavi: %${moderatePercent}`}
-                  />
-                )}
-                {warningPercent > 0 && (
-                  <div
-                    style={{ width: `${warningPercent}%` }}
-                    className="bg-amber-500 transition-all duration-300"
-                    title={`Turuncu: %${warningPercent}`}
-                  />
-                )}
-                {criticalPercent > 0 && (
-                  <div
-                    style={{ width: `${criticalPercent}%` }}
-                    className="bg-rose-500 transition-all duration-300"
-                    title={`Kırmızı: %${criticalPercent}`}
-                  />
-                )}
-              </div>
-
-              {/* 4 Renk İstatistik Kartları — Açık Cam Çerçeveler */}
-              <div className="grid grid-cols-4 gap-1.5 pt-1">
-                <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-emerald-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
-                  <div className="text-[9px] font-black text-emerald-700">Yeşil (Güvenli)</div>
-                  <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
-                    {safeCount} <span className="text-[9px] font-bold text-slate-400">(%{safePercent})</span>
-                  </div>
-                  <div className="text-[8px] font-bold text-slate-400 truncate">0 - 210 dk</div>
-                </div>
-
-                <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-sky-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
-                  <div className="text-[9px] font-black text-sky-700">Mavi (Dengeli)</div>
-                  <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
-                    {moderateCount} <span className="text-[9px] font-bold text-slate-400">(%{moderatePercent})</span>
-                  </div>
-                  <div className="text-[8px] font-bold text-slate-400 truncate">240 - 300 dk</div>
-                </div>
-
-                <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-amber-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
-                  <div className="text-[9px] font-black text-amber-700">Turuncu (Dikkat)</div>
-                  <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
-                    {warningCount} <span className="text-[9px] font-bold text-slate-400">(%{warningPercent})</span>
-                  </div>
-                  <div className="text-[8px] font-bold text-slate-400 truncate">330 - 390 dk</div>
-                </div>
-
-                <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-rose-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
-                  <div className="text-[9px] font-black text-rose-700">Kırmızı (Kritik)</div>
-                  <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
-                    {criticalCount} <span className="text-[9px] font-bold text-slate-400">(%{criticalPercent})</span>
-                  </div>
-                  <div className="text-[8px] font-bold text-slate-400 truncate">420+ dk</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Arama, Hızlı Risk Filtresi & Veli Notu Kopyalama — Açık Cam Çerçeve */}
-            <div className="mx-3 sm:mx-4 mt-3 p-2.5 sm:p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex flex-col gap-2 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Öğrenci veya veli adına göre ara..."
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-white/60 bg-white/60 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-400 font-bold"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCopyParentNote}
-                  className="px-2.5 py-1.5 rounded-xl bg-white/50 hover:bg-white/80 text-slate-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors flex-shrink-0 border border-white/60"
-                  title="WhatsApp veli grubuna kopyalanacak genel özet metin"
-                >
-                  {copiedMsg ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-700">Kopyalandı!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="hidden sm:inline">Sınıf WhatsApp Özeti</span>
-                      <span className="sm:hidden">Özet</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Filtre Düğmeleri (Riskli/Uyarı Filtresi Dahil) */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 custom-scrollbar">
-                <button
-                  type="button"
-                  onClick={() => setFilterCategory('all')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
-                    filterCategory === 'all'
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                      : 'bg-white/50 text-slate-600 border-white/60 hover:bg-white/80'
-                  }`}
-                >
-                  Tümü ({studentStats.length})
-                </button>
-
-                {/* HIZLI KRİTİK/UYARI FİLTRESİ */}
-                <button
-                  type="button"
-                  onClick={() => setFilterCategory('urgent')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border flex items-center gap-1 ${
-                    filterCategory === 'urgent'
-                      ? 'bg-rose-600 text-white border-rose-700 shadow-xs ring-2 ring-rose-300'
-                      : 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100 font-black'
-                  }`}
-                >
-                  <AlertTriangle className="w-3 h-3 text-rose-500" />
-                  <span>Destek Gerekenler ({urgentCount})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilterCategory('safe')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
-                    filterCategory === 'safe'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                  }`}
-                >
-                  🟢 Yeşil ({safeCount})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilterCategory('moderate')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
-                    filterCategory === 'moderate'
-                      ? 'bg-sky-600 text-white border-sky-600 shadow-2xs'
-                      : 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'
-                  }`}
-                >
-                  🔵 Mavi ({moderateCount})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilterCategory('warning')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
-                    filterCategory === 'warning'
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                      : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                  }`}
-                >
-                  🟠 Turuncu ({warningCount})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilterCategory('critical')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
-                    filterCategory === 'critical'
-                      ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                      : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                  }`}
-                >
-                  🔴 Kırmızı ({criticalCount})
-                </button>
-              </div>
-            </div>
-
-            {/* 4. Öğrenci Listesi (Trend Okları + WhatsApp Butonları + Hafta Renkleri) — Açık Cam Kartlar */}
-            <div className="flex-1 overflow-y-auto mx-3 sm:mx-4 mt-3 mb-3 sm:mb-4 space-y-2.5">
-              {filteredStudents.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 space-y-2 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)]">
-                  <Users className="w-8 h-8 mx-auto text-slate-300" />
-                  <p className="text-xs font-bold text-slate-600">
-                    {searchQuery
-                      ? 'Aramanıza uygun öğrenci kaydı bulunamadı.'
-                      : 'Bu kriterde öğrenci bulunamadı.'}
-                  </p>
-                </div>
-              ) : (
-                filteredStudents.map((item, i) => {
-                  const colorInfo = getStageColorToken(item.stage);
-
-                  return (
-                    <div
-                      key={item.uid}
-                      className={`rounded-2xl p-2.5 sm:p-3 border transition-all flex flex-col gap-2 shadow-md ${colorInfo.bg}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        {/* Sol: Sıra No ve Öğrenci/Veli Bilgisi */}
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="w-6 h-6 rounded-lg bg-white/80 border border-slate-200 text-slate-600 text-[10px] font-black flex items-center justify-center flex-shrink-0 shadow-2xs">
-                            {i + 1}
-                          </span>
-
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
-                                {item.studentName}
-                              </span>
-                              {item.className && (
-                                <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-md bg-white/80 text-indigo-700 border border-indigo-200 leading-none">
-                                  {item.className}
-                                </span>
-                              )}
-                              <span
-                                className={`text-[8.5px] font-black px-1.5 py-0.5 rounded-md border leading-none ${colorInfo.badge}`}
-                              >
-                                {item.category.name}
-                              </span>
-                            </div>
-                            <div className="text-[10.5px] font-bold text-slate-500 truncate mt-0.5">
-                              Veli: <span className="text-slate-700">{item.parentName}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Sağ: Süre, Kademe ve Trend Oku */}
-                        <div className="text-right flex-shrink-0 flex items-center gap-2">
-                          {/* 1. HAFTALIK TREND OKU GÖSTERGESİ */}
-                          {weekConfig.weekNum > 1 && (
-                            <div
-                              className="flex items-center"
-                              title={
-                                item.diff > 0
-                                  ? `Önceki haftaya göre +${item.diff} dk arttı`
-                                  : item.diff < 0
-                                  ? `Önceki haftaya göre ${item.diff} dk azaldı`
-                                  : 'Önceki haftayla aynı seviyede'
-                              }
-                            >
-                              {item.diff > 0 ? (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-black">
-                                  <TrendingUp className="w-3 h-3 text-rose-600 stroke-[3]" />
-                                  <span>+{item.diff} dk</span>
-                                </span>
-                              ) : item.diff < 0 ? (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
-                                  <TrendingDown className="w-3 h-3 text-emerald-600 stroke-[3]" />
-                                  <span>{item.diff} dk</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-bold">
-                                  <Minus className="w-3 h-3 text-slate-400 stroke-[3]" />
-                                  <span>Aynı</span>
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          <div
-                            className={`px-2.5 py-1 rounded-xl border font-black text-center shadow-2xs ${colorInfo.badge}`}
-                          >
-                            <div className="text-xs sm:text-sm leading-tight">{item.minutes} dk</div>
-                            <div className="text-[8.5px] opacity-80">{item.stage}. Kademe</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Alt Satır: WhatsApp İletişimi + Haftalık Renk Geçmişi */}
-                      <div className="pt-1.5 border-t border-slate-200/70 flex items-center justify-between gap-2 flex-wrap">
-                        {/* 2. UYGULAMA İÇİ MESAJLAŞMA & WHATSAPP İLETİŞİM BUTONLARI */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {/* Uygulama İçi Mesaj Butonu */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMessagingStudent(item);
-                              setIsMessagingOpen(true);
-                            }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10.5px] font-black cursor-pointer shadow-xs active:scale-95 transition-all"
-                            title="Veliye doğrudan uygulama içi mesaj gönder"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5 fill-white/20" />
-                            <span>Uygulama İçi Mesaj</span>
-                          </button>
-
-                          {/* WhatsApp Butonu */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenWhatsApp(item)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10.5px] font-black cursor-pointer shadow-xs active:scale-95 transition-all"
-                            title="Veliye WhatsApp üzerinden hazır bilgilendirme mesajı gönder"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5 fill-white/20" />
-                            <span>WhatsApp</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleCopyStudentWhatsApp(item)}
-                            className="p-1 rounded-xl bg-white/70 hover:bg-white text-slate-600 border border-slate-200 text-[10px] font-bold cursor-pointer transition-colors shadow-2xs"
-                            title="Mesaj metnini kopyala"
-                          >
-                            {copiedStudentUid === item.uid ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5 text-slate-500" />
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Haftalık Renk Geçmişi */}
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <span className="text-[9px] font-bold text-slate-500 hidden sm:inline">
-                            Haftalık Durum:
-                          </span>
-                          {item.historyWeeks.map((hw) => {
-                            const hColor = getStageColorToken(hw.stage);
-                            return (
-                              <span
-                                key={hw.weekNum}
-                                className={`px-1.5 py-0.5 rounded-md text-[8.5px] font-black border flex items-center gap-0.5 ${
-                                  hw.isCurrentWeek ? 'ring-1.5 ring-slate-900 shadow-2xs' : ''
-                                } ${hColor.badge}`}
-                                title={`${hw.weekNum}. Hafta: ${hw.minutes} dk (${hColor.label})`}
-                              >
-                                <span className={`w-1.5 h-1.5 rounded-full ${hColor.dot}`} />
-                                <span>{hw.weekNum}.H</span>
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </>
-        ) : (
-          /* 4. SINIFLAR ARASI KARŞILAŞTIRMA GRAFİĞİ (Class Comparison Chart) */
-          <div className="flex-1 overflow-y-auto mx-3 sm:mx-4 mt-3 mb-3 sm:mb-4 space-y-3">
-            <div className="p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
-                <BarChart3 className="w-5 h-5" />
-              </div>
-              <div className="text-xs">
+              <div>
                 <h4 className="font-black text-slate-900">
-                  {institutionName} — {weekConfig.weekNum}. Hafta Sınıf Karşılaştırması
+                  {weekConfig.holidayName || 'Tatil Haftası'}
                 </h4>
-                <p className="text-slate-500 text-[11.5px] mt-0.5">
-                  Tüm sınıfların haftalık ortalama ekran süreleri ve renk dağılımları listelenmiştir. Düşük ekran süresine sahip sınıflar öncelikli olarak ödüllendirilir.
+                <p className="text-purple-700/80 text-[11px]">
+                  Okullar tatilde olduğu için bu haftada sınıf ekran kısıtlaması uygulanmamaktadır.
                 </p>
               </div>
             </div>
+          )}
 
-            {/* Sınıf Kartları ve Karşılaştırmalı Grafikler */}
-            <div className="space-y-3">
-              {sortedClassComparison.map((cls, idx) => {
-                const isBest = idx === 0;
-                const maxBenchmark = 420; // benchmark 420 min
-                const barWidth = Math.min(100, Math.max(8, Math.round((cls.avgMinutes / maxBenchmark) * 100)));
+          {activeTab === 'students' ? (
+            <>
+              {/* 2. Sınıf Dağılım Çubuğu & Özet Renkler — Açık Cam Çerçeve */}
+              <div className="p-3 sm:p-3.5 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-black">
+                  <span className="text-slate-700 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Sınıf Ekran Süresi Dağılımı</span>
+                  </span>
+                  <span className="text-slate-500 font-bold">
+                    Ortalama: <strong className="text-slate-900">{avgMinutes} dk</strong> ({avgStage}. Kademe)
+                  </span>
+                </div>
 
-                return (
-                  <div
-                    key={cls.classId}
-                    className={`p-3.5 rounded-2xl border backdrop-blur-xl transition-all shadow-md ${
-                      isBest
-                        ? 'bg-gradient-to-b from-emerald-50/95 to-emerald-100/60 border-emerald-300 ring-1 ring-emerald-300'
-                        : 'bg-gradient-to-b from-white/85 to-white/45 border-white/60 ring-1 ring-white/30'
+                {/* Çok Renkli Progress Bar */}
+                <div className="h-2.5 w-full bg-slate-200/70 rounded-full overflow-hidden flex shadow-inner">
+                  {safePercent > 0 && (
+                    <div
+                      style={{ width: `${safePercent}%` }}
+                      className="bg-emerald-500 transition-all duration-300"
+                      title={`Yeşil: %${safePercent}`}
+                    />
+                  )}
+                  {moderatePercent > 0 && (
+                    <div
+                      style={{ width: `${moderatePercent}%` }}
+                      className="bg-sky-500 transition-all duration-300"
+                      title={`Mavi: %${moderatePercent}`}
+                    />
+                  )}
+                  {warningPercent > 0 && (
+                    <div
+                      style={{ width: `${warningPercent}%` }}
+                      className="bg-amber-500 transition-all duration-300"
+                      title={`Turuncu: %${warningPercent}`}
+                    />
+                  )}
+                  {criticalPercent > 0 && (
+                    <div
+                      style={{ width: `${criticalPercent}%` }}
+                      className="bg-rose-500 transition-all duration-300"
+                      title={`Kırmızı: %${criticalPercent}`}
+                    />
+                  )}
+                </div>
+
+                {/* 4 Renk İstatistik Kartları — Açık Cam Çerçeveler */}
+                <div className="grid grid-cols-4 gap-1.5 pt-1">
+                  <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-emerald-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
+                    <div className="text-[9px] font-black text-emerald-700">Yeşil (Güvenli)</div>
+                    <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                      {safeCount} <span className="text-[9px] font-bold text-slate-400">(%{safePercent})</span>
+                    </div>
+                    <div className="text-[8px] font-bold text-slate-400 truncate">0 - 210 dk</div>
+                  </div>
+
+                  <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-sky-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
+                    <div className="text-[9px] font-black text-sky-700">Mavi (Dengeli)</div>
+                    <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                      {moderateCount} <span className="text-[9px] font-bold text-slate-400">(%{moderatePercent})</span>
+                    </div>
+                    <div className="text-[8px] font-bold text-slate-400 truncate">240 - 300 dk</div>
+                  </div>
+
+                  <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-amber-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
+                    <div className="text-[9px] font-black text-amber-700">Turuncu (Dikkat)</div>
+                    <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                      {warningCount} <span className="text-[9px] font-bold text-slate-400">(%{warningPercent})</span>
+                    </div>
+                    <div className="text-[8px] font-bold text-slate-400 truncate">330 - 390 dk</div>
+                  </div>
+
+                  <div className="bg-gradient-to-b from-white/85 to-white/45 backdrop-blur-md p-1.5 rounded-xl border border-rose-200/70 ring-1 ring-white/30 text-center shadow-[0_4px_14px_rgba(49,29,120,0.12)]">
+                    <div className="text-[9px] font-black text-rose-700">Kırmızı (Kritik)</div>
+                    <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                      {criticalCount} <span className="text-[9px] font-bold text-slate-400">(%{criticalPercent})</span>
+                    </div>
+                    <div className="text-[8px] font-bold text-slate-400 truncate">420+ dk</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Arama, Hızlı Risk Filtresi & Veli Notu Kopyalama — Açık Cam Çerçeve */}
+              <div className="p-2.5 sm:p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Öğrenci veya veli adına göre ara..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-white/60 bg-white/60 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-400 font-bold"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyParentNote}
+                    className="px-2.5 py-1.5 rounded-xl bg-white/50 hover:bg-white/80 text-slate-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors flex-shrink-0 border border-white/60"
+                    title="WhatsApp veli grubuna kopyalanacak genel özet metin"
+                  >
+                    {copiedMsg ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="text-emerald-700">Kopyalandı!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="hidden sm:inline">Sınıf WhatsApp Özeti</span>
+                        <span className="sm:hidden">Özet</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Filtre Düğmeleri (Riskli/Uyarı Filtresi Dahil) */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5 custom-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setFilterCategory('all')}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
+                      filterCategory === 'all'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                        : 'bg-white/50 text-slate-600 border-white/60 hover:bg-white/80'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shadow-2xs ${
-                            idx === 0
-                              ? 'bg-amber-400 text-amber-950'
-                              : idx === 1
-                              ? 'bg-slate-300 text-slate-800'
-                              : 'bg-amber-700/30 text-amber-900'
-                          }`}
-                        >
-                          {idx + 1}
-                        </span>
+                    Tümü ({studentStats.length})
+                  </button>
 
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <h5 className="text-sm font-black text-slate-900">{cls.className}</h5>
-                            {isBest && (
-                              <span className="text-[9.5px] font-black px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 border border-emerald-300 flex items-center gap-0.5">
-                                <Award className="w-3 h-3 text-emerald-700" />
-                                🏆 En İdeal Ekran Dengesi
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] font-bold text-slate-500">
-                            Öğretmen: <span className="text-slate-700">{cls.teacherName}</span> • {cls.studentCount} Öğrenci
-                          </p>
-                        </div>
-                      </div>
+                  {/* HIZLI KRİTİK/UYARI FİLTRESİ */}
+                  <button
+                    type="button"
+                    onClick={() => setFilterCategory('urgent')}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border flex items-center gap-1 ${
+                      filterCategory === 'urgent'
+                        ? 'bg-rose-600 text-white border-rose-700 shadow-xs ring-2 ring-rose-300'
+                        : 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100 font-black'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3 h-3 text-rose-500" />
+                    <span>Destek Gerekenler ({urgentCount})</span>
+                  </button>
 
-                      <div className="text-right">
-                        <div className="text-sm sm:text-base font-black text-slate-900">
-                          {cls.avgMinutes} dk <span className="text-xs font-bold text-slate-500">ort.</span>
-                        </div>
-                        <div className="text-[10px] font-bold text-slate-500">
-                          {cls.avgStage}. Kademe Ortalaması
-                        </div>
-                      </div>
-                    </div>
+                  <button
+                    type="button"
+                    onClick={() => setFilterCategory('safe')}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
+                      filterCategory === 'safe'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    🟢 Yeşil ({safeCount})
+                  </button>
 
-                    {/* Karşılaştırma Çubuğu (Görsel Bar) */}
-                    <div className="mt-3 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
-                        <span>Ortalama Süre Seviyesi</span>
-                        <span>{cls.avgMinutes} / 420 dk</span>
-                      </div>
-                      <div className="h-2.5 w-full bg-slate-200/70 rounded-full overflow-hidden flex border border-slate-200">
-                        <div
-                          style={{ width: `${barWidth}%` }}
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            cls.avgMinutes <= 210
-                              ? 'bg-emerald-500'
-                              : cls.avgMinutes <= 300
-                              ? 'bg-sky-500'
-                              : cls.avgMinutes <= 390
-                              ? 'bg-amber-500'
-                              : 'bg-rose-500'
-                          }`}
-                        />
-                      </div>
-                    </div>
+                  <button
+                    type="button"
+                    onClick={() => setFilterCategory('moderate')}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
+                      filterCategory === 'moderate'
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-2xs'
+                        : 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'
+                    }`}
+                  >
+                    🔵 Mavi ({moderateCount})
+                  </button>
 
-                    {/* Sınıf İçi 4 Renk Dağılım Dağıtıcısı */}
-                    <div className="mt-2.5 pt-2 border-t border-slate-200/70 flex items-center justify-between text-[10px] font-bold text-slate-600 flex-wrap gap-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="flex items-center gap-1 text-emerald-700">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          Yeşil: %{cls.safePercent}
-                        </span>
-                        <span className="flex items-center gap-1 text-sky-700">
-                          <span className="w-2 h-2 rounded-full bg-sky-500" />
-                          Mavi: %{cls.moderatePercent}
-                        </span>
-                        <span className="flex items-center gap-1 text-amber-700">
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
-                          Turuncu: %{cls.warningPercent}
-                        </span>
-                        <span className="flex items-center gap-1 text-rose-700">
-                          <span className="w-2 h-2 rounded-full bg-rose-500" />
-                          Kırmızı: %{cls.criticalPercent}
-                        </span>
-                      </div>
+                  <button
+                    type="button"
+                    onClick={() => setFilterCategory('warning')}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
+                      filterCategory === 'warning'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                        : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                    }`}
+                  >
+                    🟠 Turuncu ({warningCount})
+                  </button>
 
-                      {cls.urgentCount > 0 && (
-                        <span className="text-[9.5px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">
-                          ⚠️ {cls.urgentCount} Destek Gereken Öğrenci
-                        </span>
-                      )}
-                    </div>
+                  <button
+                    type="button"
+                    onClick={() => setFilterCategory('critical')}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all whitespace-nowrap border ${
+                      filterCategory === 'critical'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                        : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                    }`}
+                  >
+                    🔴 Kırmızı ({criticalCount})
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. Öğrenci Listesi (Trend Okları + WhatsApp Butonları + Hafta Renkleri) — Açık Cam Kartlar */}
+              <div className="space-y-2.5">
+                {filteredStudents.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 space-y-2 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)]">
+                    <Users className="w-8 h-8 mx-auto text-slate-300" />
+                    <p className="text-xs font-bold text-slate-600">
+                      {searchQuery
+                        ? 'Aramanıza uygun öğrenci kaydı bulunamadı.'
+                        : 'Bu kriterde öğrenci bulunamadı.'}
+                    </p>
                   </div>
-                );
-              })}
+                ) : (
+                  filteredStudents.map((item, i) => {
+                    const colorInfo = getStageColorToken(item.stage);
+
+                    return (
+                      <div
+                        key={item.uid}
+                        className={`rounded-2xl p-2.5 sm:p-3 border transition-all flex flex-col gap-2 shadow-md ${colorInfo.bg}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          {/* Sol: Sıra No ve Öğrenci/Veli Bilgisi */}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-6 h-6 rounded-lg bg-white/80 border border-slate-200 text-slate-600 text-[10px] font-black flex items-center justify-center flex-shrink-0 shadow-2xs">
+                              {i + 1}
+                            </span>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                                  {item.studentName}
+                                </span>
+                                {item.className && (
+                                  <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-md bg-white/80 text-indigo-700 border border-indigo-200 leading-none">
+                                    {item.className}
+                                  </span>
+                                )}
+                                <span
+                                  className={`text-[8.5px] font-black px-1.5 py-0.5 rounded-md border leading-none ${colorInfo.badge}`}
+                                >
+                                  {item.category.name}
+                                </span>
+                              </div>
+                              <div className="text-[10.5px] font-bold text-slate-500 truncate mt-0.5">
+                                Veli: <span className="text-slate-700">{item.parentName}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sağ: Süre, Kademe ve Trend Oku */}
+                          <div className="text-right flex-shrink-0 flex items-center gap-2">
+                            {/* 1. HAFTALIK TREND OKU GÖSTERGESİ */}
+                            {weekConfig.weekNum > 1 && (
+                              <div
+                                className="flex items-center"
+                                title={
+                                  item.diff > 0
+                                    ? `Önceki haftaya göre +${item.diff} dk arttı`
+                                    : item.diff < 0
+                                    ? `Önceki haftaya göre ${item.diff} dk azaldı`
+                                    : 'Önceki haftayla aynı seviyede'
+                                }
+                              >
+                                {item.diff > 0 ? (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-black">
+                                    <TrendingUp className="w-3 h-3 text-rose-600 stroke-[3]" />
+                                    <span>+{item.diff} dk</span>
+                                  </span>
+                                ) : item.diff < 0 ? (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black">
+                                    <TrendingDown className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                                    <span>{item.diff} dk</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-300 text-[10px] font-bold">
+                                    <Minus className="w-3 h-3 text-slate-400 stroke-[3]" />
+                                    <span>Aynı</span>
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <div
+                              className={`px-2.5 py-1 rounded-xl border font-black text-center shadow-2xs ${colorInfo.badge}`}
+                            >
+                              <div className="text-xs sm:text-sm leading-tight">{item.minutes} dk</div>
+                              <div className="text-[8.5px] opacity-80">{item.stage}. Kademe</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Alt Satır: WhatsApp İletişimi + Haftalık Renk Geçmişi */}
+                        <div className="pt-1.5 border-t border-slate-200/70 flex items-center justify-between gap-2 flex-wrap">
+                          {/* 2. UYGULAMA İÇİ MESAJLAŞMA & WHATSAPP İLETİŞİM BUTONLARI */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {/* Uygulama İçi Mesaj Butonu */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMessagingStudent(item);
+                                setIsMessagingOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[10.5px] font-black cursor-pointer shadow-xs active:scale-95 transition-all"
+                              title="Veliye doğrudan uygulama içi mesaj gönder"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 fill-white/20" />
+                              <span>Uygulama İçi Mesaj</span>
+                            </button>
+
+                            {/* WhatsApp Butonu */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenWhatsApp(item)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10.5px] font-black cursor-pointer shadow-xs active:scale-95 transition-all"
+                              title="Veliye WhatsApp üzerinden hazır bilgilendirme mesajı gönder"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5 fill-white/20" />
+                              <span>WhatsApp</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleCopyStudentWhatsApp(item)}
+                              className="p-1 rounded-xl bg-white/70 hover:bg-white text-slate-600 border border-slate-200 text-[10px] font-bold cursor-pointer transition-colors shadow-2xs"
+                              title="Mesaj metnini kopyala"
+                            >
+                              {copiedStudentUid === item.uid ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5 text-slate-500" />
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Haftalık Renk Geçmişi */}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[9px] font-bold text-slate-500 hidden sm:inline">
+                              Haftalık Durum:
+                            </span>
+                            {item.historyWeeks.map((hw) => {
+                              const hColor = getStageColorToken(hw.stage);
+                              return (
+                                <span
+                                  key={hw.weekNum}
+                                  className={`px-1.5 py-0.5 rounded-md text-[8.5px] font-black border flex items-center gap-0.5 ${
+                                    hw.isCurrentWeek ? 'ring-1.5 ring-slate-900 shadow-2xs' : ''
+                                  } ${hColor.badge}`}
+                                  title={`${hw.weekNum}. Hafta: ${hw.minutes} dk (${hColor.label})`}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full ${hColor.dot}`} />
+                                  <span>{hw.weekNum}.H</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          ) : (
+            /* 4. SINIFLAR ARASI KARŞILAŞTIRMA GRAFİĞİ (Class Comparison Chart) */
+            <div className="space-y-3">
+              <div className="p-3 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div className="text-xs">
+                  <h4 className="font-black text-slate-900">
+                    {institutionName} — {weekConfig.weekNum}. Hafta Sınıf Karşılaştırması
+                  </h4>
+                  <p className="text-slate-500 text-[11.5px] mt-0.5">
+                    Tüm sınıfların haftalık ortalama ekran süreleri ve renk dağılımları listelenmiştir. Düşük ekran süresine sahip sınıflar öncelikli olarak ödüllendirilir.
+                  </p>
+                </div>
+              </div>
+
+              {/* Sınıf Kartları ve Karşılaştırmalı Grafikler */}
+              <div className="space-y-3">
+                {sortedClassComparison.map((cls, idx) => {
+                  const isBest = idx === 0;
+                  const maxBenchmark = 420; // benchmark 420 min
+                  const barWidth = Math.min(100, Math.max(8, Math.round((cls.avgMinutes / maxBenchmark) * 100)));
+
+                  return (
+                    <div
+                      key={cls.classId}
+                      className={`p-3.5 rounded-2xl border backdrop-blur-xl transition-all shadow-md ${
+                        isBest
+                          ? 'bg-gradient-to-b from-emerald-50/95 to-emerald-100/60 border-emerald-300 ring-1 ring-emerald-300'
+                          : 'bg-gradient-to-b from-white/85 to-white/45 border-white/60 ring-1 ring-white/30'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shadow-2xs ${
+                              idx === 0
+                                ? 'bg-amber-400 text-amber-950'
+                                : idx === 1
+                                ? 'bg-slate-300 text-slate-800'
+                                : 'bg-amber-700/30 text-amber-900'
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <h5 className="text-sm font-black text-slate-900">{cls.className}</h5>
+                              {isBest && (
+                                <span className="text-[9.5px] font-black px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 border border-emerald-300 flex items-center gap-0.5">
+                                  <Award className="w-3 h-3 text-emerald-700" />
+                                  🏆 En İdeal Ekran Dengesi
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-bold text-slate-500">
+                              Öğretmen: <span className="text-slate-700">{cls.teacherName}</span> • {cls.studentCount} Öğrenci
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-sm sm:text-base font-black text-slate-900">
+                            {cls.avgMinutes} dk <span className="text-xs font-bold text-slate-500">ort.</span>
+                          </div>
+                          <div className="text-[10px] font-bold text-slate-500">
+                            {cls.avgStage}. Kademe Ortalaması
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Karşılaştırma Çubuğu (Görsel Bar) */}
+                      <div className="mt-3 space-y-1">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+                          <span>Ortalama Süre Seviyesi</span>
+                          <span>{cls.avgMinutes} / 420 dk</span>
+                        </div>
+                        <div className="h-2.5 w-full bg-slate-200/70 rounded-full overflow-hidden flex border border-slate-200">
+                          <div
+                            style={{ width: `${barWidth}%` }}
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              cls.avgMinutes <= 210
+                                ? 'bg-emerald-500'
+                                : cls.avgMinutes <= 300
+                                ? 'bg-sky-500'
+                                : cls.avgMinutes <= 390
+                                ? 'bg-amber-500'
+                                : 'bg-rose-500'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Sınıf İçi 4 Renk Dağılım Dağıtıcısı */}
+                      <div className="mt-2.5 pt-2 border-t border-slate-200/70 flex items-center justify-between text-[10px] font-bold text-slate-600 flex-wrap gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="flex items-center gap-1 text-emerald-700">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            Yeşil: %{cls.safePercent}
+                          </span>
+                          <span className="flex items-center gap-1 text-sky-700">
+                            <span className="w-2 h-2 rounded-full bg-sky-500" />
+                            Mavi: %{cls.moderatePercent}
+                          </span>
+                          <span className="flex items-center gap-1 text-amber-700">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            Turuncu: %{cls.warningPercent}
+                          </span>
+                          <span className="flex items-center gap-1 text-rose-700">
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                            Kırmızı: %{cls.criticalPercent}
+                          </span>
+                        </div>
+
+                        {cls.urgentCount > 0 && (
+                          <span className="text-[9.5px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">
+                            ⚠️ {cls.urgentCount} Destek Gereken Öğrenci
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* 5. Modal Alt Kapatma & Aksiyon Çubuğu — Açık Cam Çerçeve */}
         <div className="flex-shrink-0 mx-3 sm:mx-4 mb-3 sm:mb-4 p-3 sm:p-4 rounded-2xl border border-white/70 bg-gradient-to-b from-white/85 via-white/60 to-white/45 backdrop-blur-2xl ring-1 ring-white/40 shadow-[0_8px_32px_rgba(49,29,120,0.25)] flex items-center justify-between gap-2">
