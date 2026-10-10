@@ -7,12 +7,19 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const APP_BUILD_VERSION = process.env.APP_BUILD_VERSION || String(Date.now());
 
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
+
+  // Lightweight endpoint to check live app build version for automatic background updates
+  app.get('/api/app-version', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.json({ version: APP_BUILD_VERSION });
+  });
 
   // API endpoint to send a non-expiring 6-digit password reset code via email
   app.post('/api/send-reset-code', async (req, res) => {

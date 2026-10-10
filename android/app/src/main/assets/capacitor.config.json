@@ -3,6 +3,8 @@
   "appName": "Haftalık Ekran Süresi",
   "webDir": "dist",
   "server": {
+    "url": "https://ais-pre-jo3qfqilx5x2p77h3rgriv-854792743663.europe-west2.run.app",
+    "cleartext": true,
     "androidScheme": "https"
   },
   "plugins": {
