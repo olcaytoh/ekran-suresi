@@ -20,9 +20,13 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# Capacitor Core and Plugins
--keep class com.getcapacitor.** { *; }
--keep class * extends com.getcapacitor.Plugin { *; }
--keep class io.capawesome.capacitorjs.plugins.** { *; }
--keep class com.google.android.gms.auth.** { *; }
--keep class com.google.firebase.auth.** { *; }
+# Capacitor Core and Plugins (allow obfuscation of non-reflective internals while keeping plugin entry points)
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * extends com.getcapacitor.Plugin {
+    <init>();
+    @com.getcapacitor.PluginMethod public void *(com.getcapacitor.PluginCall);
+}
+-keep class com.getcapacitor.BridgeActivity { *; }
+-keep class com.olcico.ekransuresi.MainActivity { *; }
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-dontwarn com.google.android.gms.**
+-dontwarn com.google.firebase.**
