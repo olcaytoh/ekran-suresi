@@ -96,6 +96,7 @@ export default function App() {
       const nextProfile = e.detail || null;
       setActiveLocalProfile(nextProfile);
       if (nextProfile) {
+        setUserProfile(nextProfile);
         setDemoProfile(null);
         setAllUsers([]);
         setClassroom(null);

@@ -6,6 +6,7 @@ import {
   signOut,
   signInAnonymously,
   updateProfile,
+  updatePassword,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
@@ -243,14 +244,25 @@ export async function registerWithEmailAndPassword(
     const existingEmailSnap = await getDocs(existingEmailQuery);
 
     if (!existingEmailSnap.empty) {
-      const existingDoc = existingEmailSnap.docs[0].data() as any;
+      const sortedDocs = [...existingEmailSnap.docs].sort((a, b) => {
+        const da = a.data() as any;
+        const dbData = b.data() as any;
+        const scoreA = (da.institutionId ? 4 : 0) + (da.classId ? 2 : 0) + (da.passwordHash ? 1 : 0);
+        const scoreB = (dbData.institutionId ? 4 : 0) + (dbData.classId ? 2 : 0) + (dbData.passwordHash ? 1 : 0);
+        return scoreB - scoreA;
+      });
+      const primaryDoc = sortedDocs[0];
+      const existingDoc = primaryDoc.data() as any;
+      const docWithHash = sortedDocs.find((d) => Boolean((d.data() as any).passwordHash));
+      const activePasswordHash = docWithHash ? (docWithHash.data() as any).passwordHash : existingDoc.passwordHash;
+
       const matchesPassword =
-        !existingDoc.passwordHash ||
-        existingDoc.passwordHash === btoa(password);
+        !activePasswordHash ||
+        activePasswordHash === btoa(password);
 
       if (matchesPassword) {
         const userProfile: UserProfile = {
-          uid: existingEmailSnap.docs[0].id,
+          uid: primaryDoc.id,
           email: cleanEmail,
           displayName: existingDoc.displayName || cleanName,
           role: existingDoc.role || role,
@@ -271,7 +283,7 @@ export async function registerWithEmailAndPassword(
         setActiveAppProfile(userProfile, rememberMe);
         return userProfile;
       } else {
-        const customErr: any = new Error('Bu e-posta adresiyle kayıtlı bir hesap zaten var. Lütfen giriş yapınız.');
+        const customErr: any = new Error('Bu e-posta adresiyle kayıtlı bir hesap zaten var. Lütfen yeni/güncel şifrenizle giriş yapınız.');
         customErr.code = 'auth/email-already-in-use';
         throw customErr;
       }
@@ -433,63 +445,97 @@ export async function signInWithEmailAndPasswordAuth(
     throw new Error('Şifre en az 6 karakter olmalıdır.');
   }
 
-  // 1. First check if a Firestore user has an explicitly updated passwordHash (e.g. from in-app password reset)
+  // 1. Check if a Firestore user exists with this email and has a saved passwordHash
+  let firestoreHasExplicitPassword = false;
+  let firestoreUserExists = false;
+  let mergedFirestoreProfile: UserProfile | null = null;
   try {
     const usersRef = collection(db, 'users');
     const existingEmailQuery = query(usersRef, where('email', '==', cleanEmail));
     const existingEmailSnap = await getDocs(existingEmailQuery);
 
     if (!existingEmailSnap.empty) {
-      const docData = existingEmailSnap.docs[0].data() as any;
+      firestoreUserExists = true;
+      // Pick the richest user document (e.g. the one with institutionId or classId) if duplicates exist
+      const sortedDocs = [...existingEmailSnap.docs].sort((a, b) => {
+        const da = a.data() as any;
+        const dbData = b.data() as any;
+        const scoreA = (da.institutionId ? 4 : 0) + (da.classId ? 2 : 0) + (da.passwordHash ? 1 : 0);
+        const scoreB = (dbData.institutionId ? 4 : 0) + (dbData.classId ? 2 : 0) + (dbData.passwordHash ? 1 : 0);
+        return scoreB - scoreA;
+      });
+      const primaryDoc = sortedDocs[0];
+      const docData = primaryDoc.data() as any;
       const encodedPwd = btoa(password);
-      const matchesSavedPassword =
-        (docData.passwordHash && docData.passwordHash === encodedPwd) ||
-        (docData.previousPasswordHash && docData.previousPasswordHash === encodedPwd);
-      if (matchesSavedPassword) {
-        // Also try signing into Firebase Auth silently if possible, but if password was changed in-app, proceed directly
-        try {
-          await setPersistence(
-            auth,
-            rememberMe ? browserLocalPersistence : browserSessionPersistence
+
+      // Consolidate institution/class fields across any duplicate documents for this email
+      const docWithInst = sortedDocs.find((d) => Boolean((d.data() as any).institutionId || (d.data() as any).institutionCode));
+      const instSource = docWithInst ? (docWithInst.data() as any) : docData;
+      const docWithClass = sortedDocs.find((d) => Boolean((d.data() as any).classId || (d.data() as any).classCode));
+      const classSource = docWithClass ? (docWithClass.data() as any) : docData;
+
+      // Find if ANY doc for this email has an explicit passwordHash
+      const docWithHash = sortedDocs.find((d) => Boolean((d.data() as any).passwordHash));
+      const activePasswordHash = docWithHash ? (docWithHash.data() as any).passwordHash : docData.passwordHash;
+
+      mergedFirestoreProfile = {
+        uid: primaryDoc.id,
+        email: cleanEmail,
+        displayName:
+          docData.displayName ||
+          instSource.displayName ||
+          (docData.role === 'admin' ? 'Yönetici' : docData.role === 'teacher' ? 'Öğretmen' : 'Veli'),
+        role: docData.role || instSource.role || 'teacher',
+        userType: docData.userType || (docData.role === 'parent' ? 'parent' : 'teacher'),
+        institutionId: docData.institutionId || instSource.institutionId,
+        institutionCode: docData.institutionCode || instSource.institutionCode,
+        institutionAdminCode: docData.institutionAdminCode || instSource.institutionAdminCode,
+        institutionName: docData.institutionName || instSource.institutionName,
+        classId: docData.classId || classSource.classId,
+        className: docData.className || classSource.className,
+        classCode: docData.classCode || classSource.classCode,
+        studentName: docData.studentName || classSource.studentName,
+        parentName: docData.parentName || classSource.parentName,
+        currentWeekId: docData.currentWeekId || getCurrentWeekInfo().weekId,
+        currentWeekMinutes: docData.currentWeekMinutes ?? 0,
+        currentWeekStage: docData.currentWeekStage ?? 0,
+        currentWeekStageDates: docData.currentWeekStageDates ?? {},
+        currentWeekUnusedDays: docData.currentWeekUnusedDays ?? 0,
+      };
+
+      if (activePasswordHash) {
+        firestoreHasExplicitPassword = true;
+        if (activePasswordHash === encodedPwd) {
+          // Ensure Firebase Auth session does not override with a different unlinked uid
+          if (auth.currentUser && auth.currentUser.uid !== mergedFirestoreProfile.uid) {
+            try {
+              await signOut(auth);
+            } catch {}
+          }
+          setActiveAppProfile(mergedFirestoreProfile, rememberMe);
+          return mergedFirestoreProfile;
+        } else {
+          // User has an explicit password in Firestore and entered a different (e.g. old) password!
+          // Reject immediately and do NOT fall back to Firebase Auth (which might still hold the old password)
+          const wrongPwdErr: any = new Error(
+            'Girdiğiniz şifre hatalı. Şifrenizi değiştirdiyseniz lütfen yeni şifrenizle giriş yapınız.'
           );
-          const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
-          const profile = await syncUserProfile(cred.user);
-          setActiveAppProfile(profile, rememberMe);
-          return profile;
-        } catch {
-          const profile: UserProfile = {
-            uid: existingEmailSnap.docs[0].id,
-            email: cleanEmail,
-            displayName:
-              docData.displayName ||
-              (docData.role === 'admin' ? 'Yönetici' : docData.role === 'teacher' ? 'Öğretmen' : 'Veli'),
-            role: docData.role || 'teacher',
-            userType: docData.userType || (docData.role === 'parent' ? 'parent' : 'teacher'),
-            institutionId: docData.institutionId,
-            institutionCode: docData.institutionCode,
-            institutionAdminCode: docData.institutionAdminCode,
-            institutionName: docData.institutionName,
-            classId: docData.classId,
-            className: docData.className,
-            classCode: docData.classCode,
-            studentName: docData.studentName,
-            parentName: docData.parentName,
-            currentWeekId: docData.currentWeekId || getCurrentWeekInfo().weekId,
-            currentWeekMinutes: docData.currentWeekMinutes ?? 0,
-            currentWeekStage: docData.currentWeekStage ?? 0,
-            currentWeekStageDates: docData.currentWeekStageDates ?? {},
-            currentWeekUnusedDays: docData.currentWeekUnusedDays ?? 0,
-          };
-          setActiveAppProfile(profile, rememberMe);
-          return profile;
+          wrongPwdErr.code = 'auth/wrong-password';
+          throw wrongPwdErr;
         }
       }
     }
-  } catch (preCheckErr) {
+  } catch (preCheckErr: any) {
+    if (
+      preCheckErr?.code === 'auth/wrong-password' ||
+      (preCheckErr?.message && preCheckErr.message.includes('şifre hatalı'))
+    ) {
+      throw preCheckErr;
+    }
     console.warn('Firestore pre-check warning:', preCheckErr);
   }
 
-  // 2. Try Firebase Auth
+  // 2. Try Firebase Auth (only if Firestore didn't already reject an outdated password)
   try {
     try {
       await setPersistence(
@@ -508,13 +554,15 @@ export async function signInWithEmailAndPasswordAuth(
     const user = userCredential.user;
     const profile = await syncUserProfile(user);
     // Sync latest working passwordHash to Firestore so both stay in sync
-    try {
-      await setDoc(
-        doc(db, 'users', profile.uid),
-        { passwordHash: btoa(password), updatedAt: serverTimestamp() },
-        { merge: true }
-      );
-    } catch {}
+    if (!firestoreHasExplicitPassword) {
+      try {
+        await setDoc(
+          doc(db, 'users', profile.uid),
+          { passwordHash: btoa(password), updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+      } catch {}
+    }
     setActiveAppProfile(profile, rememberMe);
     return profile;
   } catch (authErr: any) {
@@ -527,18 +575,30 @@ export async function signInWithEmailAndPasswordAuth(
       const existingEmailSnap = await getDocs(existingEmailQuery);
 
       if (!existingEmailSnap.empty) {
-        const docData = existingEmailSnap.docs[0].data() as any;
+        const sortedDocs = [...existingEmailSnap.docs].sort((a, b) => {
+          const da = a.data() as any;
+          const dbData = b.data() as any;
+          const scoreA = (da.institutionId ? 4 : 0) + (da.classId ? 2 : 0) + (da.passwordHash ? 1 : 0);
+          const scoreB = (dbData.institutionId ? 4 : 0) + (dbData.classId ? 2 : 0) + (dbData.passwordHash ? 1 : 0);
+          return scoreB - scoreA;
+        });
+        const primaryDoc = sortedDocs[0];
+        const docData = primaryDoc.data() as any;
         const encodedPwd = btoa(password);
-        const matchesSavedPassword =
-          !docData.passwordHash ||
-          docData.passwordHash === encodedPwd ||
-          (docData.previousPasswordHash && docData.previousPasswordHash === encodedPwd);
-        if (!matchesSavedPassword) {
-          throw new Error('Girdiğiniz şifre hatalı. Şifrenizi unuttuysanız "Şifremi Unuttum?" butonuna tıklayarak hemen yeni şifre belirleyebilirsiniz.');
+
+        const docWithHash = sortedDocs.find((d) => Boolean((d.data() as any).passwordHash));
+        const activePasswordHash = docWithHash ? (docWithHash.data() as any).passwordHash : docData.passwordHash;
+
+        if (activePasswordHash && activePasswordHash !== encodedPwd) {
+          const wrongPwdErr: any = new Error(
+            'Girdiğiniz şifre hatalı. Şifrenizi değiştirdiyseniz lütfen yeni şifrenizle giriş yapınız.'
+          );
+          wrongPwdErr.code = 'auth/wrong-password';
+          throw wrongPwdErr;
         }
 
-        const profile: UserProfile = {
-          uid: existingEmailSnap.docs[0].id,
+        const profile: UserProfile = mergedFirestoreProfile || {
+          uid: primaryDoc.id,
           email: cleanEmail,
           displayName: docData.displayName || (docData.role === 'admin' ? 'Yönetici' : docData.role === 'teacher' ? 'Öğretmen' : 'Veli'),
           role: docData.role || 'teacher',
@@ -563,12 +623,12 @@ export async function signInWithEmailAndPasswordAuth(
         return profile;
       }
     } catch (err: any) {
-      if (err.message && err.message.includes('şifre hatalı')) throw err;
+      if (err?.code === 'auth/wrong-password' || (err.message && err.message.includes('şifre hatalı'))) throw err;
       console.warn('Firestore sign in lookup error:', err);
     }
 
-    // Special bypass for Olcayto
-    if (cleanEmail === 'olcaytoh@gmail.com') {
+    // Special bypass for Olcayto (only if Firestore did not already have an explicit password)
+    if (cleanEmail === 'olcaytoh@gmail.com' && !firestoreHasExplicitPassword) {
       const adminProfile: UserProfile = {
         uid: 'admin_olcayto_master',
         displayName: 'Olcayto (Kurum Yöneticisi)',
@@ -826,12 +886,11 @@ export async function verifyAndConfirmResetCode(
   }
 
   for (const d of snap.docs) {
-    const existingData = d.data() as any;
     await setDoc(
       doc(db, 'users', d.id),
       {
-        ...(existingData?.passwordHash ? { previousPasswordHash: existingData.passwordHash } : {}),
         passwordHash: btoa(newPassword),
+        previousPasswordHash: deleteField(),
         permanentResetCode: nextPermanentCode,
         updatedAt: serverTimestamp(),
       },
@@ -841,6 +900,97 @@ export async function verifyAndConfirmResetCode(
 
   // Sign in the user immediately with their new password
   return await signInWithEmailAndPasswordAuth(verifiedEmail, newPassword, rememberMe);
+}
+
+/**
+ * Directly updates the password for a currently logged-in user (Admin, Teacher, or Parent).
+ * Invalidates the old password so only the new password can be used to sign in.
+ */
+export async function changeCurrentUserPassword(
+  uid: string,
+  email: string | undefined,
+  newPassword: string
+): Promise<void> {
+  const cleanPwd = (newPassword || '').trim();
+  if (cleanPwd.length < 6) {
+    throw new Error('Yeni şifreniz en az 6 karakter olmalıdır.');
+  }
+
+  // 0. If user has an active Firebase Auth session, update their Firebase Auth password too
+  if (auth.currentUser && !auth.currentUser.isAnonymous) {
+    try {
+      await updatePassword(auth.currentUser, cleanPwd);
+    } catch (authPwdErr) {
+      console.warn('Firebase Auth updatePassword warning (Firestore passwordHash will still enforce new password):', authPwdErr);
+    }
+  }
+
+  // 1. Update Firestore user document by uid
+  if (uid) {
+    const userRef = doc(db, 'users', uid);
+    await setDoc(
+      userRef,
+      {
+        passwordHash: btoa(cleanPwd),
+        previousPasswordHash: deleteField(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+
+  // 2. Also update any matching user documents by email AND consolidate institution/class info
+  // so all documents for this email have identical passwordHash and institution/class links
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (cleanEmail) {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', cleanEmail));
+      const snap = await getDocs(q);
+
+      // Find richest institution/class data across any duplicate docs for this email
+      let sharedInstitutionId: string | undefined;
+      let sharedInstitutionCode: string | undefined;
+      let sharedInstitutionAdminCode: string | undefined;
+      let sharedInstitutionName: string | undefined;
+      let sharedClassId: string | undefined;
+      let sharedClassCode: string | undefined;
+      let sharedClassName: string | undefined;
+
+      for (const d of snap.docs) {
+        const data = d.data() as any;
+        if (data.institutionId && !sharedInstitutionId) sharedInstitutionId = data.institutionId;
+        if (data.institutionCode && !sharedInstitutionCode) sharedInstitutionCode = data.institutionCode;
+        if (data.institutionAdminCode && !sharedInstitutionAdminCode) sharedInstitutionAdminCode = data.institutionAdminCode;
+        if (data.institutionName && !sharedInstitutionName) sharedInstitutionName = data.institutionName;
+        if (data.classId && !sharedClassId) sharedClassId = data.classId;
+        if (data.classCode && !sharedClassCode) sharedClassCode = data.classCode;
+        if (data.className && !sharedClassName) sharedClassName = data.className;
+      }
+
+      const consolidatedFields: Record<string, any> = {
+        passwordHash: btoa(cleanPwd),
+        previousPasswordHash: deleteField(),
+        updatedAt: serverTimestamp(),
+        ...(sharedInstitutionId ? { institutionId: sharedInstitutionId } : {}),
+        ...(sharedInstitutionCode ? { institutionCode: sharedInstitutionCode } : {}),
+        ...(sharedInstitutionAdminCode ? { institutionAdminCode: sharedInstitutionAdminCode } : {}),
+        ...(sharedInstitutionName ? { institutionName: sharedInstitutionName } : {}),
+        ...(sharedClassId ? { classId: sharedClassId } : {}),
+        ...(sharedClassCode ? { classCode: sharedClassCode } : {}),
+        ...(sharedClassName ? { className: sharedClassName } : {}),
+      };
+
+      for (const d of snap.docs) {
+        await setDoc(doc(db, 'users', d.id), consolidatedFields, { merge: true });
+      }
+      if (uid) {
+        await setDoc(doc(db, 'users', uid), consolidatedFields, { merge: true });
+      }
+    } catch (err) {
+      console.warn('Email password sync warning:', err);
+    }
+  }
 }
 
 /**
@@ -1112,19 +1262,53 @@ export async function syncUserProfile(
   if (snap.exists()) {
     const data = snap.data() as Partial<UserProfile>;
 
+    // If this user doc is missing institutionId or classId, check if another doc with the same email has them
+    const targetEmail = (emailOverride || user.email || data.email || '').trim().toLowerCase();
+    let emailInstSource: any = {};
+    if (targetEmail && targetEmail !== 'misafir@ekran.takip' && (!data.institutionId || !data.classId)) {
+      try {
+        const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', targetEmail)));
+        for (const d of emailSnap.docs) {
+          const ed = d.data() as any;
+          if (ed.institutionId && !emailInstSource.institutionId) {
+            emailInstSource.institutionId = ed.institutionId;
+            emailInstSource.institutionCode = ed.institutionCode;
+            emailInstSource.institutionName = ed.institutionName;
+            emailInstSource.institutionAdminCode = ed.institutionAdminCode;
+          }
+          if (ed.classId && !emailInstSource.classId) {
+            emailInstSource.classId = ed.classId;
+            emailInstSource.classCode = ed.classCode;
+            emailInstSource.className = ed.className;
+          }
+          if (ed.role && !data.role) {
+            emailInstSource.role = ed.role;
+          }
+        }
+      } catch {}
+    }
+
     let role: UserRole;
     let userType: 'teacher' | 'parent';
 
     if (pendingRole) {
       role = pendingRole;
       userType = pendingRole === 'parent' ? 'parent' : 'teacher';
-    } else if (data.role) {
-      role = data.role;
+    } else if (data.role || emailInstSource.role) {
+      role = (data.role || emailInstSource.role) as UserRole;
       userType = data.userType || (role === 'parent' ? 'parent' : 'teacher');
     } else {
       role = data.userType === 'teacher' ? 'teacher' : 'parent';
       userType = data.userType || 'parent';
     }
+
+    const mergedInstId = data.institutionId || emailInstSource.institutionId;
+    const mergedInstCode = data.institutionCode || emailInstSource.institutionCode;
+    const mergedInstAdminCode = role === 'admin' ? (data.institutionAdminCode || emailInstSource.institutionAdminCode) : undefined;
+    const mergedInstName = data.institutionName || emailInstSource.institutionName;
+    const mergedClassId = data.classId || emailInstSource.classId;
+    const mergedClassCode = data.classCode || emailInstSource.classCode;
+    const mergedClassName = data.className || emailInstSource.className;
 
     userProfile = {
       uid: user.uid,
@@ -1138,13 +1322,13 @@ export async function syncUserProfile(
         role === 'parent'
           ? data.parentName || (!data.studentName ? data.displayName || customName : undefined)
           : undefined,
-      institutionId: data.institutionId,
-      institutionCode: data.institutionCode,
-      institutionAdminCode: role === 'admin' ? data.institutionAdminCode : undefined,
-      institutionName: data.institutionName,
-      classId: data.classId,
-      classCode: data.classCode,
-      className: data.className,
+      institutionId: mergedInstId,
+      institutionCode: mergedInstCode,
+      institutionAdminCode: mergedInstAdminCode,
+      institutionName: mergedInstName,
+      classId: mergedClassId,
+      classCode: mergedClassCode,
+      className: mergedClassName,
       currentWeekId: data.currentWeekId || weekId,
       currentWeekMinutes: data.currentWeekMinutes ?? 0,
       currentWeekStage: data.currentWeekStage ?? 0,
@@ -1159,6 +1343,12 @@ export async function syncUserProfile(
       email: userProfile.email,
       role: userProfile.role,
       userType: userProfile.userType,
+      ...(mergedInstId ? { institutionId: mergedInstId } : {}),
+      ...(mergedInstCode ? { institutionCode: mergedInstCode } : {}),
+      ...(mergedInstName ? { institutionName: mergedInstName } : {}),
+      ...(mergedClassId ? { classId: mergedClassId } : {}),
+      ...(mergedClassCode ? { classCode: mergedClassCode } : {}),
+      ...(mergedClassName ? { className: mergedClassName } : {}),
       ...(role === 'parent' && userProfile.parentName ? { parentName: userProfile.parentName } : {}),
       updatedAt: serverTimestamp(),
       ...(user.photoURL ? { photoURL: user.photoURL } : {}),
@@ -1170,18 +1360,42 @@ export async function syncUserProfile(
 
     await setDoc(userRef, updatePayload, { merge: true });
   } else {
+    // Before creating a brand new profile for this Auth UID, check if a Firestore user doc
+    // already exists for this email (e.g., created via Firestore fallback or admin setup)
+    const targetEmail = (emailOverride || user.email || '').trim().toLowerCase();
+    let existingEmailData: any = null;
+    if (targetEmail && targetEmail !== 'misafir@ekran.takip') {
+      try {
+        const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', targetEmail)));
+        if (!emailSnap.empty) {
+          const sorted = [...emailSnap.docs].sort((a, b) => {
+            const da = a.data() as any;
+            const dbData = b.data() as any;
+            const scoreA = (da.institutionId ? 4 : 0) + (da.classId ? 2 : 0) + (da.passwordHash ? 1 : 0);
+            const scoreB = (dbData.institutionId ? 4 : 0) + (dbData.classId ? 2 : 0) + (dbData.passwordHash ? 1 : 0);
+            return scoreB - scoreA;
+          });
+          existingEmailData = sorted[0].data();
+        }
+      } catch {}
+    }
+
     let role: UserRole;
     let userType: 'teacher' | 'parent';
 
     if (pendingRole) {
       role = pendingRole;
       userType = pendingRole === 'parent' ? 'parent' : 'teacher';
+    } else if (existingEmailData?.role) {
+      role = existingEmailData.role;
+      userType = existingEmailData.userType || (role === 'parent' ? 'parent' : 'teacher');
     } else {
       role = 'parent';
       userType = 'parent';
     }
 
     const effectiveName =
+      existingEmailData?.displayName ||
       user.displayName ||
       customName ||
       (role === 'admin' ? 'Yönetici' : role === 'teacher' ? 'Öğretmen' : 'Veli');
@@ -1193,17 +1407,26 @@ export async function syncUserProfile(
       photoURL: user.photoURL || undefined,
       role: role,
       userType: userType,
-      ...(role === 'parent' ? { parentName: effectiveName } : {}),
-      currentWeekId: weekId,
-      currentWeekMinutes: 0,
-      currentWeekStage: 0,
-      currentWeekUnusedDays: 0,
+      ...(role === 'parent' ? { parentName: existingEmailData?.parentName || effectiveName } : {}),
+      ...(existingEmailData?.studentName ? { studentName: existingEmailData.studentName } : {}),
+      ...(existingEmailData?.institutionId ? { institutionId: existingEmailData.institutionId } : {}),
+      ...(existingEmailData?.institutionCode ? { institutionCode: existingEmailData.institutionCode } : {}),
+      ...(role === 'admin' && existingEmailData?.institutionAdminCode ? { institutionAdminCode: existingEmailData.institutionAdminCode } : {}),
+      ...(existingEmailData?.institutionName ? { institutionName: existingEmailData.institutionName } : {}),
+      ...(existingEmailData?.classId ? { classId: existingEmailData.classId } : {}),
+      ...(existingEmailData?.classCode ? { classCode: existingEmailData.classCode } : {}),
+      ...(existingEmailData?.className ? { className: existingEmailData.className } : {}),
+      currentWeekId: existingEmailData?.currentWeekId || weekId,
+      currentWeekMinutes: existingEmailData?.currentWeekMinutes ?? 0,
+      currentWeekStage: existingEmailData?.currentWeekStage ?? 0,
+      currentWeekUnusedDays: existingEmailData?.currentWeekUnusedDays ?? 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
     await setDoc(userRef, {
       ...userProfile,
+      ...(existingEmailData?.passwordHash ? { passwordHash: existingEmailData.passwordHash } : {}),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });

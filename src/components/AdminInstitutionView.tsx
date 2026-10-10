@@ -9,6 +9,7 @@ import {
   regenerateInstitutionAdminCode,
   ensureInstitutionAdminCode,
   adminSendPasswordResetEmail,
+  changeCurrentUserPassword,
   setUserRole,
   isBlockedEmail,
 } from '../lib/firebase';
@@ -208,6 +209,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [editStudentNameInput, setEditStudentNameInput] = useState('');
   const [editParentNameInput, setEditParentNameInput] = useState('');
   const [editUserClassNameInput, setEditUserClassNameInput] = useState('');
+  const [editUserNewPasswordInput, setEditUserNewPasswordInput] = useState('');
   const [isSavingUserEdit, setIsSavingUserEdit] = useState(false);
   const [editUserError, setEditUserError] = useState<string | null>(null);
 
@@ -253,6 +255,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     const isStaff = user.role === 'teacher' || user.role === 'admin';
     setEditStudentNameInput(isStaff ? (user.displayName || '') : (user.studentName || user.displayName || ''));
     setEditParentNameInput(user.parentName || '');
+    setEditUserNewPasswordInput('');
     const matchedClassroom = classrooms.find(
       (c) =>
         (user.classId && c.id === user.classId) ||
@@ -270,15 +273,24 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     const cleanMainName = editStudentNameInput.trim();
     const cleanParentName = editParentNameInput.trim();
     const cleanUserClassName = editUserClassNameInput.trim();
+    const cleanNewPwd = editUserNewPasswordInput.trim();
 
     if (!cleanMainName) {
       setEditUserError(isStaff ? 'Lütfen ad ve soyad giriniz.' : 'Lütfen öğrencinin adını ve soyadını giriniz.');
+      return;
+    }
+    if (cleanNewPwd && cleanNewPwd.length < 6) {
+      setEditUserError('Yeni şifre belirlemek istiyorsanız en az 6 karakter girmelisiniz.');
       return;
     }
 
     try {
       setIsSavingUserEdit(true);
       setEditUserError(null);
+
+      if (cleanNewPwd) {
+        await changeCurrentUserPassword(userToEdit.uid, userToEdit.email, cleanNewPwd);
+      }
 
       if (isStaff) {
         const matchedClassroom = classrooms.find(
@@ -1381,6 +1393,19 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                     />
                   </div>
                 )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Yeni Şifre Belirle (İsteğe Bağlı):
+                  </label>
+                  <input
+                    type="text"
+                    value={editUserNewPasswordInput}
+                    onChange={(e) => setEditUserNewPasswordInput(e.target.value)}
+                    placeholder="Değiştirmek için en az 6 karakter yazın (boş bırakılabilir)"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                  />
+                </div>
 
                 {editUserError && (
                   <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
@@ -2864,6 +2889,19 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   />
                 </div>
               )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  Yeni Şifre Belirle (İsteğe Bağlı):
+                </label>
+                <input
+                  type="text"
+                  value={editUserNewPasswordInput}
+                  onChange={(e) => setEditUserNewPasswordInput(e.target.value)}
+                  placeholder="Değiştirmek için en az 6 karakter yazın (boş bırakılabilir)"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
+                />
+              </div>
 
               {editUserError && (
                 <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-700 flex items-start gap-2">

@@ -217,7 +217,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       onLoginSuccess?.(userProfile, false);
     } catch (err: any) {
       console.warn('Sign in attempt:', err);
-      if (cleanEmail.toLowerCase() === 'olcaytoh@gmail.com') {
+      const errMsg = err?.message || '';
+      const isExplicitWrongPassword = errMsg.includes('şifre hatalı') || err?.code === 'auth/wrong-password';
+
+      if (!isExplicitWrongPassword && cleanEmail.toLowerCase() === 'olcaytoh@gmail.com') {
         console.log('App owner Olcayto sign-in bypass triggered.');
         const guestProfile = await signInAsGuest('Olcayto (Yönetici)', cleanEmail, 'admin');
         setSuccessMsg('Hoş geldiniz Olcayto Bey! Başarıyla giriş yapıldı. Yönlendiriliyorsunuz...');
@@ -227,8 +230,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
       }
 
       const isUserNotFound =
-        err?.code === 'auth/user-not-found' ||
-        err?.code === 'auth/invalid-credential';
+        !isExplicitWrongPassword &&
+        (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential');
 
       // If user not found, automatically register them so new users log in seamlessly!
       if (isUserNotFound) {
