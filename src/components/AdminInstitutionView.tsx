@@ -192,11 +192,22 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
   // Modals state
   const [classToDelete, setClassToDelete] = useState<ClassroomInfo | null>(null);
+  const [classDeleteStep, setClassDeleteStep] = useState<1 | 2>(1);
   const [studentToDelete, setStudentToDelete] = useState<{ user: UserProfile; classId: string } | null>(null);
   const [userToReset, setUserToReset] = useState<UserProfile | null>(null);
+  const [userResetStep, setUserResetStep] = useState<1 | 2>(1);
   const [isDeleting, setIsDeleting] = useState(false);
   const [sendingResetForUid, setSendingResetForUid] = useState<string | null>(null);
   const [roleChangingUser, setRoleChangingUser] = useState<UserProfile | null>(null);
+
+  // Her yeni silme işleminde onay adımını 1'den başlat
+  useEffect(() => {
+    if (classToDelete) setClassDeleteStep(1);
+  }, [classToDelete]);
+
+  useEffect(() => {
+    if (userToReset) setUserResetStep(1);
+  }, [userToReset]);
 
   // Sınıf Adı & Öğretmen Adı & Maksimum Öğrenci Sayısı Düzenleme State'leri
   const [classToEdit, setClassToEdit] = useState<ClassroomInfo | null>(null);
@@ -659,6 +670,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       setIsDeleting(true);
       await onDeleteClassroom?.(classToDelete.id, classToDelete.teacherUid);
       setClassToDelete(null);
+      setClassDeleteStep(1);
       if (selectedClassId === classToDelete.id) {
         setSelectedClassId(null);
       }
@@ -701,6 +713,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         text: `"${userToReset.email || userToReset.displayName}" hesabı ve e-posta kaydı başarıyla sıfırlandı ve silindi. Artık bu e-posta ile yeniden kayıt olunabilir.`,
       });
       setUserToReset(null);
+      setUserResetStep(1);
       setTimeout(() => setFeedback(null), 4500);
     } catch (err: any) {
       console.error('Error resetting user account:', err);
@@ -1111,9 +1124,9 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                   />
 
                   {/* Üst Satır: Sol tarafta Öğrenci Adı ve Kategori, En Sağda Zaman Bilgisi (örn: 2 saat önce) */}
-                  <div className="relative z-10 flex items-center justify-between gap-2 leading-none">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap leading-none">
-                      <span className="text-[11px] sm:text-xs font-black text-slate-900 truncate leading-none">{sName}</span>
+                  <div className="relative z-10 flex items-start justify-between gap-2 leading-none">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap leading-tight">
+                      <span className="text-[11px] sm:text-xs font-black text-slate-900 break-words whitespace-normal leading-snug">{sName}</span>
                       <span
                         className={`text-[8px] font-black px-1 py-0.5 rounded leading-none shrink-0 ${
                           isRed
@@ -1130,7 +1143,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       {isRed && <Flame className="w-2.5 h-2.5 text-rose-600 shrink-0" />}
                     </div>
 
-                    <div className="text-[9px] font-bold text-slate-700 shrink-0 flex items-center gap-1 leading-none">
+                    <div className="text-[9px] font-bold text-slate-700 shrink-0 flex items-center gap-1 leading-none pt-0.5">
                       <span>{formatTimeAgo(user.updatedAt)}</span>
                       {stage > 0 && user.currentWeekStageDates?.[stage] && (
                         <span className="font-black text-indigo-800">
@@ -1142,7 +1155,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
                   {/* Alt Satır: Sol tarafta Veli Adı, Sağ tarafta Süre ve İşlem Butonları */}
                   <div className="relative z-10 flex items-center justify-between gap-2 leading-none">
-                    <div className="text-[9.5px] font-bold text-slate-800 truncate leading-none">
+                    <div className="text-[9.5px] font-bold text-slate-800 break-words whitespace-normal leading-snug">
                       Veli: <strong className="text-slate-900">{pName}</strong>
                     </div>
 
@@ -1187,30 +1200,47 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           )}
         </div>
 
-        {/* Modal: Sıfırla & Sil (Student / Email Reset Modal - Cam Efektli) */}
+        {/* Modal: Sıfırla & Sil (Student / Email Reset Modal - 2 Aşamalı Onaylı Cam Efektli) */}
         {userToReset && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
             <div
               className="rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 animate-in zoom-in-95 duration-200"
               style={{
-                background: 'rgba(255, 255, 255, 0.82)',
+                background: 'rgba(255, 255, 255, 0.86)',
                 backdropFilter: 'blur(24px)',
                 WebkitBackdropFilter: 'blur(24px)',
-                border: '1px solid rgba(255, 255, 255, 0.75)',
+                border: userResetStep === 2 ? '2px solid rgba(225, 29, 72, 0.75)' : '1px solid rgba(255, 255, 255, 0.75)',
                 boxShadow:
                   '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
               }}
             >
-              <div className="w-12 h-12 rounded-2xl bg-rose-100/80 backdrop-blur-md text-rose-600 flex items-center justify-center mx-auto border border-rose-200/70">
-                <RotateCcw className="w-6 h-6 stroke-[2.5]" />
+              <div
+                className={`w-12 h-12 rounded-2xl backdrop-blur-md flex items-center justify-center mx-auto border ${
+                  userResetStep === 2
+                    ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                    : 'bg-rose-100/80 text-rose-600 border-rose-200/70'
+                }`}
+              >
+                {userResetStep === 2 ? (
+                  <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
+                ) : (
+                  <RotateCcw className="w-6 h-6 stroke-[2.5]" />
+                )}
               </div>
 
               <div className="text-center space-y-1.5">
-                <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">
-                  E-Postayı &amp; Üyeliği Sıfırla
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                  <span>{userResetStep === 1 ? '1. UYARI (1/2)' : '2. VE SON UYARI (2/2)'}</span>
+                </div>
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 [font-family:inherit]">
+                  {userResetStep === 1
+                    ? 'Veli / Öğrenci Hesabını Silmek İstiyor musunuz?'
+                    : 'Son Onay: Hesap Kalıcı Olarak Silinecek!'}
                 </h4>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Yanlışlıkla açılan veya silinmesi gereken bu kaydı sistemden tamamen kaldıracaksınız.
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  {userResetStep === 1
+                    ? 'Yanlışlıkla açılan veya silinmesi gereken bu veli/öğrenci kaydını sistemden tamamen kaldıracaksınız.'
+                    : 'Yanlış silinmelerin önüne geçmek için lütfen son kez onaylayın. Bu işlem geri alınamaz!'}
                 </p>
               </div>
 
@@ -1225,33 +1255,56 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 <div className="text-[11px] text-slate-600 space-y-0.5">
                   <div>Kullanıcı: <strong className="text-slate-900">{userToReset.displayName || 'İsimsiz'}</strong></div>
                   {userToReset.studentName && <div>Öğrenci: <strong className="text-slate-900">{userToReset.studentName}</strong></div>}
+                  {userToReset.parentName && <div>Veli: <strong className="text-slate-900">{userToReset.parentName}</strong></div>}
                   {userToReset.className && <div>Sınıf: <strong className="text-slate-900">{userToReset.className}</strong></div>}
                 </div>
-                <div className="text-[11px] text-rose-700 bg-white/80 p-2 rounded-xl border border-rose-200 font-medium">
-                  ⚠️ <strong>Önemli:</strong> Bu işlem yapıldığında bu hesap veritabanından tamamen silinir ve serbest kalır. Kullanıcı sıfırdan yeniden üye olabilir.
-                </div>
+                {userResetStep === 1 ? (
+                  <div className="text-[11px] text-rose-700 bg-white/80 p-2 rounded-xl border border-rose-200 font-medium">
+                    ⚠️ <strong>1. Uyarı:</strong> Devam ederseniz bir sonraki adımda son onayınız istenecektir.
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-white bg-rose-600 p-2.5 rounded-xl border border-rose-700 font-bold leading-relaxed shadow-xs">
+                    🚨 <strong>2. VE SON UYARI:</strong> &quot;{userToReset.studentName || userToReset.displayName}&quot; veli hesabı ve tüm verileri şimdi kalıcı olarak silinecek. Emin misiniz?
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   type="button"
                   id="btn-cancel-reset-user"
-                  onClick={() => setUserToReset(null)}
+                  onClick={() => {
+                    setUserToReset(null);
+                    setUserResetStep(1);
+                  }}
                   disabled={isDeleting}
                   className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
                 >
                   Vazgeç
                 </button>
-                <button
-                  type="button"
-                  id="btn-confirm-reset-user"
-                  onClick={handleConfirmResetUser}
-                  disabled={isDeleting}
-                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isDeleting ? 'Sıfırlanıyor...' : 'Evet, Sıfırla & Sil'}</span>
-                </button>
+                {userResetStep === 1 ? (
+                  <button
+                    type="button"
+                    id="btn-step1-reset-user"
+                    onClick={() => setUserResetStep(2)}
+                    disabled={isDeleting}
+                    className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Evet (1/2)</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    id="btn-confirm-reset-user"
+                    onClick={handleConfirmResetUser}
+                    disabled={isDeleting}
+                    className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isDeleting ? 'Siliniyor...' : 'Evet, Kesinlikle Sil'}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1495,49 +1548,93 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
           </div>
         )}
 
-        {/* Modal: Sınıf Silme (Cam Efektli) */}
+        {/* Modal: Sınıf Silme (2 Aşamalı Onaylı Cam Efektli) */}
         {classToDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
             <div
               className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
               style={{
-                background: 'rgba(255, 255, 255, 0.82)',
+                background: 'rgba(255, 255, 255, 0.86)',
                 backdropFilter: 'blur(24px)',
                 WebkitBackdropFilter: 'blur(24px)',
-                border: '1px solid rgba(255, 255, 255, 0.75)',
+                border: classDeleteStep === 2 ? '2px solid rgba(225, 29, 72, 0.75)' : '1px solid rgba(255, 255, 255, 0.75)',
                 boxShadow:
                   '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
               }}
             >
-              <div className="w-12 h-12 rounded-2xl bg-rose-100/80 backdrop-blur-md text-rose-600 flex items-center justify-center mx-auto border border-rose-200/70">
-                <Trash2 className="w-6 h-6 stroke-[2.5]" />
+              <div
+                className={`w-12 h-12 rounded-2xl backdrop-blur-md flex items-center justify-center mx-auto border ${
+                  classDeleteStep === 2
+                    ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                    : 'bg-rose-100/80 text-rose-600 border-rose-200/70'
+                }`}
+              >
+                {classDeleteStep === 2 ? (
+                  <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
+                ) : (
+                  <Trash2 className="w-6 h-6 stroke-[2.5]" />
+                )}
               </div>
 
               <div className="text-center space-y-1.5">
-                <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">Sınıfı Sil?</h4>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  &quot;{classToDelete.name}&quot; sınıfını ve kurum bağlantısını silmek istediğinize emin misiniz?
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                  <span>{classDeleteStep === 1 ? '1. UYARI (1/2)' : '2. VE SON UYARI (2/2)'}</span>
+                </div>
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 [font-family:inherit]">
+                  {classDeleteStep === 1 ? 'Sınıfı Sil?' : 'Son Onay: Sınıf Silinecek!'}
+                </h4>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  {classDeleteStep === 1 ? (
+                    <>
+                      &quot;<strong>{classToDelete.name}</strong>&quot; sınıfını ve kurum bağlantısını silmek istediğinize emin misiniz?
+                    </>
+                  ) : (
+                    <>
+                      Yanlış silinmelerin önüne geçmek için lütfen tekrar onaylayın. &quot;<strong>{classToDelete.name}</strong>&quot; sınıfını kesin olarak silmek istiyor musunuz?
+                    </>
+                  )}
                 </p>
               </div>
+
+              {classDeleteStep === 2 && (
+                <div className="p-2.5 rounded-xl bg-rose-600 text-white text-[11px] font-bold text-center leading-relaxed shadow-xs">
+                  🚨 Bu işlem onaylandığında sınıf kurumunuzdan kalıcı olarak kaldırılacaktır!
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setClassToDelete(null)}
+                  onClick={() => {
+                    setClassToDelete(null);
+                    setClassDeleteStep(1);
+                  }}
                   disabled={isDeleting}
                   className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
                 >
                   Vazgeç
                 </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDeleteClass}
-                  disabled={isDeleting}
-                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isDeleting ? 'Siliniyor...' : 'Evet, Sınıfı Sil'}</span>
-                </button>
+                {classDeleteStep === 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setClassDeleteStep(2)}
+                    disabled={isDeleting}
+                    className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Evet (1/2)</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleConfirmDeleteClass}
+                    disabled={isDeleting}
+                    className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isDeleting ? 'Siliniyor...' : 'Evet, Sınıfı Sil'}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -2673,31 +2770,48 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: E-POSTAYI & ÜYELİĞİ SIFIRLA / SİL ONAY MODALI (Cam Efektli) */}
+      {/* MODAL: E-POSTAYI & ÜYELİĞİ SIFIRLA / SİL ONAY MODALI (2 Aşamalı Cam Efektli) */}
       {/* ============================================================== */}
       {userToReset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div
             className="rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 animate-in zoom-in-95 duration-200"
             style={{
-              background: 'rgba(255, 255, 255, 0.82)',
+              background: 'rgba(255, 255, 255, 0.86)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(255, 255, 255, 0.75)',
+              border: userResetStep === 2 ? '2px solid rgba(225, 29, 72, 0.75)' : '1px solid rgba(255, 255, 255, 0.75)',
               boxShadow:
                 '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
             }}
           >
-            <div className="w-12 h-12 rounded-2xl bg-rose-100/80 backdrop-blur-md text-rose-600 flex items-center justify-center mx-auto border border-rose-200/70">
-              <RotateCcw className="w-6 h-6 stroke-[2.5]" />
+            <div
+              className={`w-12 h-12 rounded-2xl backdrop-blur-md flex items-center justify-center mx-auto border ${
+                userResetStep === 2
+                  ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                  : 'bg-rose-100/80 text-rose-600 border-rose-200/70'
+              }`}
+            >
+              {userResetStep === 2 ? (
+                <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
+              ) : (
+                <RotateCcw className="w-6 h-6 stroke-[2.5]" />
+              )}
             </div>
 
             <div className="text-center space-y-1.5">
-              <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">
-                Hesabı Sıfırla &amp; Sil
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                <span>{userResetStep === 1 ? '1. UYARI (1/2)' : '2. VE SON UYARI (2/2)'}</span>
+              </div>
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 [font-family:inherit]">
+                {userResetStep === 1
+                  ? 'Hesabı Sıfırla & Sil (1. Onay)'
+                  : 'Son Onay: Hesap Kalıcı Olarak Silinecek!'}
               </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Yanlışlıkla açılan veya sıfırlanması istenen bu kaydı sistemden tamamen kaldıracaksınız.
+              <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                {userResetStep === 1
+                  ? 'Yanlışlıkla açılan veya sıfırlanması istenen bu kaydı sistemden tamamen kaldıracaksınız.'
+                  : 'Yanlış silinmelerin önüne geçmek için lütfen ikinci kez onaylayın. Bu hesap kalıcı olarak silinecektir!'}
               </p>
             </div>
 
@@ -2714,41 +2828,69 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 <div>Kullanıcı: <strong className="text-slate-900">{userToReset.displayName || 'İsimsiz'}</strong></div>
                 <div>Rol: <strong className="text-slate-900">{userToReset.role === 'teacher' ? 'Öğretmen' : userToReset.role === 'admin' ? 'Yönetici' : 'Veli'}</strong></div>
                 {userToReset.studentName && <div>Öğrenci: <strong className="text-slate-900">{userToReset.studentName}</strong></div>}
+                {userToReset.parentName && <div>Veli: <strong className="text-slate-900">{userToReset.parentName}</strong></div>}
                 {userToReset.className && <div>Sınıf: <strong className="text-slate-900">{userToReset.className}</strong></div>}
               </div>
 
-              <div className="text-[11px] text-rose-800 bg-white/90 p-2.5 rounded-xl border border-rose-200 leading-relaxed font-medium space-y-1">
-                <p>
-                  ✅ <strong>Bu işlem sonucunda:</strong>
-                </p>
-                <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
-                  <li>Bu hesap veritabanından tamamen silinir.</li>
-                  <li>E-posta adresi sistemde serbest kalır ve sıfırlanır.</li>
-                  <li>Kullanıcı veya siz sıfırdan yeniden üye olabilirsiniz.</li>
-                </ul>
-              </div>
+              {userResetStep === 1 ? (
+                <div className="text-[11px] text-rose-800 bg-white/90 p-2.5 rounded-xl border border-rose-200 leading-relaxed font-medium space-y-1">
+                  <p>
+                    ⚠️ <strong>1. Uyarı - Bu işlem sonucunda:</strong>
+                  </p>
+                  <ul className="list-disc list-inside space-y-0.5 text-[10.5px]">
+                    <li>Bu hesap veritabanından tamamen silinir.</li>
+                    <li>E-posta adresi sistemde serbest kalır ve sıfırlanır.</li>
+                    <li>Silme işlemini tamamlamak için bir sonraki adımda 2. onayınız istenecektir.</li>
+                  </ul>
+                </div>
+              ) : (
+                <div className="text-[11px] text-white bg-rose-600 p-3 rounded-xl border border-rose-700 leading-relaxed font-bold space-y-1 shadow-xs">
+                  <p>
+                    🚨 <strong>2. VE SON UYARI:</strong>
+                  </p>
+                  <p className="text-[10.5px]">
+                    &quot;{userToReset.studentName || userToReset.displayName || userToReset.email}&quot; hesabını silmek istediğinize kesin olarak emin misiniz?
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
                 id="btn-cancel-reset-user-modal"
-                onClick={() => setUserToReset(null)}
+                onClick={() => {
+                  setUserToReset(null);
+                  setUserResetStep(1);
+                }}
                 disabled={isDeleting}
                 className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
               >
                 Vazgeç
               </button>
-              <button
-                type="button"
-                id="btn-confirm-reset-user-modal"
-                onClick={handleConfirmResetUser}
-                disabled={isDeleting}
-                className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeleting ? 'Sıfırlanıyor...' : 'Evet, Sıfırla & Sil'}</span>
-              </button>
+              {userResetStep === 1 ? (
+                <button
+                  type="button"
+                  id="btn-step1-reset-user-modal"
+                  onClick={() => setUserResetStep(2)}
+                  disabled={isDeleting}
+                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Evet (1/2)</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  id="btn-confirm-reset-user-modal"
+                  onClick={handleConfirmResetUser}
+                  disabled={isDeleting}
+                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeleting ? 'Sıfırlanıyor...' : 'Evet, Sıfırla & Sil'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -3071,50 +3213,96 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: SINIF SİLME MODALI (Cam Efektli)                        */}
+      {/* MODAL: SINIF SİLME MODALI (2 Aşamalı Onaylı Cam Efektli)       */}
       {/* ============================================================== */}
       {classToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div
             className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
             style={{
-              background: 'rgba(255, 255, 255, 0.82)',
+              background: 'rgba(255, 255, 255, 0.86)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(255, 255, 255, 0.75)',
+              border: classDeleteStep === 2 ? '2px solid rgba(225, 29, 72, 0.75)' : '1px solid rgba(255, 255, 255, 0.75)',
               boxShadow:
                 '0 20px 48px rgba(30, 27, 75, 0.25), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
             }}
           >
-            <div className="w-12 h-12 rounded-2xl bg-rose-100/80 backdrop-blur-md text-rose-600 flex items-center justify-center mx-auto border border-rose-200/70">
-              <Trash2 className="w-6 h-6 stroke-[2.5]" />
+            <div
+              className={`w-12 h-12 rounded-2xl backdrop-blur-md flex items-center justify-center mx-auto border ${
+                classDeleteStep === 2
+                  ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                  : 'bg-rose-100/80 text-rose-600 border-rose-200/70'
+              }`}
+            >
+              {classDeleteStep === 2 ? (
+                <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
+              ) : (
+                <Trash2 className="w-6 h-6 stroke-[2.5]" />
+              )}
             </div>
 
             <div className="text-center space-y-1.5">
-              <h4 className="text-xs font-black text-slate-900 [font-family:inherit]">Sınıfı Sil?</h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                &quot;{classToDelete.name}&quot; sınıfını ve kurum bağlantısını silmek istediğinize emin misiniz?
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                <span>{classDeleteStep === 1 ? '1. UYARI (1/2)' : '2. VE SON UYARI (2/2)'}</span>
+              </div>
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 [font-family:inherit]">
+                {classDeleteStep === 1 ? 'Sınıfı Sil?' : 'Son Onay: Sınıf Silinecek!'}
+              </h4>
+              <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                {classDeleteStep === 1 ? (
+                  <>
+                    &quot;<strong>{classToDelete.name}</strong>&quot; sınıfını ve kurum bağlantısını silmek istediğinize emin misiniz?
+                  </>
+                ) : (
+                  <>
+                    Yanlış silinmelerin önüne geçmek için lütfen tekrar onaylayın. &quot;<strong>{classToDelete.name}</strong>&quot; sınıfını kesin olarak silmek istiyor musunuz?
+                  </>
+                )}
               </p>
             </div>
+
+            {classDeleteStep === 2 && (
+              <div className="p-2.5 rounded-xl bg-rose-600 text-white text-[11px] font-bold text-center leading-relaxed shadow-xs">
+                🚨 Bu işlem onaylandığında sınıf kurumunuzdan kalıcı olarak kaldırılacaktır!
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setClassToDelete(null)}
+                onClick={() => {
+                  setClassToDelete(null);
+                  setClassDeleteStep(1);
+                }}
                 disabled={isDeleting}
                 className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
               >
                 Vazgeç
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmDeleteClass}
-                disabled={isDeleting}
-                className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeleting ? 'Siliniyor...' : 'Evet, Sınıfı Sil'}</span>
-              </button>
+              {classDeleteStep === 1 ? (
+                <button
+                  type="button"
+                  id="btn-step1-delete-class"
+                  onClick={() => setClassDeleteStep(2)}
+                  disabled={isDeleting}
+                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Evet (1/2)</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  id="btn-confirm-delete-class"
+                  onClick={handleConfirmDeleteClass}
+                  disabled={isDeleting}
+                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeleting ? 'Siliniyor...' : 'Evet, Sınıfı Sil'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

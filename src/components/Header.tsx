@@ -26,6 +26,8 @@ interface HeaderProps {
   onOpenParentGuide?: () => void;
   onOpenInbox?: () => void;
   unreadCount?: number;
+  isImpersonatingParent?: boolean;
+  onExitParentImpersonation?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,6 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenParentGuide,
   onOpenInbox,
   unreadCount = 0,
+  isImpersonatingParent = false,
+  onExitParentImpersonation,
 }) => {
   const isSuperAdmin = currentUser?.role === 'admin';
   const isTeacher = currentUser?.role === 'teacher';
@@ -119,13 +123,27 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Orta Alan: Logo ile İlk Buton (Mesaj) Arasında Ortalanmış Veli / Rol Başlığı */}
         <div className="relative z-10 flex-1 flex items-center justify-center min-w-0 px-1 sm:px-2">
           {isParent && (
-            <div className="flex flex-col items-center justify-center text-center px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-2xl bg-white/65 backdrop-blur-md border border-white/75 shadow-[0_4px_14px_rgba(0,0,0,0.12)] max-w-full">
-              <span className="text-[9.5px] sm:text-[10px] font-black text-indigo-700 tracking-wider uppercase leading-none">
-                Merhaba
-              </span>
-              <span className="text-[11px] sm:text-xs font-black text-slate-900 tracking-tight leading-tight mt-0.5 whitespace-nowrap">
-                {cleanParentName}
-              </span>
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <div className="flex flex-col items-center justify-center text-center px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-2xl bg-white/65 backdrop-blur-md border border-white/75 shadow-[0_4px_14px_rgba(0,0,0,0.12)] max-w-full">
+                <span className="text-[9.5px] sm:text-[10px] font-black text-indigo-700 tracking-wider uppercase leading-none">
+                  {isImpersonatingParent ? 'Veli Görünümü' : 'Merhaba'}
+                </span>
+                <span className="text-[11px] sm:text-xs font-black text-slate-900 tracking-tight leading-tight mt-0.5 whitespace-nowrap">
+                  {cleanParentName}
+                </span>
+              </div>
+              {isImpersonatingParent && onExitParentImpersonation && (
+                <button
+                  type="button"
+                  id="btn-return-to-teacher-account"
+                  onClick={onExitParentImpersonation}
+                  title="Öğretmen hesabına geri dön"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-black bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-400 shadow-xs transition-all cursor-pointer active:scale-95"
+                >
+                  <GraduationCap className="w-3 h-3 text-white shrink-0" />
+                  <span>Öğretmen Paneli</span>
+                </button>
+              )}
             </div>
           )}
 

@@ -688,7 +688,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
 
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                                <span className="text-xs sm:text-sm font-black text-slate-900 break-words whitespace-normal">
                                   {item.studentName}
                                 </span>
                                 {item.className && (
@@ -702,7 +702,7 @@ export const WeeklyStudentStatsModal: React.FC<WeeklyStudentStatsModalProps> = (
                                   {item.category.name}
                                 </span>
                               </div>
-                              <div className="text-[10.5px] font-bold text-slate-500 truncate mt-0.5">
+                              <div className="text-[10.5px] font-bold text-slate-500 break-words whitespace-normal mt-0.5">
                                 Veli: <span className="text-slate-700">{item.parentName}</span>
                               </div>
                             </div>

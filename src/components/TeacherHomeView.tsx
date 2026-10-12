@@ -15,6 +15,7 @@ import {
   Pencil,
   Check,
   FileSpreadsheet,
+  ExternalLink,
 } from 'lucide-react';
 import { seed25ClassroomStudents } from '../lib/demoData';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
@@ -36,6 +37,7 @@ interface TeacherHomeViewProps {
   onUpdateUser?: (userUid: string, updates: Partial<UserProfile>) => Promise<void> | void;
   onSwitchRole?: (role: 'admin' | 'teacher') => void;
   onUpgradeToAdminWithCode?: (code: string) => Promise<void>;
+  onSelectStudentAsParent?: (student: UserProfile) => void;
 }
 
 export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
@@ -49,6 +51,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   onUpdateUser,
   onSwitchRole,
   onUpgradeToAdminWithCode,
+  onSelectStudentAsParent,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<'all' | 'critical' | 'warning' | 'moderate' | 'safe'>('all');
@@ -60,9 +63,14 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
     generateDefaultAcademicCalendar()
   );
 
-  // Student deletion state
+  // Student deletion state (2 aşamalı onay)
   const [studentToDelete, setStudentToDelete] = useState<UserProfile | null>(null);
+  const [studentDeleteStep, setStudentDeleteStep] = useState<1 | 2>(1);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  React.useEffect(() => {
+    if (studentToDelete) setStudentDeleteStep(1);
+  }, [studentToDelete]);
 
   const handleConfirmDeleteStudent = async () => {
     if (!studentToDelete) return;
@@ -70,6 +78,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
       setIsDeleting(true);
       await onDeleteUser?.(studentToDelete.uid);
       setStudentToDelete(null);
+      setStudentDeleteStep(1);
     } catch (err) {
       console.error('Error deleting student:', err);
     } finally {
@@ -573,6 +582,17 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             </button>
             <button
               type="button"
+              onClick={() => setFilterCategory('moderate')}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
+                filterCategory === 'moderate'
+                  ? 'bg-amber-400 text-slate-950 border-amber-500'
+                  : 'bg-amber-50/90 border-amber-200 text-amber-700 hover:bg-amber-100'
+              }`}
+            >
+              Sarı ({moderateStudents.length})
+            </button>
+            <button
+              type="button"
               onClick={() => setFilterCategory('safe')}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'safe'
@@ -662,9 +682,9 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.6)',
                   }}
                 >
-                  {/* Üst Satır: Sol tarafta Maskot, Öğrenci Adı ve Kategori; En Sağda Zaman Bilgileri */}
-                  <div className="flex items-center justify-between gap-2 leading-none">
-                    <div className="flex items-center gap-2 min-w-0 leading-none">
+                  {/* Üst Satır: Sol tarafta Maskot, Öğrenci Adı (Tamamen yazsın & tıklayınca veli hesabına geçsin) ve Kategori; En Sağda Zaman Bilgileri */}
+                  <div className="flex items-start justify-between gap-2 leading-none">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 leading-none">
                       <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg overflow-hidden bg-white border border-white flex-shrink-0 flex items-center justify-center shadow-sm">
                         <img
                           src={mascotSrc}
@@ -674,17 +694,32 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                         />
                       </div>
 
-                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap leading-none">
-                        <h4 className="text-xs sm:text-[13px] font-black tracking-tight text-slate-900 leading-tight truncate [font-family:inherit]">
-                          {sName}
-                        </h4>
+                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap leading-tight">
+                        {onSelectStudentAsParent ? (
+                          <button
+                            type="button"
+                            id={`btn-teacher-view-parent-${user.uid}`}
+                            onClick={() => onSelectStudentAsParent(user)}
+                            title={`${sName} öğrencisinin veli hesabına giriş yap / görüntüle`}
+                            className="text-left text-xs sm:text-[13px] font-black tracking-tight text-slate-900 hover:text-indigo-700 leading-snug break-words whitespace-normal cursor-pointer inline-flex items-center gap-1 group transition-colors [font-family:inherit]"
+                          >
+                            <span className="underline decoration-indigo-400/60 group-hover:decoration-indigo-600 underline-offset-2">
+                              {sName}
+                            </span>
+                            <ExternalLink className="w-3 h-3 text-indigo-600 shrink-0 opacity-85 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                          </button>
+                        ) : (
+                          <h4 className="text-xs sm:text-[13px] font-black tracking-tight text-slate-900 leading-snug break-words whitespace-normal [font-family:inherit]">
+                            {sName}
+                          </h4>
+                        )}
                         <span className={`text-[9.5px] font-semibold tracking-wide px-1.5 py-0.5 rounded-md leading-none shrink-0 ${badgeColorClass}`}>
                           {category.name}
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-[9.5px] font-bold text-slate-600 shrink-0 flex items-center gap-1 leading-none">
+                    <div className="text-[9.5px] font-bold text-slate-600 shrink-0 flex items-center gap-1 leading-none pt-0.5">
                       <span>{formatTimeAgo(user.updatedAt)}</span>
                       {stage > 0 && user.currentWeekStageDates?.[stage] && (
                         <span className="font-bold text-indigo-700">
@@ -696,7 +731,7 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
 
                   {/* Alt Satır: Sol tarafta Veli Adı, Sağ tarafta Süre ve İşlem Butonları */}
                   <div className="flex items-center justify-between gap-2 leading-none pl-8 sm:pl-9">
-                    <div className="text-[11px] font-medium text-slate-500 truncate leading-tight">
+                    <div className="text-[11px] font-medium text-slate-500 break-words whitespace-normal leading-tight">
                       Veli: <span className="text-slate-700 font-bold">{pName}</span>
                     </div>
 
@@ -840,61 +875,100 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         </div>
       )}
 
-      {/* ÖĞRENCİ HESABI SİLME ONAY MODALI */}
+      {/* ÖĞRENCİ / VELİ HESABI SİLME ONAY MODALI (2 Aşamalı Onay) */}
       {studentToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div
             className="rounded-3xl p-5 sm:p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-200"
             style={{
-              background: 'rgba(255, 255, 255, 0.78)',
+              background: 'rgba(255, 255, 255, 0.86)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(255, 255, 255, 0.7)',
+              border: studentDeleteStep === 2 ? '2px solid rgba(225, 29, 72, 0.75)' : '1px solid rgba(255, 255, 255, 0.7)',
               boxShadow:
                 '0 20px 48px rgba(76, 5, 25, 0.22), inset 0 1px 1.5px rgba(255, 255, 255, 0.8)',
             }}
           >
-            <div className="w-12 h-12 rounded-2xl bg-rose-100/80 backdrop-blur-md text-rose-600 flex items-center justify-center mx-auto border border-rose-200/70">
-              <UserX className="w-6 h-6 stroke-[2.5]" />
+            <div
+              className={`w-12 h-12 rounded-2xl backdrop-blur-md flex items-center justify-center mx-auto border ${
+                studentDeleteStep === 2
+                  ? 'bg-rose-600 text-white border-rose-700 animate-pulse'
+                  : 'bg-rose-100/80 text-rose-600 border-rose-200/70'
+              }`}
+            >
+              {studentDeleteStep === 2 ? (
+                <AlertTriangle className="w-6 h-6 stroke-[2.5]" />
+              ) : (
+                <UserX className="w-6 h-6 stroke-[2.5]" />
+              )}
             </div>
 
             <div className="text-center space-y-1.5">
-              <h4 className="text-base font-black tracking-tight text-slate-900 [font-family:inherit]">
-                Öğrenciyi Sınıftan Sil?
+              <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                <span>{studentDeleteStep === 1 ? '1. UYARI (1/2)' : '2. VE SON UYARI (2/2)'}</span>
+              </div>
+              <h4 className="text-sm sm:text-base font-black tracking-tight text-slate-900 [font-family:inherit]">
+                {studentDeleteStep === 1
+                  ? 'Öğrenci & Veli Hesabını Sil?'
+                  : 'Son Onay: Veli Hesabı Silinecek!'}
               </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Bu öğrenciyi ve veli bağlantısını sınıftan silmek üzeresiniz.
+              <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                {studentDeleteStep === 1
+                  ? 'Bu öğrenciyi ve veli hesabını sınıftan silmek üzeresiniz.'
+                  : 'Yanlış silinmelerin önüne geçmek için lütfen ikinci kez onaylayın. Bu veli hesabı silinecektir!'}
               </p>
             </div>
 
-            <div className="p-3 bg-white/50 backdrop-blur-md rounded-2xl border border-white/70 text-[11px] text-slate-600 space-y-1">
+            <div className="p-3 bg-white/60 backdrop-blur-md rounded-2xl border border-white/80 text-[11px] text-slate-600 space-y-1.5">
               <div className="font-black text-slate-900 flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                 <span>Öğrenci: {studentToDelete.studentName || studentToDelete.displayName || 'Öğrenci'}</span>
               </div>
-              <div className="text-slate-500 text-[10px]">
+              <div className="text-slate-600 text-[10.5px] font-semibold">
                 Veli: {studentToDelete.parentName || studentToDelete.displayName || 'Veli'}
               </div>
+              {studentDeleteStep === 2 && (
+                <div className="p-2 rounded-xl bg-rose-600 text-white text-[10.5px] font-bold leading-snug mt-1">
+                  🚨 Kesin olarak silmek istediğinize emin misiniz?
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setStudentToDelete(null)}
+                onClick={() => {
+                  setStudentToDelete(null);
+                  setStudentDeleteStep(1);
+                }}
                 disabled={isDeleting}
                 className="btn-3d-white py-2.5 px-4 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer"
               >
                 Vazgeç
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmDeleteStudent}
-                disabled={isDeleting}
-                className="py-2.5 px-4 rounded-2xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeleting ? 'Siliniyor...' : 'Evet, Sil'}</span>
-              </button>
+              {studentDeleteStep === 1 ? (
+                <button
+                  type="button"
+                  id="btn-step1-teacher-delete-student"
+                  onClick={() => setStudentDeleteStep(2)}
+                  disabled={isDeleting}
+                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-amber-600 hover:bg-amber-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Evet (1/2)</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  id="btn-confirm-teacher-delete-student"
+                  onClick={handleConfirmDeleteStudent}
+                  disabled={isDeleting}
+                  className="py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-md cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isDeleting ? 'Siliniyor...' : 'Evet, Kesinlikle Sil'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

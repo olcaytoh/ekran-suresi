@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { AcademicCalendarConfig, AcademicWeekConfig, UserProfile } from '../types';
+import { getCurrentWeekInfo, getResetAdjustedDate } from './weekUtils';
 
 export const SHORT_MONTHS_TR = [
   'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
@@ -120,18 +121,28 @@ export function generateDefaultAcademicCalendar(
 
 /**
  * Find which week is currently active according to real calendar dates
+ * (Rollover occurs every Monday at 09:00 AM local time)
  */
 export function getActiveWeekNumber(
   weeksOrConfig?: AcademicWeekConfig[] | AcademicCalendarConfig | null,
   targetDate: Date = new Date()
 ): number {
-  if (!weeksOrConfig) return 1;
+  const adjustedDate = getResetAdjustedDate(targetDate);
+  if (!weeksOrConfig) {
+    const base = new Date(2026, 8, 7);
+    const diffDays = Math.floor((adjustedDate.getTime() - base.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.min(35, Math.max(1, Math.floor(diffDays / 7) + 1));
+  }
   const weeks: AcademicWeekConfig[] = Array.isArray(weeksOrConfig)
     ? weeksOrConfig
     : (weeksOrConfig as AcademicCalendarConfig).weeks || [];
-  if (!weeks || weeks.length === 0) return 1;
+  if (!weeks || weeks.length === 0) {
+    const base = new Date(2026, 8, 7);
+    const diffDays = Math.floor((adjustedDate.getTime() - base.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.min(35, Math.max(1, Math.floor(diffDays / 7) + 1));
+  }
 
-  const todayStr = toDateInputValue(targetDate);
+  const todayStr = toDateInputValue(adjustedDate);
 
   // Check if today falls in any configured week
   const matchingWeek = weeks.find((w) => todayStr >= w.startDate && todayStr <= w.endDate);
@@ -312,11 +323,15 @@ export function getStudentStageForAcademicWeek(
   }
 
   if (weekNum === activeWeekNum) {
-    const stage = Math.min(
-      14,
-      Math.max(0, Number(student.currentWeekStage ?? student.weeklyStages?.[weekNum] ?? 0))
-    );
-    const minutes = student.currentWeekMinutes ?? student.weeklyMinutes?.[weekNum] ?? stage * 30;
+    const currentWeekId = getCurrentWeekInfo().weekId;
+    const isStaleWeek = Boolean(student.currentWeekId && student.currentWeekId !== currentWeekId);
+    const rawStage = isStaleWeek
+      ? (student.weeklyStages?.[weekNum] ?? 0)
+      : (student.currentWeekStage ?? student.weeklyStages?.[weekNum] ?? 0);
+    const stage = Math.min(14, Math.max(0, Number(rawStage) || 0));
+    const minutes = isStaleWeek
+      ? (student.weeklyMinutes?.[weekNum] ?? stage * 30)
+      : (student.currentWeekMinutes ?? student.weeklyMinutes?.[weekNum] ?? stage * 30);
     return { stage, minutes, isBeforeRegistration: false };
   }
 

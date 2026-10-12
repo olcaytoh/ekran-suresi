@@ -604,12 +604,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               </button>
               <input
                 id="input-email"
+                name="ekran_user_login_id"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="@gmail.com"
                 autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className={`w-full pl-9 pr-18 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 ${
                   role === 'parent' ? 'focus:ring-emerald-500' : role === 'admin' ? 'focus:ring-rose-500' : 'focus:ring-indigo-500'
                 } transition-all placeholder:text-slate-400 placeholder:font-medium text-xs sm:text-sm ${
@@ -643,13 +647,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onDemoLogin, onLoginSucc
               </div>
               <input
                 id="input-password"
+                name="ekran_user_secret_key"
                 type={showPassword ? 'text' : 'password'}
                 required
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Şifre (en az 6 karakter)"
-                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                autoComplete="new-password"
                 className={`w-full pl-9 pr-9 bg-white/95 focus:bg-white border border-slate-300/90 rounded-xl font-bold text-slate-900 shadow-xs focus:outline-hidden focus:ring-2 ${
                   role === 'parent' ? 'focus:ring-emerald-500' : role === 'admin' ? 'focus:ring-rose-500' : 'focus:ring-indigo-500'
                 } transition-all placeholder:text-slate-400 placeholder:font-medium text-xs sm:text-sm ${

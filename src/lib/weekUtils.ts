@@ -2,6 +2,17 @@
  * Date and Week utility functions for Weekly Screen Time Tracker
  */
 
+export const WEEKLY_RESET_HOUR = 9; // Her Pazartesi sabah 09:00'da hafta sıfırlanır ve yeni hafta başlar
+
+/**
+ * Verilen tarihi haftalık sıfırlama saatine (Pazartesi 09:00) göre kaydırır.
+ * Böylece Pazartesi sabah 08:59 hala bir önceki haftaya ait sayılır,
+ * Pazartesi sabah 09:00 olduğu anda otomatik olarak yeni haftaya geçilir.
+ */
+export function getResetAdjustedDate(date: Date = new Date()): Date {
+  return new Date(date.getTime() - WEEKLY_RESET_HOUR * 60 * 60 * 1000);
+}
+
 export function getCurrentWeekInfo(date: Date = new Date()): {
   weekId: string;
   year: number;
@@ -10,7 +21,10 @@ export function getCurrentWeekInfo(date: Date = new Date()): {
   startDateStr: string;
   endDateStr: string;
 } {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  // Pazartesi sabah 09:00'da yeni haftaya geçilmesi için tarihi 9 saat geriye kaydırarak hesapla
+  const shifted = getResetAdjustedDate(date);
+
+  const d = new Date(Date.UTC(shifted.getFullYear(), shifted.getMonth(), shifted.getDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
@@ -18,12 +32,12 @@ export function getCurrentWeekInfo(date: Date = new Date()): {
   const year = d.getUTCFullYear();
   const weekId = `${year}-W${String(weekNumber).padStart(2, '0')}`;
 
-  // Find Monday of this week
-  const curr = new Date(date);
+  // Find Monday of this active week
+  const curr = new Date(shifted.getFullYear(), shifted.getMonth(), shifted.getDate());
   const day = curr.getDay();
   const diffToMonday = curr.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(curr.setDate(diffToMonday));
-  const sunday = new Date(curr.setDate(diffToMonday + 6));
+  const monday = new Date(curr.getFullYear(), curr.getMonth(), diffToMonday);
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
 
   const monthNames = [
     'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -31,7 +45,7 @@ export function getCurrentWeekInfo(date: Date = new Date()): {
   ];
 
   const startDateStr = `${monday.getDate()} ${monthNames[monday.getMonth()]}`;
-  const endDateStr = `${sunday.getDate()} ${monthNames[sunday.getMonth()]} ${year}`;
+  const endDateStr = `${sunday.getDate()} ${monthNames[sunday.getMonth()]} ${sunday.getFullYear()}`;
   const weekLabel = `${weekNumber}. Hafta (${startDateStr} - ${endDateStr})`;
 
   return {

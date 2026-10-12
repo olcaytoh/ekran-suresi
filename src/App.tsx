@@ -29,6 +29,7 @@ import {
   subscribeInAppMessages,
   purgeBlockedEmailsFromFirestore,
   isBlockedEmail,
+  normalizeUserForCurrentWeek,
 } from './lib/firebase';
 import { UserProfile, ClassroomInfo, InAppMessage } from './types';
 import { getCurrentWeekInfo } from './lib/weekUtils';
@@ -82,8 +83,43 @@ export default function App() {
   const [showAdminCodePrompt, setShowAdminCodePrompt] = useState(false);
   const [inAppMessages, setInAppMessages] = useState<InAppMessage[]>([]);
   const [showInboxModal, setShowInboxModal] = useState(false);
+  const [impersonatedParent, setImpersonatedParent] = useState<UserProfile | null>(null);
+  const [weekInfo, setWeekInfo] = useState(() => getCurrentWeekInfo());
 
-  const weekInfo = getCurrentWeekInfo();
+  // Her Pazartesi sabah 09:00'da otomatik haftalık sıfırlama kontrolü (uygulama açıkken bile anında yeni haftaya geçer ve istatistikleri korur)
+  useEffect(() => {
+    const checkMonday9amReset = () => {
+      const latestWeek = getCurrentWeekInfo();
+      setWeekInfo((prev) => {
+        if (prev.weekId !== latestWeek.weekId) {
+          setUserProfile((u) => (u ? normalizeUserForCurrentWeek(u, latestWeek.weekId) : null));
+          setActiveLocalProfile((u) => {
+            if (!u) return null;
+            const normalized = normalizeUserForCurrentWeek(u, latestWeek.weekId);
+            setActiveAppProfile(normalized, true);
+            return normalized;
+          });
+          setDemoProfile((u) => (u ? normalizeUserForCurrentWeek(u, latestWeek.weekId) : null));
+          setAllUsers((list) => list.map((st) => normalizeUserForCurrentWeek(st, latestWeek.weekId)));
+          setClassStudentsMap((prevMap) => {
+            const nextMap: Record<string, UserProfile[]> = {};
+            Object.keys(prevMap).forEach((k) => {
+              nextMap[k] = (prevMap[k] || []).map((st) =>
+                normalizeUserForCurrentWeek(st, latestWeek.weekId)
+              );
+            });
+            return nextMap;
+          });
+          return latestWeek;
+        }
+        return prev;
+      });
+    };
+
+    checkMonday9amReset();
+    const timer = setInterval(checkMonday9amReset, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Purge any deleted/blocked test emails from Firestore on startup
   useEffect(() => {
@@ -105,6 +141,14 @@ export default function App() {
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem('demoUserProfile');
         }
+      } else {
+        setUserProfile(null);
+        setDemoProfile(null);
+        setAuthUser(null);
+        setAllUsers([]);
+        setClassroom(null);
+        setInstitutionClassrooms([]);
+        setClassStudentsMap({});
       }
     };
     window.addEventListener('app_auth_change', handleAuthChange);
@@ -387,6 +431,7 @@ export default function App() {
   };
 
   const handleSignOut = async () => {
+    setImpersonatedParent(null);
     setDemoProfile(null);
     setActiveLocalProfile(null);
     clearActiveAppProfile();
@@ -398,6 +443,7 @@ export default function App() {
 
   const handleForgetAccount = async () => {
     try {
+      setImpersonatedParent(null);
       setDemoProfile(null);
       setUserProfile(null);
       setActiveLocalProfile(null);
@@ -641,13 +687,17 @@ export default function App() {
   // Listen to active local profile updates from Firestore
   useEffect(() => {
     if (!activeLocalProfile?.uid || authUser) return;
+    let isCancelled = false;
     const unsubscribe = subscribeUserProfile(
       activeLocalProfile.uid,
       (profile) => {
-        if (profile) {
-          setActiveLocalProfile(profile);
-          setActiveAppProfile(profile, true);
-        }
+        if (isCancelled || !profile) return;
+        const currentStored = getActiveAppProfile();
+        if (!currentStored || currentStored.uid !== profile.uid) return;
+        setActiveLocalProfile(profile);
+        const shouldRemember =
+          typeof window !== 'undefined' && localStorage.getItem('rememberMe') !== 'false';
+        setActiveAppProfile(profile, shouldRemember);
       },
       (err: any) => {
         if (err?.code !== 'permission-denied') {
@@ -655,13 +705,46 @@ export default function App() {
         }
       }
     );
-    return () => unsubscribe();
+    return () => {
+      isCancelled = true;
+      unsubscribe();
+    };
   }, [activeLocalProfile?.uid, authUser]);
 
-  const effectiveProfile = authUser ? userProfile : (activeLocalProfile || demoProfile);
-  const isSuperAdmin = effectiveProfile?.role === 'admin';
-  const isTeacher = effectiveProfile?.role === 'teacher';
+  const baseProfile = authUser ? userProfile : (activeLocalProfile || demoProfile);
+
+  // Öğretmen bir öğrencinin veli hesabını görüntülüyorsa, o öğrencinin allUsers içindeki güncel verisini senkron tut
+  const activeImpersonatedParent = useMemo(() => {
+    if (!impersonatedParent) return null;
+    const liveMatch = allUsers.find((u) => u.uid === impersonatedParent.uid);
+    return liveMatch
+      ? {
+          ...impersonatedParent,
+          ...liveMatch,
+          role: 'parent' as const,
+          userType: 'parent' as const,
+        }
+      : impersonatedParent;
+  }, [impersonatedParent, allUsers]);
+
+  const effectiveProfile = activeImpersonatedParent || baseProfile;
+  const isSuperAdmin = !activeImpersonatedParent && effectiveProfile?.role === 'admin';
+  const isTeacher = !activeImpersonatedParent && effectiveProfile?.role === 'teacher';
   const isStaffOrAdmin = isSuperAdmin || isTeacher;
+
+  const handleSelectStudentAsParent = (student: UserProfile) => {
+    setImpersonatedParent({
+      ...student,
+      role: 'parent',
+      userType: 'parent',
+    });
+    setParentTab('home');
+  };
+
+  const handleExitParentImpersonation = () => {
+    setImpersonatedParent(null);
+    setParentTab('home');
+  };
 
   // Listen to classroom data if user belongs to a class
   useEffect(() => {
@@ -1054,7 +1137,22 @@ export default function App() {
         return nextDates;
       };
 
-      if (authUser) {
+      if (activeImpersonatedParent) {
+        const nextDates = buildUpdatedDates(activeImpersonatedParent.currentWeekStageDates);
+        const updatedParent: UserProfile = {
+          ...activeImpersonatedParent,
+          currentWeekStage: clampedStage,
+          currentWeekMinutes: clampedStage * 30,
+          currentWeekStageDates: nextDates,
+        };
+        setImpersonatedParent(updatedParent);
+        setAllUsers((prev) =>
+          prev.map((u) => (u.uid === activeImpersonatedParent.uid ? updatedParent : u))
+        );
+        if (authUser || activeLocalProfile) {
+          await updateStageProgress(activeImpersonatedParent.uid, newStage);
+        }
+      } else if (authUser) {
         const nextDates = buildUpdatedDates(userProfile?.currentWeekStageDates);
         setUserProfile((prev) =>
           prev
@@ -1103,7 +1201,19 @@ export default function App() {
     try {
       setIsUpdatingStage(true);
       const clampedUnused = Math.max(0, Math.min(7, newUnusedDays));
-      if (authUser) {
+      if (activeImpersonatedParent) {
+        const updatedParent: UserProfile = {
+          ...activeImpersonatedParent,
+          currentWeekUnusedDays: clampedUnused,
+        };
+        setImpersonatedParent(updatedParent);
+        setAllUsers((prev) =>
+          prev.map((u) => (u.uid === activeImpersonatedParent.uid ? updatedParent : u))
+        );
+        if (authUser || activeLocalProfile) {
+          await updateUnusedDaysProgress(activeImpersonatedParent.uid, clampedUnused);
+        }
+      } else if (authUser) {
         await updateUnusedDaysProgress(authUser.uid, clampedUnused);
         setUserProfile((prev) =>
           prev ? { ...prev, currentWeekUnusedDays: clampedUnused } : prev
@@ -1286,6 +1396,8 @@ export default function App() {
         onOpenParentGuide={() => setShowParentGuide(true)}
         onOpenInbox={() => setShowInboxModal(true)}
         unreadCount={unreadMessageCount}
+        isImpersonatingParent={Boolean(activeImpersonatedParent)}
+        onExitParentImpersonation={handleExitParentImpersonation}
       />
 
       {/* 2. Main Body: Smooth scrollable container with modern scrollbar */}
@@ -1324,6 +1436,7 @@ export default function App() {
                   onUpdateUser={handleUpdateStudentUser}
                   onSwitchRole={handleSwitchRole}
                   onUpgradeToAdminWithCode={handleUpgradeToAdminWithCode}
+                  onSelectStudentAsParent={handleSelectStudentAsParent}
                 />
               )
             )}

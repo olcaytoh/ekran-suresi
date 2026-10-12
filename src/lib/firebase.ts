@@ -164,8 +164,20 @@ export function isAdminEmail(_email?: string | null): boolean {
   return false;
 }
 
+let isForgettingDeviceSession = false;
+
+export function isDeviceForgettingInProgress(): boolean {
+  if (isForgettingDeviceSession) return true;
+  if (typeof window !== 'undefined') {
+    try {
+      return sessionStorage.getItem('deviceForgetLock') === '1';
+    } catch {}
+  }
+  return false;
+}
+
 export function getActiveAppProfile(): UserProfile | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' || isDeviceForgettingInProgress()) return null;
   try {
     const raw = localStorage.getItem('activeAppProfile') || sessionStorage.getItem('activeAppProfile');
     if (raw) {
@@ -185,6 +197,9 @@ export function getActiveAppProfile(): UserProfile | null {
 
 export function setActiveAppProfile(profile: UserProfile | null, remember: boolean = true): void {
   if (typeof window === 'undefined') return;
+  if (profile && isDeviceForgettingInProgress()) {
+    return;
+  }
   if (profile) {
     const serialized = JSON.stringify(profile);
     if (remember) {
@@ -200,6 +215,8 @@ export function setActiveAppProfile(profile: UserProfile | null, remember: boole
     }
   } else {
     localStorage.removeItem('activeAppProfile');
+    localStorage.removeItem('rememberedEmail');
+    localStorage.removeItem('rememberMe');
     sessionStorage.removeItem('activeAppProfile');
   }
   window.dispatchEvent(new CustomEvent('app_auth_change', { detail: profile }));
@@ -478,6 +495,9 @@ export async function signInWithEmailAndPasswordAuth(
       const docWithHash = sortedDocs.find((d) => Boolean((d.data() as any).passwordHash));
       const activePasswordHash = docWithHash ? (docWithHash.data() as any).passwordHash : docData.passwordHash;
 
+      const activeWeekId = getCurrentWeekInfo().weekId;
+      const isNewWeek = Boolean(docData.currentWeekId && docData.currentWeekId !== activeWeekId);
+
       mergedFirestoreProfile = {
         uid: primaryDoc.id,
         email: cleanEmail,
@@ -496,11 +516,14 @@ export async function signInWithEmailAndPasswordAuth(
         classCode: docData.classCode || classSource.classCode,
         studentName: docData.studentName || classSource.studentName,
         parentName: docData.parentName || classSource.parentName,
-        currentWeekId: docData.currentWeekId || getCurrentWeekInfo().weekId,
-        currentWeekMinutes: docData.currentWeekMinutes ?? 0,
-        currentWeekStage: docData.currentWeekStage ?? 0,
-        currentWeekStageDates: docData.currentWeekStageDates ?? {},
-        currentWeekUnusedDays: docData.currentWeekUnusedDays ?? 0,
+        currentWeekId: activeWeekId,
+        currentWeekMinutes: isNewWeek ? 0 : (docData.currentWeekMinutes ?? 0),
+        currentWeekStage: isNewWeek ? 0 : (docData.currentWeekStage ?? 0),
+        currentWeekStageDates: isNewWeek ? {} : (docData.currentWeekStageDates ?? {}),
+        currentWeekUnusedDays: isNewWeek ? 0 : (docData.currentWeekUnusedDays ?? 0),
+        weeklyStages: docData.weeklyStages,
+        weeklyMinutes: docData.weeklyMinutes,
+        joinedAcademicWeek: docData.joinedAcademicWeek,
       };
 
       if (activePasswordHash) {
@@ -1159,11 +1182,24 @@ export async function signInAsGuest(
  * Sign out
  */
 export async function signOutUser(): Promise<void> {
+  isForgettingDeviceSession = true;
   clearActiveAppProfile();
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('activeAppProfile');
+      localStorage.removeItem('pendingUserRole');
+      sessionStorage.removeItem('activeAppProfile');
+      sessionStorage.removeItem('demoUserProfile');
+    }
+  } catch {}
   try {
     await signOut(auth);
   } catch (e) {
     console.warn('Sign out error:', e);
+  } finally {
+    setTimeout(() => {
+      isForgettingDeviceSession = false;
+    }, 600);
   }
 }
 
@@ -1171,43 +1207,76 @@ export async function signOutUser(): Promise<void> {
  * Completely forgets account credentials from this device
  */
 export async function forgetAndClearAllDeviceData(): Promise<void> {
-  clearActiveAppProfile();
-  try {
-    if (typeof window !== 'undefined') {
-      localStorage.clear();
-      sessionStorage.clear();
-    }
-  } catch (e) {
-    console.warn('Storage clear error:', e);
+  isForgettingDeviceSession = true;
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem('deviceForgetLock', '1');
+    } catch {}
   }
 
+  // 1. First sign out of Firebase Auth while IndexedDB/localStorage keys are still intact so Firebase removes its own token cleanly
   try {
     await signOut(auth);
   } catch (e) {
     console.warn('Firebase signOut error:', e);
   }
 
+  // 2. Clear active profile & notify app state
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('activeAppProfile');
+      localStorage.removeItem('rememberedEmail');
+      localStorage.removeItem('rememberMe');
+      localStorage.removeItem('pendingUserRole');
+      localStorage.clear();
+      sessionStorage.clear();
+      window.dispatchEvent(new CustomEvent('app_auth_change', { detail: null }));
+    }
+  } catch (e) {
+    console.warn('Storage clear error:', e);
+  }
+
+  // 3. Delete Firebase Auth persistence IndexedDB databases and wait briefly for completion
   if (typeof window !== 'undefined' && 'indexedDB' in window) {
     try {
       const knownDbs = [
         'firebaseLocalStorageDb',
         'firebase-heartbeat-database',
         'firebase-installations-database',
-        'firestore/[DEFAULT]/[DEFAULT]/main',
       ];
-      for (const dbName of knownDbs) {
-        try {
-          window.indexedDB.deleteDatabase(dbName);
-        } catch {}
-      }
+      await Promise.all(
+        knownDbs.map(
+          (dbName) =>
+            new Promise<void>((resolve) => {
+              try {
+                const req = window.indexedDB.deleteDatabase(dbName);
+                req.onsuccess = () => resolve();
+                req.onerror = () => resolve();
+                req.onblocked = () => resolve();
+                setTimeout(resolve, 250);
+              } catch {
+                resolve();
+              }
+            })
+        )
+      );
     } catch (e) {
       console.warn('IndexedDB cleanup error:', e);
     }
   }
 
+  // 4. Final sweep of localStorage/sessionStorage in case any listener wrote during signOut
   if (typeof window !== 'undefined') {
-    window.location.href = window.location.origin + window.location.pathname;
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem('rememberMe', 'false');
+    } catch {}
   }
+
+  setTimeout(() => {
+    isForgettingDeviceSession = false;
+  }, 500);
 }
 
 /**
@@ -1233,6 +1302,31 @@ export async function deleteCurrentUserAccount(): Promise<void> {
     localStorage.clear();
     sessionStorage.clear();
   }
+}
+
+/**
+ * Kullanıcının mevcut hafta bilgisini kontrol eder.
+ * Eğer Pazartesi sabah 09:00 itibarıyla yeni bir haftaya geçilmişse (currentWeekId !== activeWeekId):
+ * - Geçmiş haftaların istatistikleri (weeklyStages, weeklyMinutes ve weeks alt koleksiyonu) olduğu gibi korunur.
+ * - Aktif haftanın ekran süresi (currentWeekStage, currentWeekMinutes, currentWeekStageDates, currentWeekUnusedDays)
+ *   otomatik olarak 0'dan tekrar başlar.
+ */
+export function normalizeUserForCurrentWeek(rawUser: UserProfile, activeWeekId?: string): UserProfile {
+  const currentWeekId = activeWeekId || getCurrentWeekInfo().weekId;
+  if (rawUser.currentWeekId && rawUser.currentWeekId !== currentWeekId) {
+    return {
+      ...rawUser,
+      currentWeekId,
+      currentWeekStage: 0,
+      currentWeekMinutes: 0,
+      currentWeekStageDates: {},
+      currentWeekUnusedDays: 0,
+    };
+  }
+  return {
+    ...rawUser,
+    currentWeekId: rawUser.currentWeekId || currentWeekId,
+  };
 }
 
 /**
@@ -1310,6 +1404,9 @@ export async function syncUserProfile(
     const mergedClassCode = data.classCode || emailInstSource.classCode;
     const mergedClassName = data.className || emailInstSource.className;
 
+    // Pazartesi sabah 09:00 kontrolü: hafta değişmişse yeni haftayı sıfırdan başlat, geçmiş istatistikleri sakla
+    const isNewWeek = Boolean(data.currentWeekId && data.currentWeekId !== weekId);
+
     userProfile = {
       uid: user.uid,
       email: emailOverride || user.email || data.email || 'misafir@ekran.takip',
@@ -1329,11 +1426,14 @@ export async function syncUserProfile(
       classId: mergedClassId,
       classCode: mergedClassCode,
       className: mergedClassName,
-      currentWeekId: data.currentWeekId || weekId,
-      currentWeekMinutes: data.currentWeekMinutes ?? 0,
-      currentWeekStage: data.currentWeekStage ?? 0,
-      currentWeekStageDates: data.currentWeekStageDates ?? {},
-      currentWeekUnusedDays: data.currentWeekUnusedDays ?? 0,
+      currentWeekId: weekId,
+      currentWeekMinutes: isNewWeek ? 0 : (data.currentWeekMinutes ?? 0),
+      currentWeekStage: isNewWeek ? 0 : (data.currentWeekStage ?? 0),
+      currentWeekStageDates: isNewWeek ? {} : (data.currentWeekStageDates ?? {}),
+      currentWeekUnusedDays: isNewWeek ? 0 : (data.currentWeekUnusedDays ?? 0),
+      weeklyStages: data.weeklyStages,
+      weeklyMinutes: data.weeklyMinutes,
+      joinedAcademicWeek: data.joinedAcademicWeek,
       updatedAt: serverTimestamp(),
     };
 
@@ -1350,6 +1450,15 @@ export async function syncUserProfile(
       ...(mergedClassCode ? { classCode: mergedClassCode } : {}),
       ...(mergedClassName ? { className: mergedClassName } : {}),
       ...(role === 'parent' && userProfile.parentName ? { parentName: userProfile.parentName } : {}),
+      ...(isNewWeek
+        ? {
+            currentWeekId: weekId,
+            currentWeekStage: 0,
+            currentWeekMinutes: 0,
+            currentWeekStageDates: {},
+            currentWeekUnusedDays: 0,
+          }
+        : {}),
       updatedAt: serverTimestamp(),
       ...(user.photoURL ? { photoURL: user.photoURL } : {}),
     };
@@ -1445,10 +1554,11 @@ export function subscribeUserProfile(
     userRef,
     (snap) => {
       if (snap.exists()) {
-        onUpdate({
+        const raw = {
           uid: snap.id,
           ...(snap.data() as Partial<UserProfile>),
-        } as UserProfile);
+        } as UserProfile;
+        onUpdate(normalizeUserForCurrentWeek(raw));
       } else {
         onUpdate(null);
       }
@@ -1469,15 +1579,19 @@ export async function updateStageProgress(
   const totalMinutes = clampedStage * 30;
   const { weekId, weekLabel, weekNumber, year } = getCurrentWeekInfo();
 
-  // Compute current academic week number (1..35)
+  // Compute current academic week number (1..35) using Monday 09:00 AM rollover boundary
   let academicWeekNumber = 1;
+  const adjustedNow = new Date(Date.now() - 9 * 60 * 60 * 1000);
   try {
     const calSnap = await getDoc(doc(db, 'app_settings', 'academic_calendar'));
     const weeks =
       calSnap.exists() && Array.isArray(calSnap.data()?.weeks) && calSnap.data().weeks.length > 0
         ? calSnap.data().weeks
         : [];
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const yyyy = adjustedNow.getFullYear();
+    const mm = String(adjustedNow.getMonth() + 1).padStart(2, '0');
+    const dd = String(adjustedNow.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
     if (weeks.length > 0) {
       const matched = weeks.find((w: any) => todayStr >= w.startDate && todayStr <= w.endDate);
       if (matched) {
@@ -1497,12 +1611,12 @@ export async function updateStageProgress(
     } else {
       // Default 2026-09-07 academic calendar
       const base = new Date(2026, 8, 7);
-      const diffDays = Math.floor((Date.now() - base.getTime()) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.floor((adjustedNow.getTime() - base.getTime()) / (1000 * 60 * 60 * 24));
       academicWeekNumber = Math.min(35, Math.max(1, Math.floor(diffDays / 7) + 1));
     }
   } catch {
     const base = new Date(2026, 8, 7);
-    const diffDays = Math.floor((Date.now() - base.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor((adjustedNow.getTime() - base.getTime()) / (1000 * 60 * 60 * 24));
     academicWeekNumber = Math.min(35, Math.max(1, Math.floor(diffDays / 7) + 1));
   }
 
@@ -1655,6 +1769,7 @@ export function subscribeAllUsers(
   return onSnapshot(
     q,
     (snap) => {
+      const activeWeekId = getCurrentWeekInfo().weekId;
       const users: UserProfile[] = [];
       snap.forEach((d) => {
         const item = { uid: d.id, ...d.data() } as UserProfile;
@@ -1662,13 +1777,14 @@ export function subscribeAllUsers(
           deleteDoc(d.ref).catch(() => {});
           return;
         }
-        users.push(item);
+        users.push(normalizeUserForCurrentWeek(item, activeWeekId));
       });
       onUpdate(users);
     },
     (error) => {
       console.error('Subscribe all users error:', error);
       onSnapshot(usersRef, (snap) => {
+        const activeWeekId = getCurrentWeekInfo().weekId;
         const users: UserProfile[] = [];
         snap.forEach((d) => {
           const item = { uid: d.id, ...d.data() } as UserProfile;
@@ -1676,7 +1792,7 @@ export function subscribeAllUsers(
             deleteDoc(d.ref).catch(() => {});
             return;
           }
-          users.push(item);
+          users.push(normalizeUserForCurrentWeek(item, activeWeekId));
         });
         onUpdate(users);
       }, onError);
@@ -3012,6 +3128,7 @@ export function subscribeClassroomStudents(
   return onSnapshot(
     q,
     (snap) => {
+      const activeWeekId = getCurrentWeekInfo().weekId;
       const list: UserProfile[] = [];
       snap.forEach((d) => {
         const item = { uid: d.id, ...(d.data() as Partial<UserProfile>) } as UserProfile;
@@ -3020,7 +3137,7 @@ export function subscribeClassroomStudents(
           return;
         }
         if (item.role === 'parent' || item.userType === 'parent' || item.studentName) {
-          list.push(item);
+          list.push(normalizeUserForCurrentWeek(item, activeWeekId));
         }
       });
       list.sort((a, b) => (a.studentName || a.displayName || '').localeCompare(b.studentName || b.displayName || '', 'tr'));
