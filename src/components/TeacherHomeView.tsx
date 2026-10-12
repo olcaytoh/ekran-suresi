@@ -16,7 +16,15 @@ import {
   Check,
   FileSpreadsheet,
   ExternalLink,
+  Lock,
+  Unlock,
+  Clock,
 } from 'lucide-react';
+import {
+  toggleClassroomJoinLock,
+  approveStudentForClassroom,
+  rejectStudentFromClassroom,
+} from '../lib/firebase';
 import { seed25ClassroomStudents } from '../lib/demoData';
 import { AcademicCalendarModal } from './AcademicCalendarModal';
 import { StatsExportModal } from './StatsExportModal';
@@ -25,6 +33,7 @@ import {
   subscribeAcademicCalendar,
   generateDefaultAcademicCalendar,
 } from '../lib/academicCalendar';
+import { playLockSound, playTapSound } from '../lib/soundUtils';
 
 interface TeacherHomeViewProps {
   users: UserProfile[];
@@ -515,10 +524,47 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
         />
 
         <div className="relative z-10 flex items-center justify-between gap-2 flex-wrap">
-          <h3 className="text-sm font-black tracking-tight text-slate-900 flex items-center gap-1.5 [font-family:inherit]">
-            <Users className="w-4 h-4 text-violet-500" />
-            <span>Öğrenci Bilgileri ({sortedStudents.length} / {totalStudents})</span>
-          </h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-black tracking-tight text-slate-900 flex items-center gap-1.5 [font-family:inherit]">
+              <Users className="w-4 h-4 text-violet-500" />
+              <span>
+                Öğrenci Bilgileri ({sortedStudents.length} / {classroom?.studentTargetCount || teacherProfile?.studentTargetCount || 25} Kontenjan)
+              </span>
+            </h3>
+            {classroom?.id && (
+              <button
+                type="button"
+                id="btn-teacher-toggle-class-lock"
+                onClick={() => {
+                  const nextLock = !classroom.isJoinLocked;
+                  playLockSound(nextLock);
+                  toggleClassroomJoinLock(classroom.id, nextLock);
+                }}
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-black inline-flex items-center gap-1 cursor-pointer active:scale-95 transition-all border shadow-2xs ${
+                  classroom.isJoinLocked
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700'
+                    : 'bg-emerald-100/80 hover:bg-emerald-200 text-emerald-900 border-emerald-300'
+                }`}
+                title={
+                  classroom.isJoinLocked
+                    ? 'Sınıfa yeni veli girişi şu an kilitli. Açmak için tıklayın.'
+                    : 'Tüm velileriniz katıldıktan sonra yabancıların girmemesi için sınıfı kilitleyin.'
+                }
+              >
+                {classroom.isJoinLocked ? (
+                  <>
+                    <Lock className="w-3 h-3" />
+                    <span>Veli Girişi Kilitli (Aç)</span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="w-3 h-3 text-emerald-700" />
+                    <span>Veli Girişi Açık (Kilitle)</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
 
           <button
             type="button"
@@ -531,6 +577,60 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             <span>İstatistik Çıktısı (PDF / Excel)</span>
           </button>
         </div>
+
+        {/* Onay Bekleyen Veli / Öğrenciler Uyarı Kutusu */}
+        {studentList.some((s) => s.classApprovalStatus === 'pending') && (
+          <div className="relative z-10 p-3 rounded-2xl bg-amber-50/95 border-2 border-amber-400 shadow-sm space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs font-black text-amber-950">
+                <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                <span>
+                  Onayınızı Bekleyen Yeni Katılımlar ({studentList.filter((s) => s.classApprovalStatus === 'pending').length})
+                </span>
+              </div>
+              <span className="text-[10.5px] font-bold text-amber-800">
+                Tanımadığınız kişileri &quot;Reddet&quot; diyerek sınıftan çıkarabilirsiniz.
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {studentList
+                .filter((s) => s.classApprovalStatus === 'pending')
+                .map((pendingStudent) => (
+                  <div
+                    key={pendingStudent.uid}
+                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-amber-200 shadow-2xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-slate-900">
+                        {pendingStudent.studentName || pendingStudent.displayName}
+                      </div>
+                      <div className="text-[10.5px] font-semibold text-slate-600">
+                        Veli: {pendingStudent.parentName || 'Belirtilmedi'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => approveStudentForClassroom(pendingStudent.uid)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black inline-flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                      >
+                        <Check className="w-3 h-3 stroke-[3]" />
+                        <span>Onayla</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rejectStudentFromClassroom(pendingStudent.uid)}
+                        className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black inline-flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                      >
+                        <UserX className="w-3 h-3" />
+                        <span>Reddet / Çıkar</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* Arama ve Filtre Çubuğu */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
@@ -549,7 +649,10 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
           <div className="flex items-center gap-1 flex-wrap">
             <button
               type="button"
-              onClick={() => setFilterCategory('all')}
+              onClick={() => {
+                playTapSound();
+                setFilterCategory('all');
+              }}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'all'
                   ? 'bg-slate-900 text-white border-slate-900'
@@ -560,7 +663,10 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setFilterCategory('critical')}
+              onClick={() => {
+                playTapSound();
+                setFilterCategory('critical');
+              }}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'critical'
                   ? 'bg-rose-500 text-white border-rose-500'
@@ -571,7 +677,10 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setFilterCategory('warning')}
+              onClick={() => {
+                playTapSound();
+                setFilterCategory('warning');
+              }}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'warning'
                   ? 'bg-orange-500 text-white border-orange-500'
@@ -582,7 +691,10 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setFilterCategory('moderate')}
+              onClick={() => {
+                playTapSound();
+                setFilterCategory('moderate');
+              }}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'moderate'
                   ? 'bg-amber-400 text-slate-950 border-amber-500'
@@ -593,7 +705,10 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setFilterCategory('safe')}
+              onClick={() => {
+                playTapSound();
+                setFilterCategory('safe');
+              }}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all active:scale-95 border ${
                 filterCategory === 'safe'
                   ? 'bg-emerald-500 text-white border-emerald-500'
@@ -716,6 +831,12 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                         <span className={`text-[9.5px] font-semibold tracking-wide px-1.5 py-0.5 rounded-md leading-none shrink-0 ${badgeColorClass}`}>
                           {category.name}
                         </span>
+                        {user.classApprovalStatus === 'pending' && (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-400 leading-none shrink-0 inline-flex items-center gap-0.5">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>Onay Bekliyor</span>
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -736,6 +857,28 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {user.classApprovalStatus === 'pending' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => approveStudentForClassroom(user.uid)}
+                            title="Bu velinin/öğrencinin sınıfa katılımını ONAYLA"
+                            className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black inline-flex items-center gap-0.5 cursor-pointer active:scale-95"
+                          >
+                            <Check className="w-3 h-3 stroke-[3]" />
+                            <span>Onayla</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => rejectStudentFromClassroom(user.uid)}
+                            title="Bu kişiyi sınıftan REDDET ve çıkar"
+                            className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black inline-flex items-center gap-0.5 cursor-pointer active:scale-95"
+                          >
+                            <UserX className="w-3 h-3" />
+                            <span>Reddet</span>
+                          </button>
+                        </>
+                      )}
                       <div className="text-right leading-none flex items-center gap-1.5">
                         <span className="text-[10px] font-medium text-slate-500 tabular-nums">
                           {stage}. Kademe

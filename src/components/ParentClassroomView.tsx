@@ -9,6 +9,8 @@ import {
   joinInstitutionWithCode,
   joinClassroomWithCode,
   changeCurrentUserPassword,
+  toggleClassroomJoinLock,
+  regenerateClassroomCode,
 } from '../lib/firebase';
 import {
   School,
@@ -29,6 +31,8 @@ import {
   RefreshCw,
   PlusCircle,
   Lock,
+  Unlock,
+  Clock,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -777,34 +781,95 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
             </div>
 
             {(userProfile?.classCode || classroom?.code) ? (
-              <div className="p-3 rounded-2xl bg-indigo-50/90 border border-indigo-300 flex items-center justify-between gap-2 flex-wrap shadow-2xs">
-                <div>
-                  <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider block">
-                    {userProfile?.className || classroom?.name || 'Sınıfınız'}
-                  </span>
-                  <span className="text-base sm:text-lg font-mono font-bold text-indigo-950 tracking-wider">
-                    {userProfile?.classCode || classroom?.code}
-                  </span>
+              <div className="space-y-2">
+                <div className="p-3 rounded-2xl bg-indigo-50/90 border border-indigo-300 flex items-center justify-between gap-2 flex-wrap shadow-2xs">
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">
+                        {userProfile?.className || classroom?.name || 'Sınıfınız'}
+                      </span>
+                      {classroom?.isJoinLocked && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-600 text-white inline-flex items-center gap-0.5">
+                          <Lock className="w-2.5 h-2.5" />
+                          <span>Katılım Kilitli</span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-base sm:text-lg font-mono font-bold text-indigo-950 tracking-wider">
+                      {userProfile?.classCode || classroom?.code}
+                    </span>
+                    <div className="text-[10.5px] font-bold text-slate-600 mt-0.5">
+                      Maksimum Kontenjan: {classroom?.studentTargetCount || userProfile?.studentTargetCount || 25} Öğrenci
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      id="btn-copy-teacher-class-code"
+                      onClick={handleCopyTeacherClassCode}
+                      className="btn-3d-palette-primary px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      title="Veliler için sınıf kodunu kopyala"
+                    >
+                      {copiedTeacherClassCode ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                          <span>Kod Kopyalandı!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>Veliler İçin Kodu Kopyala</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  id="btn-copy-teacher-class-code"
-                  onClick={handleCopyTeacherClassCode}
-                  className="btn-3d-palette-primary px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
-                  title="Veliler için sınıf kodunu kopyala"
-                >
-                  {copiedTeacherClassCode ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
-                      <span>Kod Kopyalandı!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Veliler İçin Kodu Kopyala</span>
-                    </>
-                  )}
-                </button>
+
+                {/* Güvenlik Butonları: Sınıf Katılım Kilidi ve Yeni Sınıf Kodu Üret */}
+                {(classroom?.id || userProfile?.classId) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const targetClassId = classroom?.id || userProfile?.classId;
+                        if (!targetClassId) return;
+                        await toggleClassroomJoinLock(targetClassId, !classroom?.isJoinLocked);
+                      }}
+                      className={`py-2 px-3 rounded-xl text-xs font-black inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all border shadow-2xs ${
+                        classroom?.isJoinLocked
+                          ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700'
+                          : 'bg-emerald-100/90 hover:bg-emerald-200 text-emerald-950 border-emerald-400'
+                      }`}
+                    >
+                      {classroom?.isJoinLocked ? (
+                        <>
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>Katılım Kilitli (Kilidi Aç)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Katılım Açık (Sınıfı Kilitle)</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const targetClassId = classroom?.id || userProfile?.classId;
+                        if (!targetClassId) return;
+                        const newCode = await regenerateClassroomCode(targetClassId, userProfile?.uid);
+                        onProfileUpdated?.({ classCode: newCode });
+                      }}
+                      className="py-2 px-3 rounded-xl text-xs font-bold bg-white/80 hover:bg-indigo-50 text-indigo-900 border border-indigo-300 inline-flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-2xs"
+                      title="Sınıf kodunuz yabancıların eline geçtiyse tek tıkla yenileyin (mevcut velileriniz sınıfta kalmaya devam eder)"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Sınıf Kodunu Yenile</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div
@@ -892,33 +957,56 @@ export const ParentClassroomView: React.FC<ParentClassroomViewProps> = ({
 
             {/* Mevcut Bağlı Sınıf Özeti (Varsa) */}
             {(userProfile?.classId || classroom?.id) && !showChangeClass && (
-              <div className="p-3 rounded-2xl bg-white/70 border border-emerald-300/80 flex items-center justify-between gap-2 flex-wrap shadow-2xs">
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-700 block uppercase tracking-wider">
-                    Bağlı Olduğunuz Sınıf
-                  </span>
-                  <span className="text-sm font-bold text-slate-950">
-                    {userProfile?.className || classroom?.name || 'Sınıf'}
-                  </span>
-                  {(userProfile?.classCode || classroom?.code) && (
-                    <span className="text-xs font-mono font-bold text-emerald-900 ml-2 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300">
-                      {userProfile?.classCode || classroom?.code}
-                    </span>
-                  )}
-                  {(userProfile?.institutionName || classroom?.institutionName) && (
-                    <div className="text-[11px] text-slate-700 font-bold mt-0.5 flex items-center gap-1">
-                      <Building2 className="w-3 h-3 text-rose-500" />
-                      <span>{userProfile?.institutionName || classroom?.institutionName}</span>
+              <div className="space-y-2">
+                <div className="p-3 rounded-2xl bg-white/70 border border-emerald-300/80 flex items-center justify-between gap-2 flex-wrap shadow-2xs">
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                        Bağlı Olduğunuz Sınıf
+                      </span>
+                      {userProfile?.classApprovalStatus === 'pending' ? (
+                        <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-400 inline-flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" />
+                          <span>Öğretmen Onayı Bekleniyor</span>
+                        </span>
+                      ) : (
+                        <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-0.5">
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          <span>Onaylı Üye</span>
+                        </span>
+                      )}
                     </div>
-                  )}
+                    <span className="text-sm font-bold text-slate-950">
+                      {userProfile?.className || classroom?.name || 'Sınıf'}
+                    </span>
+                    {(userProfile?.classCode || classroom?.code) && (
+                      <span className="text-xs font-mono font-bold text-emerald-900 ml-2 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300">
+                        {userProfile?.classCode || classroom?.code}
+                      </span>
+                    )}
+                    {(userProfile?.institutionName || classroom?.institutionName) && (
+                      <div className="text-[11px] text-slate-700 font-bold mt-0.5 flex items-center gap-1">
+                        <Building2 className="w-3 h-3 text-rose-500" />
+                        <span>{userProfile?.institutionName || classroom?.institutionName}</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowChangeClass(true)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 cursor-pointer active:scale-95 transition-all shadow-2xs"
+                  >
+                    Farklı Sınıfa Bağlan
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowChangeClass(true)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 cursor-pointer active:scale-95 transition-all shadow-2xs"
-                >
-                  Farklı Sınıfa Bağlan
-                </button>
+                {userProfile?.classApprovalStatus === 'pending' && (
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-[11px] font-bold text-amber-900 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      Sınıf katılım isteğiniz sınıf öğretmeninize iletildi. Öğretmeniniz onayladığında durumunuz &quot;Onaylı Üye&quot; olarak güncellenecektir.
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

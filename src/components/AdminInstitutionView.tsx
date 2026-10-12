@@ -12,7 +12,15 @@ import {
   changeCurrentUserPassword,
   setUserRole,
   isBlockedEmail,
+  subscribeInstitution,
+  toggleInstitutionJoinLock,
+  toggleClassroomJoinLock,
+  approveTeacherForInstitution,
+  rejectTeacherFromInstitution,
+  approveStudentForClassroom,
+  rejectStudentFromClassroom,
 } from '../lib/firebase';
+import { playLockSound, playTapSound } from '../lib/soundUtils';
 import {
   Building2,
   School,
@@ -44,6 +52,9 @@ import {
   Info,
   FileSpreadsheet,
   MessageSquare,
+  Lock,
+  Unlock,
+  Clock,
 } from 'lucide-react';
 import { StatsExportModal } from './StatsExportModal';
 import { SendMessageModal } from './SendMessageModal';
@@ -71,6 +82,10 @@ interface AdminInstitutionViewProps {
   onSwitchToTeacherMode?: (classroom?: ClassroomInfo) => void;
   onNavigateToBadges?: (classId?: string) => void;
   isDemo?: boolean;
+  selectedClassId?: string | null;
+  onSelectClassId?: (classId: string | null) => void;
+  adminSection?: 'classrooms' | 'registered_emails';
+  onChangeAdminSection?: (section: 'classrooms' | 'registered_emails') => void;
 }
 
 function computeClassStats(students: UserProfile[]) {
@@ -112,10 +127,26 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   onSwitchToTeacherMode,
   onNavigateToBadges,
   isDemo = false,
+  selectedClassId: controlledSelectedClassId,
+  onSelectClassId,
+  adminSection: controlledAdminSection,
+  onChangeAdminSection,
 }) => {
   // Navigation & Tabs
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [adminSection, setAdminSection] = useState<'classrooms' | 'registered_emails'>('classrooms');
+  const [internalSelectedClassId, setInternalSelectedClassId] = useState<string | null>(null);
+  const [internalAdminSection, setInternalAdminSection] = useState<'classrooms' | 'registered_emails'>('classrooms');
+
+  const selectedClassId = controlledSelectedClassId !== undefined ? controlledSelectedClassId : internalSelectedClassId;
+  const setSelectedClassId = (val: string | null) => {
+    setInternalSelectedClassId(val);
+    onSelectClassId?.(val);
+  };
+
+  const adminSection = controlledAdminSection !== undefined ? controlledAdminSection : internalAdminSection;
+  const setAdminSection = (val: 'classrooms' | 'registered_emails') => {
+    setInternalAdminSection(val);
+    onChangeAdminSection?.(val);
+  };
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,6 +175,8 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [isSavingName, setIsSavingName] = useState(false);
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [isGeneratingAdminCode, setIsGeneratingAdminCode] = useState(false);
+  const [isInstitutionLocked, setIsInstitutionLocked] = useState(false);
+  const [isTogglingInstLock, setIsTogglingInstLock] = useState(false);
   const [codeChangeConfirmModal, setCodeChangeConfirmModal] = useState<'institution' | 'admin' | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isStatsExportModalOpen, setIsStatsExportModalOpen] = useState(false);
@@ -189,6 +222,113 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         });
     }
   }, [currentUser?.uid, currentUser?.institutionId, currentAdminCode, isDemo]);
+
+  // Subscribe to institution document for real-time isJoinLocked status
+  useEffect(() => {
+    const instId = currentUser?.institutionId || (isDemo ? 'demo-institution-1' : '');
+    if (!instId) return;
+    const unsub = subscribeInstitution(instId, (inst) => {
+      if (inst) {
+        setIsInstitutionLocked(Boolean(inst.isJoinLocked));
+      }
+    });
+    return () => unsub();
+  }, [currentUser?.institutionId, isDemo]);
+
+  const handleToggleInstitutionLock = async () => {
+    const instId = currentUser?.institutionId || currentUser?.uid || 'demo-institution-1';
+    const nextLocked = !isInstitutionLocked;
+    playLockSound(nextLocked);
+    try {
+      setIsTogglingInstLock(true);
+      await toggleInstitutionJoinLock(instId, nextLocked, currentUser?.uid);
+      setIsInstitutionLocked(nextLocked);
+      setFeedback({
+        type: 'success',
+        text: nextLocked
+          ? '🔒 Kurum katılımı kilitlendi! Artık Kurum Kodunu bilen yabancı kişiler kurumunuza katılamaz.'
+          : '🔓 Kurum katılım kilidi açıldı! Öğretmenler Kurum Kodu ile bağlanabilir.',
+      });
+      setTimeout(() => setFeedback(null), 4000);
+    } catch (err) {
+      console.error('Error toggling institution lock:', err);
+      setFeedback({ type: 'error', text: 'Kurum kilidi güncellenirken hata oluştu.' });
+    } finally {
+      setIsTogglingInstLock(false);
+    }
+  };
+
+  const handleToggleClassroomLock = async (classroom: ClassroomInfo) => {
+    const nextLocked = !classroom.isJoinLocked;
+    playLockSound(nextLocked);
+    try {
+      await toggleClassroomJoinLock(classroom.id, nextLocked);
+      setFeedback({
+        type: 'success',
+        text: nextLocked
+          ? `🔒 "${classroom.name}" sınıfına yeni veli katılımı kilitlendi.`
+          : `🔓 "${classroom.name}" sınıfının veli katılım kilidi açıldı.`,
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Error toggling classroom lock:', err);
+      setFeedback({ type: 'error', text: 'Sınıf kilidi güncellenemedi.' });
+    }
+  };
+
+  const handleApproveTeacher = async (teacherUid: string, classId?: string, label?: string) => {
+    try {
+      await approveTeacherForInstitution(teacherUid, classId);
+      setFeedback({
+        type: 'success',
+        text: `✅ "${label || 'Öğretmen / Sınıf'}" kurum katılımı onaylandı.`,
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Error approving teacher:', err);
+      setFeedback({ type: 'error', text: 'Onay işlemi sırasında hata oluştu.' });
+    }
+  };
+
+  const handleRejectTeacher = async (teacherUid: string, classId?: string, label?: string) => {
+    try {
+      await rejectTeacherFromInstitution(teacherUid, classId);
+      setFeedback({
+        type: 'success',
+        text: `🚫 "${label || 'Öğretmen / Sınıf'}" kurum bağlantısı reddedildi ve çıkarıldı.`,
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Error rejecting teacher:', err);
+      setFeedback({ type: 'error', text: 'Reddetme işlemi sırasında hata oluştu.' });
+    }
+  };
+
+  const handleApproveStudent = async (student: UserProfile) => {
+    try {
+      await approveStudentForClassroom(student.uid);
+      setFeedback({
+        type: 'success',
+        text: `✅ "${student.studentName || student.displayName}" sınıf katılımı onaylandı.`,
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Error approving student:', err);
+    }
+  };
+
+  const handleRejectStudent = async (student: UserProfile) => {
+    try {
+      await rejectStudentFromClassroom(student.uid);
+      setFeedback({
+        type: 'success',
+        text: `🚫 "${student.studentName || student.displayName}" sınıftan çıkarıldı.`,
+      });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Error rejecting student:', err);
+    }
+  };
 
   // Modals state
   const [classToDelete, setClassToDelete] = useState<ClassroomInfo | null>(null);
@@ -500,6 +640,42 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     () => allRegisteredUsers.filter((u) => !u.classId && u.role !== 'admin').length,
     [allRegisteredUsers]
   );
+
+  // Giriş ekranındaki "test girişi" butonlarıyla her basışta oluşan deneme hesapları
+  const TEST_LOGIN_EMAILS = ['veli@example.com', 'ogretmen@okul.k12.tr'];
+  const testAccounts = useMemo(
+    () =>
+      allRegisteredUsers.filter(
+        (u) =>
+          u.role !== 'admin' &&
+          u.uid !== currentUser?.uid &&
+          TEST_LOGIN_EMAILS.includes((u.email || '').trim().toLowerCase())
+      ),
+    [allRegisteredUsers, currentUser?.uid]
+  );
+  const [isCleaningTests, setIsCleaningTests] = useState(false);
+
+  const handleCleanTestAccounts = async () => {
+    if (testAccounts.length === 0 || isCleaningTests) return;
+    const ok = window.confirm(
+      `${testAccounts.length} adet deneme (test girişi) hesabı kalıcı olarak silinecek. ` +
+        `Bunlar veli@example.com ve ogretmen@okul.k12.tr e-postalı test kayıtlarıdır. Devam edilsin mi?`
+    );
+    if (!ok) return;
+    try {
+      setIsCleaningTests(true);
+      for (const u of testAccounts) {
+        await onDeleteUser?.(u.uid, u.classId);
+      }
+      setFeedback({ type: 'success', text: `${testAccounts.length} deneme hesabı silindi.` });
+      setTimeout(() => setFeedback(null), 3500);
+    } catch (err) {
+      console.error('Error cleaning test accounts:', err);
+      setFeedback({ type: 'error', text: 'Deneme hesapları silinirken hata oluştu.' });
+    } finally {
+      setIsCleaningTests(false);
+    }
+  };
 
   const handleCopyInstCode = () => {
     if (!currentInstCode) return;
@@ -1803,47 +1979,77 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 </p>
               </div>
 
-              <div className="relative z-10 pt-1 border-t border-rose-200/60">
+              <div className="relative z-10 pt-1 border-t border-rose-200/60 space-y-1.5">
                 {currentInstCode ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 w-full">
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 w-full">
+                      <button
+                        type="button"
+                        id="btn-copy-inst-code-main"
+                        onClick={handleCopyInstCode}
+                        className="px-2 py-1.5 rounded-xl text-[11px] sm:text-xs font-black text-sky-950 inline-flex items-center justify-center gap-1 cursor-pointer active:scale-95 w-full transition-all"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(186,230,253,0.95), rgba(125,211,252,0.75))',
+                          backdropFilter: 'blur(12px)',
+                          WebkitBackdropFilter: 'blur(12px)',
+                          border: '1.5px solid rgba(14, 165, 233, 0.9)',
+                          boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
+                        }}
+                        title="Kurum Kodunu Kopyala"
+                      >
+                        {copiedInstCode ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
+                            <span>Kopyalandı</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
+                            <span>Kopyala</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-regenerate-inst-code"
+                        onClick={handleClickGenerateInstCode}
+                        disabled={isGeneratingCode}
+                        className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-xl bg-white/70 hover:bg-rose-100 text-rose-800 border border-rose-300 text-[11px] sm:text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs w-full backdrop-blur-xs"
+                        title="Yeni bir Kurum Kodu üret"
+                      >
+                        <RefreshCw className={`w-3 h-3 shrink-0 ${isGeneratingCode ? 'animate-spin text-rose-600' : ''}`} />
+                        <span className="truncate">Yeni Kod</span>
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      id="btn-copy-inst-code-main"
-                      onClick={handleCopyInstCode}
-                      className="px-2 py-1.5 rounded-xl text-[11px] sm:text-xs font-black text-sky-950 inline-flex items-center justify-center gap-1 cursor-pointer active:scale-95 w-full transition-all"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(186,230,253,0.95), rgba(125,211,252,0.75))',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        border: '1.5px solid rgba(14, 165, 233, 0.9)',
-                        boxShadow: '0 4px 14px rgba(14, 165, 233, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.9)',
-                      }}
-                      title="Kurum Kodunu Kopyala"
+                      id="btn-toggle-inst-lock"
+                      onClick={handleToggleInstitutionLock}
+                      disabled={isTogglingInstLock}
+                      className={`w-full py-1.5 px-2.5 rounded-xl text-[11px] font-black inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 border shadow-2xs ${
+                        isInstitutionLocked
+                          ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-700'
+                          : 'bg-emerald-100/85 hover:bg-emerald-200/90 text-emerald-950 border-emerald-400/80'
+                      }`}
+                      title={
+                        isInstitutionLocked
+                          ? 'Kuruma yeni öğretmen girişi şu an kilitli. Açmak için tıklayın.'
+                          : 'Tüm öğretmenleriniz bağlandıktan sonra yabancıların girmemesi için kilitleyin.'
+                      }
                     >
-                      {copiedInstCode ? (
+                      {isInstitutionLocked ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
-                          <span>Kopyalandı</span>
+                          <Lock className="w-3.5 h-3.5 shrink-0" />
+                          <span>Katılım Kilitli (Kilidi Aç)</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3.5 h-3.5 text-sky-800 stroke-[2.5]" />
-                          <span>Kopyala</span>
+                          <Unlock className="w-3.5 h-3.5 shrink-0 text-emerald-700" />
+                          <span>Katılım Açık (Kurumu Kilitle)</span>
                         </>
                       )}
                     </button>
-                    <button
-                      type="button"
-                      id="btn-regenerate-inst-code"
-                      onClick={handleClickGenerateInstCode}
-                      disabled={isGeneratingCode}
-                      className="inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-xl bg-white/70 hover:bg-rose-100 text-rose-800 border border-rose-300 text-[11px] sm:text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-2xs w-full backdrop-blur-xs"
-                      title="Yeni bir Kurum Kodu üret"
-                    >
-                      <RefreshCw className={`w-3 h-3 shrink-0 ${isGeneratingCode ? 'animate-spin text-rose-600' : ''}`} />
-                      <span className="truncate">Yeni Kod</span>
-                    </button>
-                  </div>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -2197,6 +2403,18 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                                   {resolveClassroomCode(classroom)}
                                 </span>
                               )}
+                              {classroom.isJoinLocked && (
+                                <span className="text-[8.5px] font-black px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300 shrink-0 leading-none inline-flex items-center gap-0.5">
+                                  <Lock className="w-2.5 h-2.5" />
+                                  <span>Kilitli</span>
+                                </span>
+                              )}
+                              {classroom.institutionApprovalStatus === 'pending' && (
+                                <span className="text-[8.5px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-400 shrink-0 leading-none inline-flex items-center gap-0.5 animate-pulse">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  <span>Onay Bekliyor</span>
+                                </span>
+                              )}
                             </div>
                             <p className="text-[9.5px] text-slate-800 truncate font-semibold leading-none mt-1">
                               Sn. {resolveTeacherDisplayName(classroom)} • {stats.totalStudents}/
@@ -2220,6 +2438,57 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                         </div>
 
                         <div className="flex items-center gap-1 flex-shrink-0">
+                          {classroom.institutionApprovalStatus === 'pending' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApproveTeacher(classroom.teacherUid, classroom.id, classroom.name);
+                                }}
+                                title="Bu sınıfın / öğretmenin kuruma katılımını ONAYLA"
+                                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black inline-flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                              >
+                                <Check className="w-3 h-3 stroke-[3]" />
+                                <span>Onayla</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRejectTeacher(classroom.teacherUid, classroom.id, classroom.name);
+                                }}
+                                title="Bu sınıfın / öğretmenin kurum bağlantısını REDDET ve çıkar"
+                                className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black inline-flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                              >
+                                <UserX className="w-3 h-3" />
+                                <span>Reddet</span>
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleClassroomLock(classroom);
+                            }}
+                            title={
+                              classroom.isJoinLocked
+                                ? 'Sınıf yeni veli girişine KİLİTLİ (Açmak için tıklayın)'
+                                : 'Sınıfı yeni veli girişine KİLİTLE'
+                            }
+                            className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 shadow-2xs backdrop-blur-xs ${
+                              classroom.isJoinLocked
+                                ? 'bg-rose-100 hover:bg-rose-200 text-rose-700 border-rose-300'
+                                : 'bg-white/50 hover:bg-amber-100 text-slate-700 border-white/70'
+                            }`}
+                          >
+                            {classroom.isJoinLocked ? (
+                              <Lock className="w-3.5 h-3.5" />
+                            ) : (
+                              <Unlock className="w-3.5 h-3.5" />
+                            )}
+                          </button>
                           <button
                             type="button"
                             id={`btn-export-class-${classroom.id}`}
@@ -2312,6 +2581,28 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1 flex-shrink-0">
+                        {teacher.institutionApprovalStatus === 'pending' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveTeacher(teacher.uid, undefined, teacher.displayName)}
+                              title="Öğretmenin kuruma katılımını ONAYLA"
+                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black inline-flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                            >
+                              <Check className="w-3 h-3 stroke-[3]" />
+                              <span>Onayla</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectTeacher(teacher.uid, undefined, teacher.displayName)}
+                              title="Öğretmenin kurum bağlantısını REDDET"
+                              className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black inline-flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                            >
+                              <UserX className="w-3 h-3" />
+                              <span>Reddet</span>
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleOpenEditUser(teacher)}
@@ -2371,6 +2662,23 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               Sisteme kayıt olan tüm hesapları buradan inceleyebilirsiniz. Yanlışlıkla açılan veya hatalı e-posta ile üye olunan bir hesap olduğunda, yanındaki <strong>&quot;Sıfırla &amp; Sil&quot;</strong> butonunu kullanarak hesabı veritabanından tamamen silebilirsiniz. Böylece o e-posta adresi serbest kalır ve kullanıcı sıfırdan yeniden kayıt olabilir.
             </p>
           </div>
+
+          {testAccounts.length > 0 && (
+            <div className="relative z-10 flex items-center justify-between gap-2 rounded-2xl p-3 bg-amber-50/80 border border-amber-300">
+              <p className="text-[11px] text-amber-900 font-bold leading-snug">
+                {testAccounts.length} adet deneme (test girişi) hesabı bulundu.
+              </p>
+              <button
+                type="button"
+                id="btn-clean-test-accounts"
+                onClick={handleCleanTestAccounts}
+                disabled={isCleaningTests}
+                className="px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap cursor-pointer bg-rose-600 hover:bg-rose-700 text-white shadow-xs active:scale-95 disabled:opacity-50"
+              >
+                {isCleaningTests ? 'Siliniyor...' : 'Deneme hesaplarını sil'}
+              </button>
+            </div>
+          )}
 
           {/* Arama & Rol Filtreleri */}
           <div className="relative z-10 space-y-2">

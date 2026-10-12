@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   auth,
@@ -48,7 +48,8 @@ import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { ParentGuideModal } from './components/ParentGuideModal';
 import { AdminCodePromptModal } from './components/AdminCodePromptModal';
 import { NotificationInboxModal } from './components/NotificationInboxModal';
-import { Loader2, GraduationCap, School, ChevronRight, X } from 'lucide-react';
+import { SendMessageModal } from './components/SendMessageModal';
+import { Loader2, GraduationCap, School, ChevronRight, X, Plus } from 'lucide-react';
 import { DEMO_3_CLASSES, DEMO_INSTITUTION } from './lib/demoData';
 
 export default function App() {
@@ -77,12 +78,16 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
   const [parentTab, setParentTab] = useState<ParentTabType>('home');
+  const [tabHistory, setTabHistory] = useState<ParentTabType[]>([]);
+  const [adminSelectedClassId, setAdminSelectedClassId] = useState<string | null>(null);
+  const [adminSection, setAdminSection] = useState<'classrooms' | 'registered_emails'>('classrooms');
   const [showClassSetup, setShowClassSetup] = useState(false);
   const [showParentGuide, setShowParentGuide] = useState(false);
   const [showTeacherClassPicker, setShowTeacherClassPicker] = useState(false);
   const [showAdminCodePrompt, setShowAdminCodePrompt] = useState(false);
   const [inAppMessages, setInAppMessages] = useState<InAppMessage[]>([]);
   const [showInboxModal, setShowInboxModal] = useState(false);
+  const [showComposeModal, setShowComposeModal] = useState(false);
   const [impersonatedParent, setImpersonatedParent] = useState<UserProfile | null>(null);
   const [weekInfo, setWeekInfo] = useState(() => getCurrentWeekInfo());
 
@@ -634,8 +639,14 @@ export default function App() {
           // Default tab is always 'home'
           setParentTab('home');
 
-          // If user doesn't have classId and hasn't chosen role yet, prompt setup
-          if (!profile.classId && !profile.className && profile.role !== 'parent') {
+          // If user doesn't have classId/className and hasn't connected to an institution yet, prompt setup
+          if (
+            !profile.classId &&
+            !profile.className &&
+            !profile.institutionId &&
+            !profile.institutionCode &&
+            profile.role !== 'parent'
+          ) {
             setShowClassSetup(true);
           }
         } catch (err: any) {
@@ -744,7 +755,117 @@ export default function App() {
   const handleExitParentImpersonation = () => {
     setImpersonatedParent(null);
     setParentTab('home');
+    setTabHistory([]);
   };
+
+  const handleSelectTab = (nextTab: ParentTabType) => {
+    if (nextTab === parentTab) return;
+    setTabHistory((prev) => [...prev.slice(-8), parentTab]);
+    setParentTab(nextTab);
+  };
+
+  const canGoBack = Boolean(
+    showAdminCodePrompt ||
+      showTeacherClassPicker ||
+      showInboxModal ||
+      showParentGuide ||
+      showClassSetup ||
+      parentTab !== 'home' ||
+      impersonatedParent ||
+      (isSuperAdmin && adminSelectedClassId !== null) ||
+      (isSuperAdmin && adminSection === 'registered_emails') ||
+      (isTeacher && effectiveProfile?.institutionAdminCode)
+  );
+
+  const handleGoBack = () => {
+    if (showAdminCodePrompt) {
+      setShowAdminCodePrompt(false);
+      return true;
+    }
+    if (showTeacherClassPicker) {
+      setShowTeacherClassPicker(false);
+      return true;
+    }
+    if (showInboxModal) {
+      setShowInboxModal(false);
+      return true;
+    }
+    if (showParentGuide) {
+      setShowParentGuide(false);
+      return true;
+    }
+    if (showClassSetup) {
+      setShowClassSetup(false);
+      return true;
+    }
+    if (parentTab !== 'home') {
+      if (tabHistory.length > 0) {
+        const prevTab = tabHistory[tabHistory.length - 1];
+        setTabHistory((prev) => prev.slice(0, -1));
+        setParentTab(prevTab);
+      } else {
+        setParentTab('home');
+      }
+      return true;
+    }
+    if (impersonatedParent) {
+      handleExitParentImpersonation();
+      return true;
+    }
+    if (isSuperAdmin && adminSelectedClassId !== null) {
+      setAdminSelectedClassId(null);
+      return true;
+    }
+    if (isSuperAdmin && adminSection === 'registered_emails') {
+      setAdminSection('classrooms');
+      return true;
+    }
+    if (isTeacher && effectiveProfile?.institutionAdminCode) {
+      handleSwitchRole('admin');
+      return true;
+    }
+    return false;
+  };
+
+  const handleGoBackRef = useRef(handleGoBack);
+  handleGoBackRef.current = handleGoBack;
+
+  // Telefon / tarayıcı donanımsal "Geri" tuşu (popstate) ile bir önceki ekrana dönme desteği
+  useEffect(() => {
+    if (typeof window === 'undefined' || !effectiveProfile) return;
+    if (canGoBack && !window.history.state?.appBackGuard) {
+      window.history.pushState({ appBackGuard: true }, '');
+    }
+  }, [
+    canGoBack,
+    effectiveProfile,
+    parentTab,
+    showClassSetup,
+    showParentGuide,
+    showInboxModal,
+    showTeacherClassPicker,
+    showAdminCodePrompt,
+    impersonatedParent,
+    adminSelectedClassId,
+    adminSection,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPopState = () => {
+      const handled = handleGoBackRef.current();
+      if (handled) {
+        // Eğer geri gittikten sonra hala geri gidilebilecek bir ekran varsa history guard'ı koru
+        setTimeout(() => {
+          if (!window.history.state?.appBackGuard) {
+            window.history.pushState({ appBackGuard: true }, '');
+          }
+        }, 0);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // Listen to classroom data if user belongs to a class
   useEffect(() => {
@@ -888,20 +1009,44 @@ export default function App() {
     classroom?.id,
   ]);
 
-  // Admin: Listen to all classrooms belonging to this admin's institution
+  // Listen to all classrooms belonging to the user's institution (for admin & teacher)
   useEffect(() => {
-    if (!isSuperAdmin) {
+    const hasInstAccess =
+      isSuperAdmin ||
+      isTeacher ||
+      Boolean(effectiveProfile?.institutionAdminCode) ||
+      Boolean(effectiveProfile?.institutionId) ||
+      Boolean(effectiveProfile?.institutionCode);
+
+    if (!hasInstAccess) {
       setInstitutionClassrooms([]);
       return;
     }
-    if ((authUser || activeLocalProfile) && effectiveProfile?.institutionId) {
-      const unsubscribeClassrooms = subscribeInstitutionClassrooms(
-        effectiveProfile.institutionId,
-        (list) => setInstitutionClassrooms(list)
-      );
-      return () => unsubscribeClassrooms();
-    }
-    if (demoProfile) {
+
+    if (authUser || activeLocalProfile) {
+      const targetInstId =
+        effectiveProfile?.institutionId ||
+        effectiveProfile?.institutionCode ||
+        classroom?.institutionId ||
+        classroom?.institutionCode;
+
+      const targetInstCode =
+        effectiveProfile?.institutionCode ||
+        classroom?.institutionCode ||
+        (targetInstId && targetInstId.startsWith('KRM') ? targetInstId : undefined);
+
+      if (targetInstId) {
+        const unsubscribeClassrooms = subscribeInstitutionClassrooms(
+          targetInstId,
+          (list) => setInstitutionClassrooms(list),
+          (err) => console.warn('Subscribe classrooms error:', err),
+          targetInstCode
+        );
+        return () => unsubscribeClassrooms();
+      } else {
+        setInstitutionClassrooms([]);
+      }
+    } else if (demoProfile) {
       // Demo modu: 3 sınıfın tümü listelenir
       setInstitutionClassrooms(
         DEMO_3_CLASSES.map((cls) => ({
@@ -918,14 +1063,33 @@ export default function App() {
         }))
       );
     }
-  }, [authUser, activeLocalProfile, demoProfile, isSuperAdmin, effectiveProfile?.institutionId]);
+  }, [
+    authUser,
+    activeLocalProfile,
+    demoProfile,
+    isSuperAdmin,
+    isTeacher,
+    effectiveProfile?.institutionId,
+    effectiveProfile?.institutionCode,
+    effectiveProfile?.institutionAdminCode,
+    classroom?.institutionId,
+    classroom?.institutionCode,
+  ]);
 
-  // Admin: Listen to each institution classroom's student roster
+  // Listen to each institution classroom's student roster
   useEffect(() => {
-    if (!isSuperAdmin) {
+    const hasInstAccess =
+      isSuperAdmin ||
+      isTeacher ||
+      Boolean(effectiveProfile?.institutionAdminCode) ||
+      Boolean(effectiveProfile?.institutionId) ||
+      Boolean(effectiveProfile?.institutionCode);
+
+    if (!hasInstAccess) {
       setClassStudentsMap({});
       return;
     }
+
     if ((authUser || activeLocalProfile) && institutionClassrooms.length > 0) {
       const unsubs = institutionClassrooms.map((c) =>
         subscribeClassroomStudents(c.id, (students) => {
@@ -958,7 +1122,17 @@ export default function App() {
       });
       setClassStudentsMap(map);
     }
-  }, [authUser, activeLocalProfile, demoProfile, isSuperAdmin, institutionClassrooms]);
+  }, [
+    authUser,
+    activeLocalProfile,
+    demoProfile,
+    isSuperAdmin,
+    isTeacher,
+    effectiveProfile?.institutionAdminCode,
+    effectiveProfile?.institutionId,
+    effectiveProfile?.institutionCode,
+    institutionClassrooms,
+  ]);
 
   // Admin için kuruma ait sınıfların öğrencileri, öğretmen/veli için kendi sınıf/öğrenci listesi
   // (React Rules of Hooks uyarınca tüm hook'lar erken return'lerden önce çağrılmalıdır)
@@ -1054,6 +1228,20 @@ export default function App() {
     classroom,
   ]);
 
+  // Sınıf seçimi için kurum ve öğretmen sınıflarının birleşik listesi
+  const availableClassrooms = useMemo(() => {
+    const map = new Map<string, ClassroomInfo>();
+    institutionClassrooms.forEach((c) => {
+      if (c.id) map.set(c.id, c);
+    });
+    if (classroom?.id && !map.has(classroom.id)) {
+      map.set(classroom.id, classroom);
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', 'tr')
+    );
+  }, [institutionClassrooms, classroom]);
+
   // Uygulama içi mesajları dinle
   useEffect(() => {
     const unsub = subscribeInAppMessages(
@@ -1069,25 +1257,27 @@ export default function App() {
 
   // Kullanıcıya özel okunmamış ve filtrelenmiş mesajlar
   const userVisibleMessages = useMemo(() => {
-    if (!effectiveProfile) return inAppMessages;
+    if (!effectiveProfile) return [];
     const isStaff = effectiveProfile.role === 'admin' || effectiveProfile.role === 'teacher';
-    if (isStaff) return inAppMessages;
+    const myClassId = effectiveProfile.classId || classroom?.id;
 
     return inAppMessages.filter((msg) => {
-      // 1. Tüm okula gönderilmiş
+      // 0. Kendi gönderdiği mesajlar (yönetici/öğretmen gönderdiklerini görebilir)
+      if (isStaff && msg.senderUid === effectiveProfile.uid) return true;
+      // 1. Tüm kullanıcılara gönderilmiş duyuru
       if (msg.targetType === 'all') return true;
       // 2. Belirli bir sınıfa gönderilmiş ve kullanıcının sınıfı uyuyor
       if (msg.targetType === 'class') {
-        if (effectiveProfile.classId && msg.targetClassId === effectiveProfile.classId) return true;
+        if (myClassId && msg.targetClassId === myClassId) return true;
         if (effectiveProfile.className && msg.targetClassName && effectiveProfile.className.toLowerCase() === msg.targetClassName.toLowerCase()) return true;
       }
-      // 3. Doğrudan bu öğrenci/veliye gönderilmiş
+      // 3. Tek kişiye yazılmış mesaj: sadece o kişi görür
       if (msg.targetType === 'student') {
         if (msg.targetStudentUid === effectiveProfile.uid) return true;
       }
       return false;
     });
-  }, [inAppMessages, effectiveProfile]);
+  }, [inAppMessages, effectiveProfile, classroom]);
 
   const unreadMessageCount = useMemo(() => {
     if (!effectiveProfile?.uid) return 0;
@@ -1398,6 +1588,8 @@ export default function App() {
         unreadCount={unreadMessageCount}
         isImpersonatingParent={Boolean(activeImpersonatedParent)}
         onExitParentImpersonation={handleExitParentImpersonation}
+        canGoBack={canGoBack}
+        onGoBack={handleGoBack}
       />
 
       {/* 2. Main Body: Smooth scrollable container with modern scrollbar */}
@@ -1423,6 +1615,10 @@ export default function App() {
                   onProfileUpdated={handleProfileUpdated}
                   onSwitchToTeacherMode={handleSwitchToTeacherMode}
                   isDemo={isCurrentDemo}
+                  selectedClassId={adminSelectedClassId}
+                  onSelectClassId={setAdminSelectedClassId}
+                  adminSection={adminSection}
+                  onChangeAdminSection={setAdminSection}
                 />
               ) : (
                 <TeacherHomeView
@@ -1512,7 +1708,9 @@ export default function App() {
                   unusedDays={effectiveProfile?.currentWeekUnusedDays ?? 0}
                   onUpdateUnusedDays={handleUpdateUnusedDays}
                   isUpdating={isUpdatingStage}
-                  onNavigateToStages={() => setParentTab('stages')}
+                  onNavigateToStages={() => handleSelectTab('stages')}
+                  onNavigateToClassroom={() => handleSelectTab('classroom')}
+                  isClassConnected={Boolean(effectiveProfile?.classId || classroom?.id)}
                   onOpenParentGuide={() => setShowParentGuide(true)}
                   studentName={effectiveProfile?.studentName || effectiveProfile?.displayName || undefined}
                   userId={effectiveProfile?.uid}
@@ -1570,7 +1768,7 @@ export default function App() {
       <footer className="flex-shrink-0 z-30">
         <BottomDock
           activeTab={parentTab}
-          onSelectTab={(tab) => setParentTab(tab)}
+          onSelectTab={handleSelectTab}
           isTeacher={isStaffOrAdmin}
         />
       </footer>
@@ -1649,114 +1847,152 @@ export default function App() {
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-0">
-              {institutionClassrooms.length === 0 ? (
+              {availableClassrooms.length === 0 ? (
                 <div className="text-center py-6 px-3 bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2.5">
                   <School className="w-8 h-8 text-slate-300 mx-auto" />
                   <p className="text-xs font-bold text-slate-700">
                     Kurumunuza bağlı henüz kayıtlı bir sınıf bulunmuyor.
                   </p>
                   <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
-                    Öğretmenleriniz kurum kodunuzla katılarak sınıf ekleyebilir veya hemen örnek bir sınıfla öğretmen modunu deneyebilirsiniz.
+                    Hemen kurumunuza yeni bir sınıf oluşturabilir veya örnek bir sınıfla öğretmen modunu deneyebilirsiniz.
                   </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTeacherClassPicker(false);
+                        setShowClassSetup(true);
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Yeni Sınıf Oluştur</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sampleClass: ClassroomInfo = {
+                          id: 'demo-class-' + Date.now(),
+                          code: 'SINIF-ORNEK',
+                          name: 'Örnek Sınıf',
+                          teacherUid: effectiveProfile?.uid || 'teacher-sample',
+                          teacherName: effectiveProfile?.displayName || 'Örnek Öğretmen',
+                          teacherEmail: effectiveProfile?.email || 'ogretmen@okul.com',
+                          institutionId: effectiveProfile?.institutionId || 'inst-1',
+                          studentTargetCount: 25,
+                        };
+                        setInstitutionClassrooms((prev) => [sampleClass, ...prev]);
+                        handleSelectTeacherClass(sampleClass);
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer active:scale-95 border border-slate-300"
+                    >
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      <span>Örnek Sınıfla Dene</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {availableClassrooms.map((cls) => {
+                    const classStudents = classStudentsMap[cls.id] || [];
+                    const isCurrent = classroom?.id === cls.id;
+
+                    return (
+                      <button
+                        key={cls.id}
+                        type="button"
+                        onClick={() => handleSelectTeacherClass(cls)}
+                        className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 group cursor-pointer active:scale-[0.98] ${
+                          isCurrent
+                            ? 'bg-indigo-50/90 border-indigo-300 ring-2 ring-indigo-200'
+                            : 'bg-white hover:bg-slate-50 border-slate-200/90 hover:border-indigo-200 shadow-2xs hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center border flex-shrink-0 transition-colors ${
+                              isCurrent
+                                ? 'bg-indigo-600 text-white border-indigo-700'
+                                : 'bg-indigo-50 text-indigo-600 border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white'
+                            }`}
+                          >
+                            <School className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs sm:text-sm font-black text-slate-900 group-hover:text-indigo-900 truncate">
+                                {cls.name}
+                              </span>
+                              {cls.code && (
+                                <span className="font-mono text-[10px] bg-indigo-50 text-indigo-800 px-1.5 py-0.5 rounded border border-indigo-200 font-black">
+                                  {cls.code}
+                                </span>
+                              )}
+                              {isCurrent && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-600 text-white">
+                                  Aktif
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                              <span>
+                                Sn.{' '}
+                                <strong className="text-slate-700 font-semibold">
+                                  {(cls.teacherName || 'Bilinmiyor')
+                                    .replace(/^Öğretmen:?\s*/i, '')
+                                    .replace(/\s*\(Öğretmen\)\s*/gi, '')
+                                    .replace(/\s*Öğretmen\s*$/i, '')
+                                    .trim() || 'Bilinmiyor'}
+                                </strong>
+                              </span>
+                              <span className="text-indigo-600 font-bold">
+                                {classStudents.length} öğrenci
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-[11px] font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+                            <span>Seç</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+
                   <button
                     type="button"
                     onClick={() => {
-                      const sampleClass: ClassroomInfo = {
-                        id: 'demo-class-' + Date.now(),
-                        code: 'SINIF-ORNEK',
-                        name: 'Örnek Sınıf',
-                        teacherUid: effectiveProfile?.uid || 'teacher-sample',
-                        teacherName: effectiveProfile?.displayName || 'Örnek Öğretmen',
-                        teacherEmail: effectiveProfile?.email || 'ogretmen@okul.com',
-                        institutionId: effectiveProfile?.institutionId || 'inst-1',
-                        studentTargetCount: 25,
-                      };
-                      setInstitutionClassrooms((prev) => [sampleClass, ...prev]);
-                      handleSelectTeacherClass(sampleClass);
+                      setShowTeacherClassPicker(false);
+                      setShowClassSetup(true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all cursor-pointer shadow-sm active:scale-95 mt-1"
+                    className="w-full p-2.5 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
                   >
-                    <GraduationCap className="w-3.5 h-3.5" />
-                    <span>Örnek Sınıfla Öğretmen Moduna Geç</span>
+                    <Plus className="w-4 h-4 stroke-[2.5]" />
+                    <span>Kuruma Yeni Sınıf Ekle</span>
                   </button>
-                </div>
-              ) : (
-                institutionClassrooms.map((cls) => {
-                  const classStudents = classStudentsMap[cls.id] || [];
-                  const isCurrent = classroom?.id === cls.id;
-
-                  return (
-                    <button
-                      key={cls.id}
-                      type="button"
-                      onClick={() => handleSelectTeacherClass(cls)}
-                      className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 group cursor-pointer active:scale-[0.98] ${
-                        isCurrent
-                          ? 'bg-indigo-50/90 border-indigo-300 ring-2 ring-indigo-200'
-                          : 'bg-white hover:bg-slate-50 border-slate-200/90 hover:border-indigo-200 shadow-2xs hover:shadow-sm'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center border flex-shrink-0 transition-colors ${
-                            isCurrent
-                              ? 'bg-indigo-600 text-white border-indigo-700'
-                              : 'bg-indigo-50 text-indigo-600 border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white'
-                          }`}
-                        >
-                          <School className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs sm:text-sm font-black text-slate-900 group-hover:text-indigo-900 truncate">
-                              {cls.name}
-                            </span>
-                            {cls.code && (
-                              <span className="font-mono text-[10px] bg-indigo-50 text-indigo-800 px-1.5 py-0.5 rounded border border-indigo-200 font-black">
-                                {cls.code}
-                              </span>
-                            )}
-                            {isCurrent && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-600 text-white">
-                                Aktif
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                            <span>
-                              Sn.{' '}
-                              <strong className="text-slate-700 font-semibold">
-                                {(cls.teacherName || 'Bilinmiyor')
-                                  .replace(/^Öğretmen:?\s*/i, '')
-                                  .replace(/\s*\(Öğretmen\)\s*/gi, '')
-                                  .replace(/\s*Öğretmen\s*$/i, '')
-                                  .trim() || 'Bilinmiyor'}
-                              </strong>
-                            </span>
-                            <span className="text-indigo-600 font-bold">
-                              {classStudents.length} öğrenci
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="text-[11px] font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-                          <span>Seç</span>
-                          <ChevronRight className="w-4 h-4" />
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })
+                </>
               )}
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-end flex-shrink-0">
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTeacherClassPicker(false);
+                  setShowClassSetup(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 cursor-pointer transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Yeni Sınıf Ekle</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowTeacherClassPicker(false)}
-                className="btn-3d-white py-2 px-4 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
+                className="btn-3d-white py-1.5 px-4 rounded-xl text-xs font-bold text-slate-700 cursor-pointer"
               >
                 Kapat
               </button>
@@ -1773,6 +2009,23 @@ export default function App() {
           messages={userVisibleMessages}
           currentUserId={effectiveProfile?.uid}
           isStaffOrAdmin={isStaffOrAdmin}
+          onCompose={() => {
+            setShowInboxModal(false);
+            setShowComposeModal(true);
+          }}
+        />
+      )}
+
+      {/* 9. Yeni Mesaj Yaz (Gelen kutusundan açılır) */}
+      {showComposeModal && (
+        <SendMessageModal
+          isOpen={showComposeModal}
+          onClose={() => setShowComposeModal(false)}
+          senderProfile={effectiveProfile}
+          targetStudent={null}
+          targetClassroom={null}
+          classrooms={isSuperAdmin ? institutionClassrooms : classroom ? [classroom] : []}
+          students={allUsers}
         />
       )}
     </div>

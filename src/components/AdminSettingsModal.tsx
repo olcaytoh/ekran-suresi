@@ -19,6 +19,7 @@ import {
   RefreshCw,
   X,
   School,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface AdminSettingsModalProps {
@@ -399,9 +400,10 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 py-2.5 px-4 rounded-2xl text-xs font-extrabold bg-slate-200/70 hover:bg-slate-300/80 text-slate-800 transition-colors cursor-pointer border border-slate-300/50"
+              className="flex-1 py-2.5 px-4 rounded-2xl text-xs font-extrabold bg-slate-200/70 hover:bg-slate-300/80 text-slate-800 transition-colors cursor-pointer border border-slate-300/50 inline-flex items-center justify-center gap-1.5"
             >
-              Kapat
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Geri</span>
             </button>
             <button
               type="submit"

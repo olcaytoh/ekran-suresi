@@ -39,7 +39,7 @@ import {
   Firestore,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { UserProfile, WeekRecord, ClassroomInfo, UserRole, InAppMessage } from '../types';
+import { UserProfile, WeekRecord, ClassroomInfo, UserRole, InAppMessage, InstitutionInfo } from '../types';
 import { getCurrentWeekInfo } from './weekUtils';
 
 // Initialize Firebase App
@@ -1907,6 +1907,275 @@ function generateAdminCode(): string {
   return `ADM-${num}`;
 }
 
+const MAX_CODE_ATTEMPTS = 5;
+const CODE_LOCKOUT_MS = 10 * 60 * 1000; // 10 dakika
+
+export function checkCodeAttemptLimit(scope: 'class' | 'institution' | 'admin'): void {
+  try {
+    const raw = localStorage.getItem(`sec_code_attempts_${scope}`);
+    if (!raw) return;
+    const data = JSON.parse(raw) as { count: number; lockedUntil?: number; lastAttempt?: number };
+    if (data.lockedUntil && data.lockedUntil > Date.now()) {
+      const remainingSec = Math.ceil((data.lockedUntil - Date.now()) / 1000);
+      const mins = Math.floor(remainingSec / 60);
+      const secs = remainingSec % 60;
+      const timeStr = mins > 0 ? `${mins} dk ${secs} sn` : `${secs} saniye`;
+      throw new Error(
+        `🛡️ Çok fazla hatalı kod denemesi yapıldı! Güvenlik nedeniyle yeni kod girişi ${timeStr} boyunca kilitlendi.`
+      );
+    }
+  } catch (err: any) {
+    if (err?.message?.includes('Güvenlik nedeniyle')) throw err;
+  }
+}
+
+export function recordFailedCodeAttempt(scope: 'class' | 'institution' | 'admin', baseMessage: string): never {
+  let remaining = MAX_CODE_ATTEMPTS - 1;
+  try {
+    const key = `sec_code_attempts_${scope}`;
+    const raw = localStorage.getItem(key);
+    let count = 0;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.lastAttempt && Date.now() - parsed.lastAttempt < CODE_LOCKOUT_MS) {
+        count = parsed.count || 0;
+      }
+    }
+    count += 1;
+    if (count >= MAX_CODE_ATTEMPTS) {
+      const lockedUntil = Date.now() + CODE_LOCKOUT_MS;
+      localStorage.setItem(key, JSON.stringify({ count: 0, lockedUntil, lastAttempt: Date.now() }));
+      throw new Error(
+        `🛡️ 5 kez üst üste hatalı kod girildi! Güvenlik nedeniyle kod girişi 10 dakika süreyle kilitlendi.`
+      );
+    } else {
+      remaining = MAX_CODE_ATTEMPTS - count;
+      localStorage.setItem(key, JSON.stringify({ count, lockedUntil: 0, lastAttempt: Date.now() }));
+    }
+  } catch (err: any) {
+    if (err?.message?.includes('Güvenlik nedeniyle')) throw err;
+  }
+  throw new Error(`${baseMessage} (Kalan deneme hakkı: ${remaining})`);
+}
+
+export function resetCodeAttemptLimit(scope: 'class' | 'institution' | 'admin'): void {
+  try {
+    localStorage.removeItem(`sec_code_attempts_${scope}`);
+  } catch {
+    // ignore
+  }
+}
+
+export function subscribeInstitution(
+  institutionId: string,
+  onUpdate: (inst: InstitutionInfo | null) => void
+) {
+  if (!institutionId) {
+    onUpdate(null);
+    return () => {};
+  }
+  const instRef = doc(db, 'institutions', institutionId);
+  return onSnapshot(
+    instRef,
+    (snap) => {
+      if (snap.exists()) {
+        onUpdate({ id: snap.id, ...snap.data() } as InstitutionInfo);
+      } else {
+        onUpdate(null);
+      }
+    },
+    (err) => {
+      console.warn('Error subscribing institution:', err);
+    }
+  );
+}
+
+export async function toggleInstitutionJoinLock(
+  institutionId: string,
+  isJoinLocked: boolean,
+  adminUid?: string
+): Promise<void> {
+  if (!institutionId) return;
+  const instRef = doc(db, 'institutions', institutionId);
+  const payload: Record<string, any> = {
+    id: institutionId,
+    isJoinLocked,
+    updatedAt: serverTimestamp(),
+  };
+  if (adminUid) {
+    payload.adminUid = adminUid;
+  }
+  await setDoc(instRef, payload, { merge: true });
+}
+
+export async function toggleClassroomJoinLock(
+  classId: string,
+  isJoinLocked: boolean
+): Promise<void> {
+  if (!classId) return;
+  const classRef = doc(db, 'classes', classId);
+  await setDoc(
+    classRef,
+    {
+      isJoinLocked,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+export async function regenerateClassroomCode(
+  classId: string,
+  teacherUid?: string
+): Promise<string> {
+  if (!classId) throw new Error('Sınıf bulunamadı.');
+  const newCode = generateClassCode();
+  const classRef = doc(db, 'classes', classId);
+  await setDoc(
+    classRef,
+    {
+      code: newCode,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+  if (teacherUid) {
+    await setDoc(
+      doc(db, 'users', teacherUid),
+      {
+        classCode: newCode,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+  try {
+    const studentsQ = query(collection(db, 'users'), where('classId', '==', classId));
+    const snap = await getDocs(studentsQ);
+    await Promise.all(
+      snap.docs.map((d) =>
+        setDoc(d.ref, { classCode: newCode, updatedAt: serverTimestamp() }, { merge: true })
+      )
+    );
+  } catch (err) {
+    console.warn('Could not sync new classCode to students:', err);
+  }
+  return newCode;
+}
+
+export async function approveTeacherForInstitution(
+  teacherUid: string,
+  classId?: string
+): Promise<void> {
+  if (teacherUid) {
+    await setDoc(
+      doc(db, 'users', teacherUid),
+      {
+        institutionApprovalStatus: 'approved',
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+  if (classId) {
+    await setDoc(
+      doc(db, 'classes', classId),
+      {
+        institutionApprovalStatus: 'approved',
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+  if (teacherUid) {
+    try {
+      const classesQ = query(collection(db, 'classes'), where('teacherUid', '==', teacherUid));
+      const snap = await getDocs(classesQ);
+      await Promise.all(
+        snap.docs.map((d) =>
+          setDoc(d.ref, { institutionApprovalStatus: 'approved', updatedAt: serverTimestamp() }, { merge: true })
+        )
+      );
+    } catch (err) {
+      console.warn('Error approving teacher classes:', err);
+    }
+  }
+}
+
+export async function rejectTeacherFromInstitution(
+  teacherUid: string,
+  classId?: string
+): Promise<void> {
+  if (teacherUid) {
+    try {
+      await updateDoc(doc(db, 'users', teacherUid), {
+        institutionId: deleteField(),
+        institutionCode: deleteField(),
+        institutionName: deleteField(),
+        institutionApprovalStatus: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('Error unlinking rejected teacher:', err);
+    }
+  }
+  if (classId) {
+    try {
+      await updateDoc(doc(db, 'classes', classId), {
+        institutionId: deleteField(),
+        institutionCode: deleteField(),
+        institutionName: deleteField(),
+        institutionApprovalStatus: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('Error unlinking rejected class:', err);
+    }
+  }
+  if (teacherUid) {
+    try {
+      const classesQ = query(collection(db, 'classes'), where('teacherUid', '==', teacherUid));
+      const snap = await getDocs(classesQ);
+      await Promise.all(
+        snap.docs.map((d) =>
+          updateDoc(d.ref, {
+            institutionId: deleteField(),
+            institutionCode: deleteField(),
+            institutionName: deleteField(),
+            institutionApprovalStatus: deleteField(),
+            updatedAt: serverTimestamp(),
+          })
+        )
+      );
+    } catch (err) {
+      console.warn('Error unlinking rejected teacher classes:', err);
+    }
+  }
+}
+
+export async function approveStudentForClassroom(studentUid: string): Promise<void> {
+  if (!studentUid) return;
+  await setDoc(
+    doc(db, 'users', studentUid),
+    {
+      classApprovalStatus: 'approved',
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+export async function rejectStudentFromClassroom(studentUid: string): Promise<void> {
+  if (!studentUid) return;
+  await updateDoc(doc(db, 'users', studentUid), {
+    classId: deleteField(),
+    classCode: deleteField(),
+    className: deleteField(),
+    classApprovalStatus: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
 async function isCodeTaken(field: 'code' | 'adminCode', code: string): Promise<boolean> {
   const instRef = collection(db, 'institutions');
   const q = query(instRef, where(field, '==', code));
@@ -2243,11 +2512,13 @@ const DEMO_CLASSES_FALLBACK = [
 export async function joinInstitutionWithCode(
   userUid: string,
   rawCode: string
-): Promise<{ id: string; code: string; name: string }> {
+): Promise<{ id: string; code: string; name: string; approvalStatus?: 'approved' | 'pending' }> {
   const cleanedCode = rawCode.trim().toUpperCase();
   if (!cleanedCode) {
     throw new Error('Lütfen geçerli bir kurum kodu girin.');
   }
+
+  checkCodeAttemptLimit('institution');
 
   const instRef = collection(db, 'institutions');
   const q = query(instRef, where('code', '==', cleanedCode));
@@ -2280,12 +2551,33 @@ export async function joinInstitutionWithCode(
   }
 
   if (!instDoc || !instData) {
-    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
+    recordFailedCodeAttempt('institution', `"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
   }
+
+  resetCodeAttemptLimit('institution');
 
   const userRef = doc(db, 'users', userUid);
   const userSnap = await getDoc(userRef);
   const userData = userSnap.exists() ? userSnap.data() : null;
+
+  const isAlreadyInThisInstitution =
+    userData?.institutionId === instDoc.id ||
+    (userData?.institutionCode && userData.institutionCode.toUpperCase() === cleanedCode);
+  const isInstitutionAdmin =
+    instData.adminUid === userUid || userData?.role === 'admin';
+
+  // 1. Katılım Kilidi Kontrolü
+  if (instData.isJoinLocked && !isAlreadyInThisInstitution && !isInstitutionAdmin) {
+    throw new Error(
+      '🔒 Bu kuruma yeni öğretmen/sınıf katılımı kurum yöneticisi tarafından kilitlenmiştir. Katılım için yöneticinizden kurum kilidini açmasını isteyiniz.'
+    );
+  }
+
+  // 2. Yönetici Onay Durumu (Yeni katılan öğretmenler onay bekler, mevcut onaylılar veya admin doğrudan onaylıdır)
+  const approvalStatus: 'approved' | 'pending' =
+    isInstitutionAdmin || (isAlreadyInThisInstitution && userData?.institutionApprovalStatus === 'approved')
+      ? 'approved'
+      : 'pending';
 
   await setDoc(
     userRef,
@@ -2293,6 +2585,7 @@ export async function joinInstitutionWithCode(
       institutionId: instDoc.id,
       institutionCode: instData.code,
       institutionName: instData.name,
+      institutionApprovalStatus: approvalStatus,
       updatedAt: serverTimestamp(),
     },
     { merge: true }
@@ -2307,6 +2600,7 @@ export async function joinInstitutionWithCode(
           institutionId: instDoc.id,
           institutionCode: instData.code,
           institutionName: instData.name,
+          institutionApprovalStatus: approvalStatus,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -2327,6 +2621,7 @@ export async function joinInstitutionWithCode(
           institutionId: instDoc.id,
           institutionCode: instData.code,
           institutionName: instData.name,
+          institutionApprovalStatus: approvalStatus,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -2350,7 +2645,7 @@ export async function joinInstitutionWithCode(
     console.warn('Could not link teacher classes to institution:', err);
   }
 
-  return { id: instDoc.id, code: instData.code, name: instData.name };
+  return { id: instDoc.id, code: instData.code, name: instData.name, approvalStatus };
 }
 
 export async function joinInstitutionAsAdmin(
@@ -2393,8 +2688,10 @@ export async function joinInstitutionAsAdmin(
   }
 
   if (!instDoc || !instData) {
-    throw new Error(`"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
+    recordFailedCodeAttempt('admin', `"${cleanedCode}" koduna sahip bir kurum bulunamadı.`);
   }
+
+  resetCodeAttemptLimit('admin');
 
   const userRef = doc(db, 'users', userUid);
   await setDoc(
@@ -2406,6 +2703,7 @@ export async function joinInstitutionAsAdmin(
       institutionCode: instData.code,
       institutionAdminCode: instData.adminCode,
       institutionName: instData.name,
+      institutionApprovalStatus: 'approved',
       updatedAt: serverTimestamp(),
     },
     { merge: true }
@@ -2423,6 +2721,8 @@ export async function verifyAdminCodeAndUpgrade(
   if (!cleanedCode) {
     throw new Error('Lütfen kurumunuzun Admin Kodunu giriniz.');
   }
+
+  checkCodeAttemptLimit('admin');
 
   let matchedDoc: any = null;
 
@@ -2479,10 +2779,13 @@ export async function verifyAdminCodeAndUpgrade(
 
   // 4. Eğer hiçbir kurumun admin kodu ile eşleşmediyse KESİNLİKLE HATA VER
   if (!matchedDoc) {
-    throw new Error(
+    recordFailedCodeAttempt(
+      'admin',
       `"${cleanedCode}" admin kodu bulunamadı veya geçersiz! Lütfen kurumunuza ait doğru Admin Kodunu (Örn: ADM-XXXX) giriniz.`
     );
   }
+
+  resetCodeAttemptLimit('admin');
 
   const instData = matchedDoc.data();
   const userRef = doc(db, 'users', userUid);
@@ -2495,6 +2798,7 @@ export async function verifyAdminCodeAndUpgrade(
       institutionCode: instData?.code || 'KRM-1001',
       institutionAdminCode: instData?.adminCode || cleanedCode,
       institutionName: instData?.name || 'Okulum / Kurumum',
+      institutionApprovalStatus: 'approved',
       updatedAt: serverTimestamp(),
     },
     { merge: true }
@@ -2831,26 +3135,66 @@ export async function updateClassroom(
 export function subscribeInstitutionClassrooms(
   institutionId: string,
   onUpdate: (classrooms: ClassroomInfo[]) => void,
-  onError?: (err: Error) => void
-) {
-  const classesRef = collection(db, 'classes');
-  const q = query(classesRef, where('institutionId', '==', institutionId));
+  onError?: (err: Error) => void,
+  institutionCode?: string
+): () => void {
+  const cleanId = (institutionId || '').trim();
+  const cleanCode = (institutionCode || '').trim();
 
-  return onSnapshot(
-    q,
-    (snap) => {
-      const list: ClassroomInfo[] = [];
-      snap.forEach((d) => {
-        list.push({ id: d.id, ...d.data() } as ClassroomInfo);
-      });
-      list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
-      onUpdate(list);
-    },
-    (error) => {
-      console.error('Subscribe institution classrooms error:', error);
-      if (onError) onError(error);
+  if (!cleanId && !cleanCode) {
+    onUpdate([]);
+    return () => {};
+  }
+
+  const classesRef = collection(db, 'classes');
+  const queryList: any[] = [];
+
+  if (cleanId) {
+    queryList.push(query(classesRef, where('institutionId', '==', cleanId)));
+    if (cleanId.startsWith('KRM')) {
+      queryList.push(query(classesRef, where('institutionCode', '==', cleanId)));
     }
+  }
+
+  if (cleanCode && cleanCode !== cleanId) {
+    queryList.push(query(classesRef, where('institutionCode', '==', cleanCode)));
+  }
+
+  const cache = new Map<number, ClassroomInfo[]>();
+
+  const emit = () => {
+    const merged = new Map<string, ClassroomInfo>();
+    cache.forEach((list) => {
+      list.forEach((item) => {
+        if (item.id) merged.set(item.id, item);
+      });
+    });
+    const result = Array.from(merged.values());
+    result.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'tr'));
+    onUpdate(result);
+  };
+
+  const unsubs = queryList.map((q, idx) =>
+    onSnapshot(
+      q,
+      (snap) => {
+        const list: ClassroomInfo[] = [];
+        snap.forEach((d) => {
+          list.push({ id: d.id, ...d.data() } as ClassroomInfo);
+        });
+        cache.set(idx, list);
+        emit();
+      },
+      (error) => {
+        console.error('Subscribe institution classrooms error:', error);
+        if (onError) onError(error);
+      }
+    )
   );
+
+  return () => {
+    unsubs.forEach((u) => u());
+  };
 }
 
 export async function joinClassroomWithCode(
@@ -2863,6 +3207,8 @@ export async function joinClassroomWithCode(
   if (!cleanedCode) {
     throw new Error('Lütfen geçerli bir sınıf kodu girin.');
   }
+
+  checkCodeAttemptLimit('class');
 
   const classesRef = collection(db, 'classes');
   const q = query(classesRef, where('code', '==', cleanedCode));
@@ -2907,8 +3253,10 @@ export async function joinClassroomWithCode(
   }
 
   if (!classDoc || !classData) {
-    throw new Error(`"${cleanedCode}" koduna ait bir sınıf bulunamadı.`);
+    recordFailedCodeAttempt('class', `"${cleanedCode}" koduna ait bir sınıf bulunamadı.`);
   }
+
+  resetCodeAttemptLimit('class');
 
   if (classData.teacherUid === userUid) {
     throw new Error('Siz bu sınıfın öğretmenisiniz!');
@@ -2916,12 +3264,58 @@ export async function joinClassroomWithCode(
 
   const userRef = doc(db, 'users', userUid);
   const userSnap = await getDoc(userRef);
-  if (userSnap.exists()) {
-    const userData = userSnap.data();
-    if (userData.role === 'teacher' || userData.userType === 'teacher' || userData.role === 'admin') {
+  const existingUserData = userSnap.exists() ? userSnap.data() : null;
+  if (existingUserData) {
+    if (
+      existingUserData.role === 'teacher' ||
+      existingUserData.userType === 'teacher' ||
+      existingUserData.role === 'admin'
+    ) {
       throw new Error('Öğretmen veya Yönetici yetkisine sahip bir hesapla veli olarak katılamazsınız!');
     }
   }
+
+  const isAlreadyInThisClass = existingUserData?.classId === classDoc.id;
+
+  // 1. Sınıf Katılım Kilidi Kontrolü
+  if (classData.isJoinLocked && !isAlreadyInThisClass) {
+    throw new Error(
+      '🔒 Bu sınıfa yeni veli/öğrenci katılımı sınıf öğretmeni tarafından kilitlenmiştir. Katılım için öğretmeninizden sınıf kilidini açmasını isteyiniz.'
+    );
+  }
+
+  // 2. Sınıf Kontenjan Sınırı Kontrolü (Otomatik Kilit)
+  if (!isAlreadyInThisClass) {
+    const maxCapacity = classData.studentTargetCount && classData.studentTargetCount > 0
+      ? classData.studentTargetCount
+      : 30;
+    try {
+      const studentsQ = query(collection(db, 'users'), where('classId', '==', classDoc.id));
+      const studentsSnap = await getDocs(studentsQ);
+      let activeStudentCount = 0;
+      studentsSnap.forEach((d) => {
+        if (d.id === userUid) return;
+        const sData = d.data();
+        if (sData.classApprovalStatus === 'rejected') return;
+        if (sData.role === 'parent' || sData.userType === 'parent' || sData.studentName) {
+          activeStudentCount += 1;
+        }
+      });
+      if (activeStudentCount >= maxCapacity) {
+        throw new Error(
+          `⚠️ "${classData.name}" sınıfının öğrenci kontenjanı (${maxCapacity}/${maxCapacity}) dolmuştur! Güvenlik nedeniyle yeni katılımlar otomatik olarak kapatılmıştır. Öğretmeniniz sınıf ayarlarından kontenjanı artırabilir.`
+        );
+      }
+    } catch (capErr: any) {
+      if (capErr?.message?.includes('kontenjanı')) throw capErr;
+    }
+  }
+
+  // 3. Öğretmen Onay Durumu (Yeni katılan veli onay bekler, zaten onaylıysa onaylı kalır)
+  const approvalStatus: 'approved' | 'pending' =
+    isAlreadyInThisClass && existingUserData?.classApprovalStatus === 'approved'
+      ? 'approved'
+      : 'pending';
 
   await setDoc(
     userRef,
@@ -2931,6 +3325,7 @@ export async function joinClassroomWithCode(
       classId: classDoc.id,
       classCode: classData.code,
       className: classData.name,
+      classApprovalStatus: approvalStatus,
       ...(classData.institutionId
         ? {
             institutionId: classData.institutionId,

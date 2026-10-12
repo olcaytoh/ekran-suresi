@@ -10,6 +10,7 @@ interface NotificationInboxModalProps {
   messages: InAppMessage[];
   currentUserId?: string;
   isStaffOrAdmin?: boolean;
+  onCompose?: () => void;
 }
 
 export const NotificationInboxModal: React.FC<NotificationInboxModalProps> = ({
@@ -18,6 +19,7 @@ export const NotificationInboxModal: React.FC<NotificationInboxModalProps> = ({
   messages,
   currentUserId,
   isStaffOrAdmin = false,
+  onCompose,
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -151,6 +153,18 @@ export const NotificationInboxModal: React.FC<NotificationInboxModalProps> = ({
             })
           )}
         </div>
+
+        {isStaffOrAdmin && onCompose && (
+          <button
+            type="button"
+            id="btn-inbox-compose"
+            onClick={onCompose}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black cursor-pointer active:scale-95 transition-all flex-shrink-0"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Yeni Mesaj Yaz
+          </button>
+        )}
 
         <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <span>Toplam {messages.length} mesaj</span>

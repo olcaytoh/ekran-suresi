@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Clock, Star } from 'lucide-react';
+import { Clock, Star, School } from 'lucide-react';
 import { StageGaugeDial } from './StageGaugeDial';
 import { TransparentMascotVideo } from './TransparentMascotVideo';
+import { playAddTimeSound, playStarSound, playTapSound } from '../lib/soundUtils';
 
 interface ParentHomeViewProps {
   currentStage: number; // 0 to 14
@@ -10,6 +11,8 @@ interface ParentHomeViewProps {
   onUpdateUnusedDays?: (newUnusedDays: number) => Promise<void>;
   isUpdating: boolean;
   onNavigateToStages?: () => void;
+  onNavigateToClassroom?: () => void;
+  isClassConnected?: boolean;
   onOpenParentGuide?: () => void;
   studentName?: string;
   userId?: string;
@@ -22,6 +25,8 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
   onUpdateUnusedDays,
   isUpdating,
   onNavigateToStages,
+  onNavigateToClassroom,
+  isClassConnected = true,
   studentName,
   userId,
 }) => {
@@ -56,6 +61,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
   const handleAddThirtyMin = async () => {
     if (currentStage >= 14 || isUpdating) return;
     handleTriggerHaptic();
+    playAddTimeSound(currentStage + 1);
     await onUpdateStage(currentStage + 1);
   };
 
@@ -63,6 +69,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
     if (hasAddedStarForCurrentVideoRef.current) return;
     hasAddedStarForCurrentVideoRef.current = true;
     setIsPlayingKullanVideo(false);
+    playStarSound();
 
     if (typeof window !== 'undefined') {
       localStorage.setItem(storageKey, todayKey);
@@ -85,6 +92,7 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
       return;
     }
     handleTriggerHaptic();
+    playTapSound();
     hasAddedStarForCurrentVideoRef.current = false;
     setIsPlayingKullanVideo(true);
   };
@@ -114,6 +122,22 @@ export const ParentHomeView: React.FC<ParentHomeViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Henüz sınıfa bağlanmamış veliler için yönlendirme çubuğu */}
+      {!isClassConnected && onNavigateToClassroom && (
+        <button
+          type="button"
+          onClick={onNavigateToClassroom}
+          className="w-full py-1.5 sm:py-2 px-3 rounded-2xl bg-amber-100/90 hover:bg-amber-100 text-amber-950 border border-amber-300 text-xs font-bold flex items-center justify-between gap-2 shadow-xs transition-all active:scale-[0.99] cursor-pointer"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <School className="w-4 h-4 text-amber-700 shrink-0" />
+            <span className="truncate">Henüz bir sınıfa bağlanmadınız. Kod ile bağlanmak için dokunun.</span>
+          </div>
+          <span className="text-[11px] font-black text-indigo-700 shrink-0">Sınıfa Bağlan →</span>
+        </button>
+      )}
+
       {/* Durum Dashboard Ana Cam Kartı (Glassmorphism Kart Efekti) */}
       <div
         className="relative w-full rounded-[24px] sm:rounded-[28px] px-2 sm:px-3 pt-0.5 sm:pt-1 pb-1 sm:pb-1.5 select-none flex flex-col items-center flex-1 justify-between min-h-0 overflow-hidden"

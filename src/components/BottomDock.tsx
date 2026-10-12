@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Users } from 'lucide-react';
+import { playTapSound } from '../lib/soundUtils';
 
 export type ParentTabType = 'home' | 'stages' | 'badges' | 'classroom';
 
@@ -80,7 +81,10 @@ export const BottomDock: React.FC<BottomDockProps> = ({
               key={tab.id}
               type="button"
               id={`dock-tab-${tab.id}`}
-              onClick={() => onSelectTab(tab.id)}
+              onClick={() => {
+                playTapSound();
+                onSelectTab(tab.id);
+              }}
               className={`flex-1 flex items-center justify-center p-0.5 sm:p-1 transition-all duration-150 cursor-pointer active:scale-95 focus:outline-hidden ${
                 isActive ? 'scale-[1.03]' : 'hover:scale-[1.01] opacity-90 hover:opacity-100'
               }`}

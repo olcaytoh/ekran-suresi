@@ -8,6 +8,7 @@ import {
   ensureInstitutionAdminCode,
   createClassroom,
   updateClassroom,
+  adminDeleteClassroom,
   joinClassroomWithCode,
   addStudentToClassroom,
   recordNewStudentJoinNotice,
@@ -23,6 +24,8 @@ import {
   Sparkles,
   School,
   ArrowRight,
+  ArrowLeft,
+  X,
   AlertCircle,
   CheckCircle2,
   Building2,
@@ -86,8 +89,8 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
   const [teacherInstitutionCode, setTeacherInstitutionCode] = useState(currentUser.institutionCode || '');
   const [connectedInstitutionName, setConnectedInstitutionName] = useState(currentUser.institutionName || '');
   const [connectedInstitutionId, setConnectedInstitutionId] = useState(currentUser.institutionId || '');
-  const [isInstitutionConnected, setIsInstitutionConnected] = useState(Boolean(currentUser.institutionId));
-  const [className, setClassName] = useState(currentUser.className || '4-A Sınıfı');
+  const [isInstitutionConnected, setIsInstitutionConnected] = useState(Boolean(currentUser.institutionId || currentUser.institutionCode));
+  const [className, setClassName] = useState(currentUser.className || '');
   const [studentTargetCount, setStudentTargetCount] = useState<number>(25);
   const [copiedClassCode, setCopiedClassCode] = useState(false);
 
@@ -136,7 +139,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
     onDemoProfileUpdate?.(updates);
   };
 
-  const activeClassCode = currentUser.classCode || classCode || 'SINIF4A';
+  const activeClassCode = currentUser.classCode || classCode || '';
 
   const handleCopyClassCode = () => {
     if (!activeClassCode) return;
@@ -295,9 +298,16 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       if (isDemo) {
         await new Promise((r) => setTimeout(r, 400));
         const name = currentUser.institutionName || 'AKÇAKOCA İLKOKULU';
+        const demoInstId = currentUser.institutionId || 'demo-institution-manual';
+        const cleanInstCode = teacherInstitutionCode.trim().toUpperCase();
         setConnectedInstitutionName(name);
-        setConnectedInstitutionId(currentUser.institutionId || 'demo-institution-manual');
+        setConnectedInstitutionId(demoInstId);
         setIsInstitutionConnected(true);
+        onDemoProfileUpdate?.({
+          institutionId: demoInstId,
+          institutionCode: cleanInstCode,
+          institutionName: name,
+        });
         setSuccessMsg(`"${name}" kurumuna bağlanıldı.`);
         return;
       }
@@ -306,6 +316,11 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
       setConnectedInstitutionName(inst.name);
       setConnectedInstitutionId(inst.id);
       setIsInstitutionConnected(true);
+      onDemoProfileUpdate?.({
+        institutionId: inst.id,
+        institutionCode: inst.code,
+        institutionName: inst.name,
+      });
       setSuccessMsg(`Tebrikler! "${inst.name}" kurumuna bağlandınız.`);
     } catch (err: any) {
       console.warn('Connect institution validation notice:', err.message || err);
@@ -315,28 +330,98 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
     }
   };
 
-  // --- ÖĞRETMEN: Sınıf Oluşturma / Güncelleme ---
+  // --- ÖĞRETMEN: Sınıf Oluşturma / Güncelleme (veya Yönetici Adayı Olarak Sadece Kurum/Profil Kaydetme) ---
   const handleTeacherSaveClass = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!className.trim()) {
-      setError('Lütfen bir sınıf adı girin (Örn: 4-A Sınıfı).');
-      return;
-    }
+    const trimmedClassName = className.trim();
 
     try {
       setLoading(true);
       setError(null);
 
-      if (currentUser.role === 'teacher') {
+      if (currentUser.role === 'teacher' || selectedRole === 'teacher') {
         await persistNames();
       }
 
+      // Kullanıcı kurum kodunu kutuya yazıp doğrudan "Değişiklikleri Kaydet" dediyse otomatik kuruma bağla
+      let finalInstId = connectedInstitutionId || currentUser.institutionId || '';
+      let finalInstCode = teacherInstitutionCode.trim().toUpperCase();
+      let finalInstName = connectedInstitutionName || currentUser.institutionName || '';
+      let finalInstConnected = isInstitutionConnected;
+
+      if (
+        finalInstCode &&
+        (!isInstitutionConnected ||
+          finalInstCode !== (currentUser.institutionCode || '').trim().toUpperCase())
+      ) {
+        if (isDemo) {
+          finalInstName = currentUser.institutionName || 'AKÇAKOCA İLKOKULU';
+          finalInstId = currentUser.institutionId || 'demo-institution-manual';
+          finalInstConnected = true;
+          setConnectedInstitutionName(finalInstName);
+          setConnectedInstitutionId(finalInstId);
+          setIsInstitutionConnected(true);
+        } else {
+          const inst = await joinInstitutionWithCode(currentUser.uid, finalInstCode);
+          finalInstName = inst.name;
+          finalInstId = inst.id;
+          finalInstCode = inst.code;
+          finalInstConnected = true;
+          setConnectedInstitutionName(inst.name);
+          setConnectedInstitutionId(inst.id);
+          setIsInstitutionConnected(true);
+        }
+      }
+
+      // Sınıf ismi girilmediyse: Öğretmen üyeliği oluşturup kuruma bağlanan kişi yönetici de olabileceği için
+      // sınıf ismi girmek zorunda olmadan değişiklikleri kaydedebilsin!
+      if (!trimmedClassName) {
+        const profileUpdates: Partial<UserProfile> = {
+          role: currentUser.role === 'admin' ? 'admin' : 'teacher',
+          userType: 'teacher',
+          displayName: fullName.trim() || currentUser.displayName || 'Öğretmen',
+          ...(finalInstConnected && finalInstCode
+            ? {
+                institutionId: finalInstId || undefined,
+                institutionCode: finalInstCode,
+                institutionName: finalInstName || undefined,
+              }
+            : {}),
+        };
+
+        if (!isDemo) {
+          if (currentUser.classId) {
+            try {
+              await adminDeleteClassroom(currentUser.classId, currentUser.uid);
+            } catch (delErr) {
+              console.warn('Could not unlink previous classroom:', delErr);
+            }
+          }
+          await saveProfileUpdates(currentUser, profileUpdates);
+        }
+
+        onDemoProfileUpdate?.({
+          ...profileUpdates,
+          ...(currentUser.classId
+            ? { classId: undefined, classCode: undefined, className: undefined }
+            : {}),
+        });
+
+        setSuccessMsg(
+          finalInstConnected && finalInstName
+            ? `Değişiklikleriniz kaydedildi! "${finalInstName}" kurumuna bağlısınız.`
+            : 'Değişiklikleriniz başarıyla kaydedildi!'
+        );
+        setTimeout(() => onCompleted(), 900);
+        return;
+      }
+
       const institutionPayload =
-        isInstitutionConnected && teacherInstitutionCode.trim()
+        finalInstConnected && finalInstCode
           ? {
-              ...(connectedInstitutionId ? { id: connectedInstitutionId } : {}),
-              code: teacherInstitutionCode.trim().toUpperCase(),
-              name: connectedInstitutionName || '',
+              ...(finalInstId ? { id: finalInstId } : {}),
+              code: finalInstCode,
+              name: finalInstName || '',
             }
           : undefined;
 
@@ -345,11 +430,12 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
         if (isDemo) {
           await new Promise((r) => setTimeout(r, 400));
           onDemoProfileUpdate?.({
-            className: className.trim(),
-            institutionCode: teacherInstitutionCode.trim().toUpperCase() || undefined,
-            institutionName: connectedInstitutionName || undefined,
+            className: trimmedClassName,
+            institutionId: finalInstId || undefined,
+            institutionCode: finalInstCode || undefined,
+            institutionName: finalInstName || undefined,
           });
-          setSuccessMsg(`Sınıf bilgileriniz güncellendi: "${className.trim()}"`);
+          setSuccessMsg(`Sınıf bilgileriniz güncellendi: "${trimmedClassName}"`);
           setTimeout(() => onCompleted(), 1200);
           return;
         }
@@ -358,7 +444,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
           await updateClassroom(
             currentUser.classId,
             currentUser.uid,
-            className.trim(),
+            trimmedClassName,
             studentTargetCount,
             institutionPayload,
             {
@@ -370,9 +456,10 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
           console.warn('updateClassroom Firestore update warning (continuing with local state):', dbErr);
         }
         onDemoProfileUpdate?.({
-          className: className.trim(),
-          institutionCode: teacherInstitutionCode.trim().toUpperCase() || undefined,
-          institutionName: connectedInstitutionName || undefined,
+          className: trimmedClassName,
+          institutionId: finalInstId || undefined,
+          institutionCode: finalInstCode || undefined,
+          institutionName: finalInstName || undefined,
         });
         setSuccessMsg(`Sınıf bilgileriniz başarıyla güncellendi!`);
         setTimeout(() => onCompleted(), 1200);
@@ -388,7 +475,10 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
           userType: 'teacher',
           classId: 'demo-class-manual',
           classCode: code,
-          className: className.trim(),
+          className: trimmedClassName,
+          institutionId: finalInstId || undefined,
+          institutionCode: finalInstCode || undefined,
+          institutionName: finalInstName || undefined,
         });
         setSuccessMsg(`Sınıfınız oluşturuldu! Sınıf Kodunuz: ${code}`);
         setTimeout(() => onCompleted(), 1200);
@@ -399,15 +489,25 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
         currentUser.uid,
         fullName.trim() || currentUser.displayName || 'Öğretmen',
         currentUser.email,
-        className.trim(),
+        trimmedClassName,
         studentTargetCount,
         institutionPayload
       );
+      onDemoProfileUpdate?.({
+        role: 'teacher',
+        userType: 'teacher',
+        classId: classroom.id,
+        classCode: classroom.code,
+        className: classroom.name,
+        institutionId: finalInstId || classroom.institutionId || undefined,
+        institutionCode: finalInstCode || classroom.institutionCode || undefined,
+        institutionName: finalInstName || classroom.institutionName || undefined,
+      });
       setSuccessMsg(`Sınıfınız başarıyla oluşturuldu! Sınıf Kodunuz: ${classroom.code}`);
       setTimeout(() => onCompleted(), 1200);
     } catch (err: any) {
       console.error('Save class error:', err);
-      setError(err.message || 'Sınıf kaydedilirken bir hata oluştu.');
+      setError(err.message || 'Değişiklikler kaydedilirken bir hata oluştu.');
     } finally {
       setLoading(false);
     }
@@ -506,6 +606,29 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
         }}
       >
         
+        {/* Üst Geri / Kapat Çubuğu */}
+        {(onCancel || onCompleted) && (
+          <div className="flex items-center justify-between -mb-2">
+            <button
+              type="button"
+              id="btn-modal-back"
+              onClick={onCancel || onCompleted}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/80 hover:bg-white text-slate-800 border border-slate-200 shadow-2xs text-xs font-black transition-all cursor-pointer active:scale-95"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5]" />
+              <span>Geri</span>
+            </button>
+            <button
+              type="button"
+              onClick={onCancel || onCompleted}
+              title="Kapat"
+              className="w-8 h-8 rounded-xl bg-white/70 hover:bg-white text-slate-500 hover:text-slate-800 border border-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Modal Başlığı */}
         <div className="text-center space-y-1.5">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 shadow-2xs">
@@ -564,7 +687,7 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                     </span>
                   </div>
                   <div className="text-[11px] text-indigo-700 font-medium truncate">
-                    {className || currentUser.className || 'Sınıfınız'}
+                    {className || currentUser.className || (connectedInstitutionName ? `${connectedInstitutionName} (Sınıf Girilmedi)` : 'Sınıf Tanımlanmadı (İsteğe Bağlı)')}
                   </div>
                 </div>
               </div>
@@ -648,15 +771,19 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                 <ProfileNameFields fullName={fullName} onFullNameChange={setFullName} />
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Sınıf Adı / Şube:</label>
+                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                    <label className="text-xs font-bold text-slate-700">Sınıf Adı / Şube (İsteğe Bağlı):</label>
+                    <span className="text-[10px] font-semibold text-indigo-600">
+                      Yöneticiyseniz boş bırakabilirsiniz
+                    </span>
+                  </div>
                   <input
                     type="text"
                     id="input-class-name"
                     value={className}
                     onChange={(e) => setClassName(e.target.value)}
-                    placeholder="Örn: 4-A Sınıfı"
+                    placeholder="Örn: 4-A Sınıfı (Yöneticiyseniz boş bırakabilirsiniz)"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                    required
                   />
                 </div>
 
@@ -673,13 +800,14 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                 </div>
 
                 <div className="pt-2 flex items-center gap-2">
-                  {canCancel && onCancel && (
+                  {(onCancel || onCompleted) && (
                     <button
                       type="button"
-                      onClick={onCancel}
-                      className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
+                      onClick={onCancel || onCompleted}
+                      className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer inline-flex items-center justify-center gap-1.5"
                     >
-                      Kapat
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Geri</span>
                     </button>
                   )}
                   <button
@@ -764,13 +892,14 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
               )}
 
               <div className="pt-2 flex items-center gap-2">
-                {canCancel && onCancel && (
+                {(onCancel || onCompleted) && (
                   <button
                     type="button"
-                    onClick={onCancel}
-                    className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
+                    onClick={onCancel || onCompleted}
+                    className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer inline-flex items-center justify-center gap-1.5"
                   >
-                    Kapat
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Geri</span>
                   </button>
                 )}
                 <button
@@ -891,13 +1020,14 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                   </div>
 
                   <div className="pt-2 flex items-center gap-2">
-                    {canCancel && onCancel && (
+                    {(onCancel || onCompleted) && (
                       <button
                         type="button"
-                        onClick={onCancel}
-                        className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
+                        onClick={onCancel || onCompleted}
+                        className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer inline-flex items-center justify-center gap-1.5"
                       >
-                        Kapat
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Geri</span>
                       </button>
                     )}
                     <button
@@ -961,18 +1091,22 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                   </div>
 
                   <p className="text-[11px] text-slate-500">
-                    Her öğretmen hesabı yalnızca 1 sınıf oluşturabilir. Sınıf adı ve öğrenci hedefini dilediğiniz an güncelleyebilirsiniz.
+                    Sınıf öğretmeniyseniz sınıf adınızı girebilirsiniz. Kurum yöneticisiyseniz sınıf adı girmeden doğrudan değişiklikleri kaydedebilirsiniz.
                   </p>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Sınıf Adı / Şube:</label>
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <label className="text-xs font-bold text-slate-700">Sınıf Adı / Şube (İsteğe Bağlı):</label>
+                      <span className="text-[10px] font-semibold text-indigo-600">
+                        Yöneticiyseniz boş bırakabilirsiniz
+                      </span>
+                    </div>
                     <input
                       type="text"
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
-                      placeholder="Örn: 4-A Sınıfı"
+                      placeholder="Örn: 4-A Sınıfı (Yöneticiyseniz boş bırakabilirsiniz)"
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                      required
                     />
                   </div>
 
@@ -989,13 +1123,14 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                   </div>
 
                   <div className="pt-2 flex items-center gap-2">
-                    {canCancel && onCancel && (
+                    {(onCancel || onCompleted) && (
                       <button
                         type="button"
-                        onClick={onCancel}
-                        className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
+                        onClick={onCancel || onCompleted}
+                        className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer inline-flex items-center justify-center gap-1.5"
                       >
-                        Vazgeç
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Geri</span>
                       </button>
                     )}
                     <button
@@ -1006,9 +1141,11 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                       <span>
                         {loading
                           ? 'Kaydediliyor...'
+                          : !className.trim()
+                          ? 'Değişiklikleri Kaydet'
                           : currentUser.classId
                           ? 'Sınıf Bilgilerini Güncelle'
-                          : 'Sınıf Kodunu Oluştur'}
+                          : 'Değişiklikleri Kaydet'}
                       </span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
@@ -1072,13 +1209,14 @@ export const ClassroomSetupModal: React.FC<ClassroomSetupModalProps> = ({
                 </div>
 
                 <div className="pt-2 flex items-center gap-2">
-                  {canCancel && onCancel && (
+                  {(onCancel || onCompleted) && (
                     <button
                       type="button"
-                      onClick={onCancel}
-                      className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer"
+                      onClick={onCancel || onCompleted}
+                      className="btn-3d-white flex-1 py-2.5 px-4 rounded-2xl text-xs font-bold cursor-pointer inline-flex items-center justify-center gap-1.5"
                     >
-                      Vazgeç
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Geri</span>
                     </button>
                   )}
                   <button

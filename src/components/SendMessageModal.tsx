@@ -37,11 +37,37 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
   const [selectedClassId, setSelectedClassId] = useState<string>(
     targetClassroom?.id || targetStudent?.classId || ''
   );
+  const [studentClassFilter, setStudentClassFilter] = useState<string>(
+    targetStudent?.classId || targetClassroom?.id || ''
+  );
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  // Sadece veli/öğrenci hesapları (öğretmen ve yönetici hesapları listelenmesin)
+  const parentUsers = students.filter(
+    (u) => u.role === 'parent' || u.userType === 'parent' || (!u.role && u.studentName)
+  );
+  const belongsToClass = (u: UserProfile, c: ClassroomInfo) =>
+    Boolean(
+      (u.classId && u.classId === c.id) ||
+        (u.classCode && c.code && u.classCode.trim().toUpperCase() === c.code.trim().toUpperCase())
+    );
+  const unassignedParents = parentUsers.filter((u) => !classrooms.some((c) => belongsToClass(u, c)));
+  const filteredParents = (
+    studentClassFilter === '__none__'
+      ? unassignedParents
+      : studentClassFilter
+      ? parentUsers.filter((u) => {
+          const cls = classrooms.find((c) => c.id === studentClassFilter);
+          return cls ? belongsToClass(u, cls) : false;
+        })
+      : []
+  ).sort((a, b) =>
+    (a.studentName || a.displayName || '').localeCompare(b.studentName || b.displayName || '', 'tr')
+  );
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,9 +227,6 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
                     type="button"
                     onClick={() => {
                       setTargetType('student');
-                      if (!selectedStudentUid && students.length > 0) {
-                        setSelectedStudentUid(students[0].uid);
-                      }
                     }}
                     className={`py-1.5 rounded-xl transition-all cursor-pointer ${
                       targetType === 'student'
@@ -255,22 +278,53 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
               </div>
             )}
 
-            {/* Öğrenci seçimi (targetType === 'student' ve önceden verilmemişse) */}
-            {!targetStudent && targetType === 'student' && students.length > 0 && (
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Hedef Öğrenci / Veli:</label>
-                <select
-                  value={selectedStudentUid}
-                  onChange={(e) => setSelectedStudentUid(e.target.value)}
-                  className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                >
-                  <option value="">Öğrenci Seçiniz</option>
-                  {students.map((st) => (
-                    <option key={st.uid} value={st.uid}>
-                      {st.studentName || st.displayName} {st.parentName ? `(${st.parentName})` : ''} - {st.className || ''}
-                    </option>
-                  ))}
-                </select>
+            {/* Öğrenci / Veli seçimi: önce sınıf, sonra veli */}
+            {!targetStudent && targetType === 'student' && (
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">1. Sınıf Seçiniz:</label>
+                  <select
+                    value={studentClassFilter}
+                    onChange={(e) => {
+                      setStudentClassFilter(e.target.value);
+                      setSelectedStudentUid('');
+                    }}
+                    className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="">Sınıf Seçiniz</option>
+                    {classrooms.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                    {unassignedParents.length > 0 && (
+                      <option value="__none__">Sınıfsız ({unassignedParents.length})</option>
+                    )}
+                  </select>
+                </div>
+
+                {studentClassFilter && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      2. Öğrenci / Veli Seçiniz ({filteredParents.length}):
+                    </label>
+                    <select
+                      value={selectedStudentUid}
+                      onChange={(e) => setSelectedStudentUid(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-bold rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    >
+                      <option value="">
+                        {filteredParents.length === 0 ? 'Bu sınıfta kayıtlı veli yok' : 'Öğrenci Seçiniz'}
+                      </option>
+                      {filteredParents.map((st) => (
+                        <option key={st.uid} value={st.uid}>
+                          {st.studentName || st.displayName}
+                          {st.parentName ? ` (${st.parentName.replace(/\s*\(veli\)/i, '')})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
 

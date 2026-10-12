@@ -8,6 +8,7 @@ export interface InstitutionInfo {
   adminUid: string;
   adminName: string;
   adminEmail: string;
+  isJoinLocked?: boolean; // true if admin locked new teacher joins
   createdAt?: any;
   updatedAt?: any;
 }
@@ -25,9 +26,12 @@ export interface UserProfile {
   institutionCode?: string; // e.g. "KRM-8842" — Kurum Kodu (for teachers)
   institutionAdminCode?: string; // e.g. "ADM-8842" — Admin Kodu (for co-admins)
   institutionName?: string; // e.g. "AKÇAKOCA İLKOKULU"
+  institutionApprovalStatus?: 'approved' | 'pending' | 'rejected'; // Admin approval status for teacher joining institution
   classId?: string; // Connected classroom document ID
   classCode?: string; // 6-character connect code
   className?: string; // Name of classroom (e.g. '4-A Sınıfı')
+  classApprovalStatus?: 'approved' | 'pending' | 'rejected'; // Teacher/Admin approval status for parent joining classroom
+  studentTargetCount?: number; // Max student capacity
   currentWeekId: string;
   currentWeekMinutes: number;
   currentWeekStage: number; // 0 to 14
@@ -49,10 +53,13 @@ export interface ClassroomInfo {
   institutionId?: string; // Parent institution
   institutionCode?: string;
   institutionName?: string;
+  institutionApprovalStatus?: 'approved' | 'pending' | 'rejected';
+  isJoinLocked?: boolean; // true if teacher/admin locked new parent joins
+  teacherId?: string;
   teacherUid: string;
   teacherName: string;
   teacherEmail: string;
-  studentTargetCount?: number; // e.g. 25
+  studentTargetCount?: number; // e.g. 25 (max student capacity)
   createdAt?: any;
   updatedAt?: any;
 }
