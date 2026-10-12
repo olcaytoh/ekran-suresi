@@ -128,4 +128,5 @@ export interface InAppMessage {
   weekNum?: number;
   createdAt: any;
   readBy?: string[]; // uids of users who marked this as read
+  isUpdateAnnouncement?: boolean; // true ise tüm kullanıcılarda güncelleme videosu açılır
 }

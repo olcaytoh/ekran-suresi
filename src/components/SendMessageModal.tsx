@@ -30,6 +30,7 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
 }) => {
   const [title, setTitle] = useState(defaultTitle || 'Ekran Süresi Bilgilendirmesi');
   const [content, setContent] = useState(defaultContent || '');
+  const [isUpdateAnnouncement, setIsUpdateAnnouncement] = useState(false);
   const [targetType, setTargetType] = useState<'student' | 'class' | 'all'>(
     targetStudent ? 'student' : targetClassroom ? 'class' : 'all'
   );
@@ -124,6 +125,10 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
         title: title.trim() || 'Bilgilendirme Mesajı',
         content: content.trim(),
         weekNum: defaultWeekNum,
+        isUpdateAnnouncement:
+          senderProfile?.role === 'admin' && targetType === 'all' && isUpdateAnnouncement
+            ? true
+            : undefined,
       });
 
       setSuccess(true);
@@ -326,6 +331,23 @@ export const SendMessageModal: React.FC<SendMessageModalProps> = ({
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Güncelleme duyurusu: sadece yönetici + herkese giden mesajlarda */}
+            {senderProfile?.role === 'admin' && targetType === 'all' && (
+              <label className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="chk-update-announcement"
+                  checked={isUpdateAnnouncement}
+                  onChange={(e) => setIsUpdateAnnouncement(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-amber-600"
+                />
+                <span className="text-[11px] font-bold text-amber-900 leading-snug">
+                  Güncelleme duyurusu: herkesin ekranında güncelleme videosu 1 kez oynar,
+                  dokununca Play Store açılır.
+                </span>
+              </label>
             )}
 
             {/* Mesaj Başlığı */}

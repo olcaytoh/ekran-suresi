@@ -30,6 +30,7 @@ import {
   purgeBlockedEmailsFromFirestore,
   isBlockedEmail,
   normalizeUserForCurrentWeek,
+  markInAppMessageRead,
 } from './lib/firebase';
 import { UserProfile, ClassroomInfo, InAppMessage } from './types';
 import { getCurrentWeekInfo } from './lib/weekUtils';
@@ -49,6 +50,7 @@ import { ParentGuideModal } from './components/ParentGuideModal';
 import { AdminCodePromptModal } from './components/AdminCodePromptModal';
 import { NotificationInboxModal } from './components/NotificationInboxModal';
 import { SendMessageModal } from './components/SendMessageModal';
+import { UpdateAnnouncementOverlay } from './components/UpdateAnnouncementOverlay';
 import { Loader2, GraduationCap, School, ChevronRight, X, Plus } from 'lucide-react';
 import { DEMO_3_CLASSES, DEMO_INSTITUTION } from './lib/demoData';
 
@@ -88,6 +90,7 @@ export default function App() {
   const [inAppMessages, setInAppMessages] = useState<InAppMessage[]>([]);
   const [showInboxModal, setShowInboxModal] = useState(false);
   const [showComposeModal, setShowComposeModal] = useState(false);
+  const [dismissedUpdateIds, setDismissedUpdateIds] = useState<string[]>([]);
   const [impersonatedParent, setImpersonatedParent] = useState<UserProfile | null>(null);
   const [weekInfo, setWeekInfo] = useState(() => getCurrentWeekInfo());
 
@@ -1284,6 +1287,39 @@ export default function App() {
     return userVisibleMessages.filter((m) => !m.readBy?.includes(effectiveProfile.uid)).length;
   }, [userVisibleMessages, effectiveProfile?.uid]);
 
+  // Güncelleme duyurusu: kullanıcı başına 1 kez gösterilir (cihazda hatırlanır)
+  const SEEN_UPDATE_KEY = 'seen_update_announcements';
+  const pendingUpdateMessage = useMemo(() => {
+    if (!effectiveProfile?.uid) return null;
+    let seen: string[] = [];
+    try {
+      seen = JSON.parse(localStorage.getItem(SEEN_UPDATE_KEY) || '[]');
+    } catch {}
+    const maxAgeMs = 30 * 24 * 60 * 60 * 1000;
+    return (
+      userVisibleMessages.find((m) => {
+        if (!m.isUpdateAnnouncement) return false;
+        if (m.senderUid === effectiveProfile.uid) return false;
+        if (seen.includes(m.id) || dismissedUpdateIds.includes(m.id)) return false;
+        const ms = typeof m.createdAt?.toMillis === 'function' ? m.createdAt.toMillis() : Date.now();
+        return Date.now() - ms < maxAgeMs;
+      }) || null
+    );
+  }, [userVisibleMessages, effectiveProfile?.uid, dismissedUpdateIds]);
+
+  const handleDismissUpdate = () => {
+    if (!pendingUpdateMessage) return;
+    const id = pendingUpdateMessage.id;
+    try {
+      const seen: string[] = JSON.parse(localStorage.getItem(SEEN_UPDATE_KEY) || '[]');
+      localStorage.setItem(SEEN_UPDATE_KEY, JSON.stringify([...seen, id].slice(-50)));
+    } catch {}
+    setDismissedUpdateIds((prev) => [...prev, id]);
+    if (effectiveProfile?.uid) {
+      markInAppMessageRead(id, effectiveProfile.uid).catch(() => {});
+    }
+  };
+
   // Handle stage change (0 to 14)
   // Demo/inceleme modunda (gerçek Firebase Auth oturumu olmadan) yapılan
   // "kurum oluştur / sınıf oluştur / sınıfa katıl" gibi işlemleri yerel
@@ -2014,6 +2050,11 @@ export default function App() {
             setShowComposeModal(true);
           }}
         />
+      )}
+
+      {/* 10. Güncelleme duyurusu videosu (1 kez, dokununca Play Store) */}
+      {pendingUpdateMessage && (
+        <UpdateAnnouncementOverlay onDismiss={handleDismissUpdate} />
       )}
 
       {/* 9. Yeni Mesaj Yaz (Gelen kutusundan açılır) */}
