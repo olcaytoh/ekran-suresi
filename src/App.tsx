@@ -1300,7 +1300,7 @@ export default function App() {
       userVisibleMessages.find((m) => {
         if (!m.isUpdateAnnouncement) return false;
         if (m.senderUid === effectiveProfile.uid) return false;
-        if (seen.includes(m.id) || dismissedUpdateIds.includes(m.id)) return false;
+        if (seen.includes(`${effectiveProfile.uid}:${m.id}`) || dismissedUpdateIds.includes(`${effectiveProfile.uid}:${m.id}`)) return false;
         const ms = typeof m.createdAt?.toMillis === 'function' ? m.createdAt.toMillis() : Date.now();
         return Date.now() - ms < maxAgeMs;
       }) || null
@@ -1310,11 +1310,13 @@ export default function App() {
   const handleDismissUpdate = () => {
     if (!pendingUpdateMessage) return;
     const id = pendingUpdateMessage.id;
+    // Aynı cihazda farklı hesaplar (yönetici, öğretmen, veli) için ayrı ayrı hatırlanır
+    const seenKey = `${effectiveProfile?.uid}:${id}`;
     try {
       const seen: string[] = JSON.parse(localStorage.getItem(SEEN_UPDATE_KEY) || '[]');
-      localStorage.setItem(SEEN_UPDATE_KEY, JSON.stringify([...seen, id].slice(-50)));
+      localStorage.setItem(SEEN_UPDATE_KEY, JSON.stringify([...seen, seenKey].slice(-100)));
     } catch {}
-    setDismissedUpdateIds((prev) => [...prev, id]);
+    setDismissedUpdateIds((prev) => [...prev, seenKey]);
     if (effectiveProfile?.uid) {
       markInAppMessageRead(id, effectiveProfile.uid).catch(() => {});
     }
