@@ -1563,8 +1563,10 @@ export function subscribeUserProfile(
         onUpdate(null);
       }
     },
-    (error) => {
-      console.error('User profile subscription error:', error);
+    (error: any) => {
+      if (error?.code !== 'resource-exhausted' && !error?.message?.includes('Quota limit exceeded')) {
+        console.error('User profile subscription error:', error);
+      }
       if (onError) onError(error);
     }
   );
@@ -1781,8 +1783,10 @@ export function subscribeAllUsers(
       });
       onUpdate(users);
     },
-    (error) => {
-      console.error('Subscribe all users error:', error);
+    (error: any) => {
+      if (error?.code !== 'resource-exhausted' && !error?.message?.includes('Quota limit exceeded')) {
+        console.error('Subscribe all users error:', error);
+      }
       onSnapshot(usersRef, (snap) => {
         const activeWeekId = getCurrentWeekInfo().weekId;
         const users: UserProfile[] = [];
@@ -1795,7 +1799,12 @@ export function subscribeAllUsers(
           users.push(normalizeUserForCurrentWeek(item, activeWeekId));
         });
         onUpdate(users);
-      }, onError);
+      }, (subErr: any) => {
+        if (subErr?.code !== 'resource-exhausted' && !subErr?.message?.includes('Quota limit exceeded')) {
+          console.error('Fallback subscribe all users error:', subErr);
+        }
+        if (onError) onError(subErr);
+      });
     }
   );
 }
@@ -3185,8 +3194,10 @@ export function subscribeInstitutionClassrooms(
         cache.set(idx, list);
         emit();
       },
-      (error) => {
-        console.error('Subscribe institution classrooms error:', error);
+      (error: any) => {
+        if (error?.code !== 'resource-exhausted' && !error?.message?.includes('Quota limit exceeded')) {
+          console.error('Subscribe institution classrooms error:', error);
+        }
         if (onError) onError(error);
       }
     )
@@ -3457,8 +3468,10 @@ export function subscribeInAppMessages(
       });
       onUpdate(list);
     },
-    (err) => {
-      console.error('Error subscribing in_app_messages:', err);
+    (err: any) => {
+      if (err?.code !== 'resource-exhausted' && !err?.message?.includes('Quota limit exceeded')) {
+        console.error('Error subscribing in_app_messages:', err);
+      }
       // Fallback without orderBy in case index or empty collection
       onSnapshot(messagesCol, (snap) => {
         const list: InAppMessage[] = [];
@@ -3466,7 +3479,12 @@ export function subscribeInAppMessages(
           list.push({ id: d.id, ...d.data() } as InAppMessage);
         });
         onUpdate(list);
-      }, onError);
+      }, (subErr: any) => {
+        if (subErr?.code !== 'resource-exhausted' && !subErr?.message?.includes('Quota limit exceeded')) {
+          console.error('Fallback error subscribing in_app_messages:', subErr);
+        }
+        if (onError) onError(subErr);
+      });
     }
   );
 }

@@ -714,7 +714,11 @@ export default function App() {
         setActiveAppProfile(profile, shouldRemember);
       },
       (err: any) => {
-        if (err?.code !== 'permission-denied') {
+        if (
+          err?.code !== 'permission-denied' &&
+          err?.code !== 'resource-exhausted' &&
+          !err?.message?.includes('Quota limit exceeded')
+        ) {
           console.error('Active profile subscription error:', err);
         }
       }

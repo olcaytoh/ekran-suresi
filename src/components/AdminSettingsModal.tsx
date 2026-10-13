@@ -20,6 +20,7 @@ import {
   X,
   School,
   ArrowLeft,
+  Download,
 } from 'lucide-react';
 
 interface AdminSettingsModalProps {
@@ -393,6 +394,57 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Yedekleme & Dışa Aktarma */}
+          <div
+            className="p-3.5 rounded-2xl space-y-2 border"
+            style={{
+              background: 'rgba(255, 255, 255, 0.65)',
+              backdropFilter: 'blur(12px)',
+              borderColor: 'rgba(255, 255, 255, 0.85)',
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-bold text-slate-900">Veritabanı Yedeği (JSON)</div>
+                <div className="text-[10.5px] text-slate-600">
+                  Tüm üyeleri, velileri ve sınıfları cihazınıza yedekleyin.
+                </div>
+              </div>
+              <button
+                type="button"
+                id="btn-export-backup-json"
+                onClick={() => {
+                  try {
+                    const backupData = {
+                      exportDate: new Date().toISOString(),
+                      institution: institutionName,
+                      institutionCode: institutionCode,
+                      localStorageData: {
+                        activeAppProfile: localStorage.getItem('activeAppProfile'),
+                        rememberedEmail: localStorage.getItem('rememberedEmail'),
+                      },
+                    };
+                    const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+                      type: 'application/json',
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `ekran-suresi-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch (err) {
+                    console.error('Backup export error:', err);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Yedeği İndir</span>
+              </button>
+            </div>
           </div>
 
           {/* Action Buttons */}
