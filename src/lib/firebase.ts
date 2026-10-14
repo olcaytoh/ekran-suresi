@@ -39,7 +39,7 @@ import {
   Firestore,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { UserProfile, WeekRecord, ClassroomInfo, UserRole, InAppMessage, InstitutionInfo } from '../types';
+import { UserProfile, WeekRecord, ClassroomInfo, UserRole, InstitutionInfo } from '../types';
 import { getCurrentWeekInfo } from './weekUtils';
 
 // Initialize Firebase App
@@ -145,25 +145,6 @@ export async function purgeBlockedEmailsFromFirestore(): Promise<void> {
         await deleteDoc(doc(db, 'password_reset_codes', emailDocId));
       } catch {}
     }
-
-    // Also delete any in_app_messages mentioning horocis321@aahzz.com
-    try {
-      const msgsRef = collection(db, 'in_app_messages');
-      const mSnap = await getDocs(msgsRef);
-      for (const md of mSnap.docs) {
-        const mData = md.data() as any;
-        if (
-          isBlockedEmail(mData?.senderName) ||
-          isBlockedEmail(mData?.targetStudentName) ||
-          (typeof mData?.body === 'string' && mData.body.toLowerCase().includes('horocis321@aahzz.com')) ||
-          (typeof mData?.title === 'string' && mData.title.toLowerCase().includes('horocis321@aahzz.com'))
-        ) {
-          try {
-            await deleteDoc(md.ref);
-          } catch {}
-        }
-      }
-    } catch {}
   } catch {}
 }
 
@@ -3446,78 +3427,6 @@ export async function updateStudentName(
     payload.parentName = parentName.trim();
   }
   await setDoc(userRef, payload, { merge: true });
-}
-
-export async function sendInAppMessage(
-  message: Omit<InAppMessage, 'id' | 'createdAt' | 'readBy'>
-): Promise<string> {
-  const messagesCol = collection(db, 'in_app_messages');
-  const msgDoc = doc(messagesCol);
-  const data = removeUndefined({
-    ...message,
-    id: msgDoc.id,
-    createdAt: serverTimestamp(),
-    readBy: [],
-  });
-  await setDoc(msgDoc, data);
-  return msgDoc.id;
-}
-
-export function subscribeInAppMessages(
-  onUpdate: (messages: InAppMessage[]) => void,
-  onError?: (err: Error) => void
-) {
-  const messagesCol = collection(db, 'in_app_messages');
-  const q = query(messagesCol, orderBy('createdAt', 'desc'));
-  return onSnapshot(
-    q,
-    (snap) => {
-      const list: InAppMessage[] = [];
-      snap.forEach((d) => {
-        list.push({ id: d.id, ...d.data() } as InAppMessage);
-      });
-      onUpdate(list);
-    },
-    (err: any) => {
-      if (err?.code !== 'resource-exhausted' && !err?.message?.includes('Quota limit exceeded')) {
-        console.error('Error subscribing in_app_messages:', err);
-      }
-      // Fallback without orderBy in case index or empty collection
-      onSnapshot(messagesCol, (snap) => {
-        const list: InAppMessage[] = [];
-        snap.forEach((d) => {
-          list.push({ id: d.id, ...d.data() } as InAppMessage);
-        });
-        onUpdate(list);
-      }, (subErr: any) => {
-        if (subErr?.code !== 'resource-exhausted' && !subErr?.message?.includes('Quota limit exceeded')) {
-          console.error('Fallback error subscribing in_app_messages:', subErr);
-        }
-        if (onError) onError(subErr);
-      });
-    }
-  );
-}
-
-export async function markInAppMessageRead(messageId: string, userUid: string): Promise<void> {
-  if (!messageId || !userUid) return;
-  const msgRef = doc(db, 'in_app_messages', messageId);
-  const snap = await getDoc(msgRef);
-  if (snap.exists()) {
-    const data = snap.data() as InAppMessage;
-    const currentReadBy = Array.isArray(data.readBy) ? data.readBy : [];
-    if (!currentReadBy.includes(userUid)) {
-      await updateDoc(msgRef, {
-        readBy: [...currentReadBy, userUid],
-      });
-    }
-  }
-}
-
-export async function deleteInAppMessage(messageId: string): Promise<void> {
-  if (!messageId) return;
-  const msgRef = doc(db, 'in_app_messages', messageId);
-  await deleteDoc(msgRef);
 }
 
 export function subscribeClassroom(

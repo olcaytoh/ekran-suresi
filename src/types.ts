@@ -113,20 +113,3 @@ export interface AcademicCalendarConfig {
   updatedBy?: string;
 }
 
-export interface InAppMessage {
-  id: string;
-  senderUid: string;
-  senderName: string;
-  senderRole: 'admin' | 'teacher';
-  targetType: 'all' | 'class' | 'student';
-  targetClassId?: string;
-  targetClassName?: string;
-  targetStudentUid?: string;
-  targetStudentName?: string;
-  title: string;
-  content: string;
-  weekNum?: number;
-  createdAt: any;
-  readBy?: string[]; // uids of users who marked this as read
-  isUpdateAnnouncement?: boolean; // true ise tüm kullanıcılarda güncelleme videosu açılır
-}

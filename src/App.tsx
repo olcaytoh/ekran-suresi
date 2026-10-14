@@ -26,13 +26,11 @@ import {
   getActiveAppProfile,
   setActiveAppProfile,
   clearActiveAppProfile,
-  subscribeInAppMessages,
   purgeBlockedEmailsFromFirestore,
   isBlockedEmail,
   normalizeUserForCurrentWeek,
-  markInAppMessageRead,
 } from './lib/firebase';
-import { UserProfile, ClassroomInfo, InAppMessage } from './types';
+import { UserProfile, ClassroomInfo } from './types';
 import { getCurrentWeekInfo } from './lib/weekUtils';
 import { Header } from './components/Header';
 import { ParentHeroBanner } from './components/ParentHeroBanner';
@@ -48,9 +46,6 @@ import { ClassroomSetupModal } from './components/ClassroomSetupModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { ParentGuideModal } from './components/ParentGuideModal';
 import { AdminCodePromptModal } from './components/AdminCodePromptModal';
-import { NotificationInboxModal } from './components/NotificationInboxModal';
-import { SendMessageModal } from './components/SendMessageModal';
-import { UpdateAnnouncementOverlay } from './components/UpdateAnnouncementOverlay';
 import { Loader2, GraduationCap, School, ChevronRight, X, Plus } from 'lucide-react';
 import { DEMO_3_CLASSES, DEMO_INSTITUTION } from './lib/demoData';
 
@@ -87,10 +82,6 @@ export default function App() {
   const [showParentGuide, setShowParentGuide] = useState(false);
   const [showTeacherClassPicker, setShowTeacherClassPicker] = useState(false);
   const [showAdminCodePrompt, setShowAdminCodePrompt] = useState(false);
-  const [inAppMessages, setInAppMessages] = useState<InAppMessage[]>([]);
-  const [showInboxModal, setShowInboxModal] = useState(false);
-  const [showComposeModal, setShowComposeModal] = useState(false);
-  const [dismissedUpdateIds, setDismissedUpdateIds] = useState<string[]>([]);
   const [impersonatedParent, setImpersonatedParent] = useState<UserProfile | null>(null);
   const [weekInfo, setWeekInfo] = useState(() => getCurrentWeekInfo());
 
@@ -774,7 +765,6 @@ export default function App() {
   const canGoBack = Boolean(
     showAdminCodePrompt ||
       showTeacherClassPicker ||
-      showInboxModal ||
       showParentGuide ||
       showClassSetup ||
       parentTab !== 'home' ||
@@ -791,10 +781,6 @@ export default function App() {
     }
     if (showTeacherClassPicker) {
       setShowTeacherClassPicker(false);
-      return true;
-    }
-    if (showInboxModal) {
-      setShowInboxModal(false);
       return true;
     }
     if (showParentGuide) {
@@ -849,7 +835,6 @@ export default function App() {
     parentTab,
     showClassSetup,
     showParentGuide,
-    showInboxModal,
     showTeacherClassPicker,
     showAdminCodePrompt,
     impersonatedParent,
@@ -1249,82 +1234,6 @@ export default function App() {
     );
   }, [institutionClassrooms, classroom]);
 
-  // Uygulama içi mesajları dinle
-  useEffect(() => {
-    const unsub = subscribeInAppMessages(
-      (msgs) => {
-        setInAppMessages(msgs);
-      },
-      (err) => {
-        console.warn('In-app messages subscription error:', err);
-      }
-    );
-    return () => unsub();
-  }, []);
-
-  // Kullanıcıya özel okunmamış ve filtrelenmiş mesajlar
-  const userVisibleMessages = useMemo(() => {
-    if (!effectiveProfile) return [];
-    const isStaff = effectiveProfile.role === 'admin' || effectiveProfile.role === 'teacher';
-    const myClassId = effectiveProfile.classId || classroom?.id;
-
-    return inAppMessages.filter((msg) => {
-      // 0. Kendi gönderdiği mesajlar (yönetici/öğretmen gönderdiklerini görebilir)
-      if (isStaff && msg.senderUid === effectiveProfile.uid) return true;
-      // 1. Tüm kullanıcılara gönderilmiş duyuru
-      if (msg.targetType === 'all') return true;
-      // 2. Belirli bir sınıfa gönderilmiş ve kullanıcının sınıfı uyuyor
-      if (msg.targetType === 'class') {
-        if (myClassId && msg.targetClassId === myClassId) return true;
-        if (effectiveProfile.className && msg.targetClassName && effectiveProfile.className.toLowerCase() === msg.targetClassName.toLowerCase()) return true;
-      }
-      // 3. Tek kişiye yazılmış mesaj: sadece o kişi görür
-      if (msg.targetType === 'student') {
-        if (msg.targetStudentUid === effectiveProfile.uid) return true;
-      }
-      return false;
-    });
-  }, [inAppMessages, effectiveProfile, classroom]);
-
-  const unreadMessageCount = useMemo(() => {
-    if (!effectiveProfile?.uid) return 0;
-    return userVisibleMessages.filter((m) => !m.readBy?.includes(effectiveProfile.uid)).length;
-  }, [userVisibleMessages, effectiveProfile?.uid]);
-
-  // Güncelleme duyurusu: kullanıcı başına 1 kez gösterilir (cihazda hatırlanır)
-  const SEEN_UPDATE_KEY = 'seen_update_announcements';
-  const pendingUpdateMessage = useMemo(() => {
-    if (!effectiveProfile?.uid) return null;
-    let seen: string[] = [];
-    try {
-      seen = JSON.parse(localStorage.getItem(SEEN_UPDATE_KEY) || '[]');
-    } catch {}
-    const maxAgeMs = 30 * 24 * 60 * 60 * 1000;
-    return (
-      userVisibleMessages.find((m) => {
-        if (!m.isUpdateAnnouncement) return false;
-        if (m.senderUid === effectiveProfile.uid) return false;
-        if (seen.includes(`${effectiveProfile.uid}:${m.id}`) || dismissedUpdateIds.includes(`${effectiveProfile.uid}:${m.id}`)) return false;
-        const ms = typeof m.createdAt?.toMillis === 'function' ? m.createdAt.toMillis() : Date.now();
-        return Date.now() - ms < maxAgeMs;
-      }) || null
-    );
-  }, [userVisibleMessages, effectiveProfile?.uid, dismissedUpdateIds]);
-
-  const handleDismissUpdate = () => {
-    if (!pendingUpdateMessage) return;
-    const id = pendingUpdateMessage.id;
-    // Aynı cihazda farklı hesaplar (yönetici, öğretmen, veli) için ayrı ayrı hatırlanır
-    const seenKey = `${effectiveProfile?.uid}:${id}`;
-    try {
-      const seen: string[] = JSON.parse(localStorage.getItem(SEEN_UPDATE_KEY) || '[]');
-      localStorage.setItem(SEEN_UPDATE_KEY, JSON.stringify([...seen, seenKey].slice(-100)));
-    } catch {}
-    setDismissedUpdateIds((prev) => [...prev, seenKey]);
-    if (effectiveProfile?.uid) {
-      markInAppMessageRead(id, effectiveProfile.uid).catch(() => {});
-    }
-  };
 
   // Handle stage change (0 to 14)
   // Demo/inceleme modunda (gerçek Firebase Auth oturumu olmadan) yapılan
@@ -1626,8 +1535,6 @@ export default function App() {
         onSwitchRole={handleSwitchRole}
         onSelectClass={() => setShowTeacherClassPicker(true)}
         onOpenParentGuide={() => setShowParentGuide(true)}
-        onOpenInbox={() => setShowInboxModal(true)}
-        unreadCount={unreadMessageCount}
         isImpersonatingParent={Boolean(activeImpersonatedParent)}
         onExitParentImpersonation={handleExitParentImpersonation}
         canGoBack={canGoBack}
@@ -2043,38 +1950,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 8. Gelen Kutusu / Bildirimler Modalı */}
-      {showInboxModal && (
-        <NotificationInboxModal
-          isOpen={showInboxModal}
-          onClose={() => setShowInboxModal(false)}
-          messages={userVisibleMessages}
-          currentUserId={effectiveProfile?.uid}
-          isStaffOrAdmin={isStaffOrAdmin}
-          onCompose={() => {
-            setShowInboxModal(false);
-            setShowComposeModal(true);
-          }}
-        />
-      )}
-
-      {/* 10. Güncelleme duyurusu videosu (1 kez, dokununca Play Store) */}
-      {pendingUpdateMessage && (
-        <UpdateAnnouncementOverlay onDismiss={handleDismissUpdate} />
-      )}
-
-      {/* 9. Yeni Mesaj Yaz (Gelen kutusundan açılır) */}
-      {showComposeModal && (
-        <SendMessageModal
-          isOpen={showComposeModal}
-          onClose={() => setShowComposeModal(false)}
-          senderProfile={effectiveProfile}
-          targetStudent={null}
-          targetClassroom={null}
-          classrooms={isSuperAdmin ? institutionClassrooms : classroom ? [classroom] : []}
-          students={allUsers}
-        />
-      )}
     </div>
   );
 }

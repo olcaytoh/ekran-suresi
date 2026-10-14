@@ -3,7 +3,6 @@ import { UserProfile } from '../types';
 import { signOutUser } from '../lib/firebase';
 import { isSoundEnabled, toggleSound, playTapSound } from '../lib/soundUtils';
 import {
-  MessageSquare,
   HelpCircle,
   Settings,
   LogOut,
@@ -28,8 +27,6 @@ interface HeaderProps {
   onSwitchRole?: (role: 'admin' | 'teacher') => void;
   onSelectClass?: () => void;
   onOpenParentGuide?: () => void;
-  onOpenInbox?: () => void;
-  unreadCount?: number;
   isImpersonatingParent?: boolean;
   onExitParentImpersonation?: () => void;
   canGoBack?: boolean;
@@ -43,8 +40,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSwitchRole,
   onSelectClass,
   onOpenParentGuide,
-  onOpenInbox,
-  unreadCount = 0,
   isImpersonatingParent = false,
   onExitParentImpersonation,
   canGoBack = false,
@@ -193,25 +188,6 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="relative z-10 flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
           {/* Kapsül: 4 İkon (Buzlu cam kapsül) */}
           <div className="flex items-center gap-2.5 sm:gap-3 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/60 hover:bg-white/75 border border-white/80 shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-md">
-            {/* 1. Mesajlar / Bildirimler */}
-            {onOpenInbox && (
-              <button
-                type="button"
-                id="btn-header-inbox"
-                onClick={() => {
-                  playTapSound();
-                  onOpenInbox();
-                }}
-                title="Mesajlar ve Bildirimler"
-                className="relative text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer active:scale-95 flex items-center justify-center p-0.5"
-              >
-                <MessageSquare className="w-4 h-4" strokeWidth={1.9} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white animate-pulse" />
-                )}
-              </button>
-            )}
-
             {/* 2. Uygulama Rehberi (Nasıl Kullanılır?) */}
             {onOpenParentGuide && (
               <button

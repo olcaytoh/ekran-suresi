@@ -51,13 +51,11 @@ import {
   UserMinus,
   Info,
   FileSpreadsheet,
-  MessageSquare,
   Lock,
   Unlock,
   Clock,
 } from 'lucide-react';
 import { StatsExportModal } from './StatsExportModal';
-import { SendMessageModal } from './SendMessageModal';
 
 interface AdminInstitutionViewProps {
   currentUser?: UserProfile | null;
@@ -193,9 +191,6 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   const [exportClassId, setExportClassId] = useState<string | null>(null);
 
   // Uygulama İçi Mesajlaşma State'leri
-  const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState(false);
-  const [messagingTargetUser, setMessagingTargetUser] = useState<UserProfile | null>(null);
-  const [messagingTargetClass, setMessagingTargetClass] = useState<ClassroomInfo | null>(null);
 
   // Sync props if updated from parent
   useEffect(() => {
@@ -540,7 +535,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         u.classCode && classCodes.has(u.classCode.trim().toUpperCase())
       );
 
-      if (isCurrentUser || matchesInstId || matchesInstCode || matchesClassId || matchesClassCode || !hasInstitution || allUsers.length > 0) {
+      if (isCurrentUser || matchesInstId || matchesInstCode || matchesClassId || matchesClassCode) {
         map.set(u.uid, u);
       }
     });
@@ -563,7 +558,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       }
     });
 
-    // 3. From studentsByClass
+    // 3. From studentsByClass (Always include students belonging to institution's classrooms)
     Object.entries(studentsByClass).forEach(([cId, list]) => {
       const cls = classrooms.find((c) => c.id === cId);
       const studentList = (list || []) as UserProfile[];
@@ -575,6 +570,8 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
             ...u,
             className: u.className || cls?.name || existing?.className,
             classId: u.classId || cId,
+            institutionId: u.institutionId || instId || cls?.institutionId,
+            institutionCode: u.institutionCode || instCode || cls?.institutionCode,
           });
         }
       });
@@ -2746,21 +2743,6 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                 </button>
               )}
 
-              <div className="ml-auto flex items-center">
-                <button
-                  type="button"
-                  id="btn-admin-broadcast-message"
-                  onClick={() => {
-                    setMessagingTargetUser(null);
-                    setMessagingTargetClass(null);
-                    setIsSendMessageModalOpen(true);
-                  }}
-                  className="px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap cursor-pointer transition-all bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs flex items-center gap-1.5 active:scale-95"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 fill-white/20" />
-                  <span>Uygulama İçi Mesaj Gönder</span>
-                </button>
-              </div>
             </div>
           </div>
 
@@ -2937,21 +2919,6 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
 
                       {/* 2. ORTA KISIM: 5 Minik Aksiyon Butonu */}
                       <div className="flex items-center gap-1.5 pt-1 border-t border-white/35">
-                        {/* Uygulama İçi Mesaj Gönder */}
-                        <button
-                          type="button"
-                          id={`btn-message-user-${user.uid}`}
-                          onClick={() => {
-                            setMessagingTargetUser(user);
-                            setMessagingTargetClass(null);
-                            setIsSendMessageModalOpen(true);
-                          }}
-                          className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-700 bg-white/45 hover:bg-white/75 border border-white/65 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 flex items-center justify-center text-xs font-bold backdrop-blur-xs shadow-2xs"
-                          title="Kullanıcıya / Veliye Uygulama İçi Mesaj Gönder"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
-                        </button>
-
                         {/* Şifre Sıfırlama Kodu Gönder Butonu */}
                         {user.email && (
                           <button
@@ -3667,22 +3634,6 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         isTeacher={false}
       />
 
-      {/* Uygulama İçi Mesajlaşma Modalı */}
-      {isSendMessageModalOpen && (
-        <SendMessageModal
-          isOpen={isSendMessageModalOpen}
-          onClose={() => {
-            setIsSendMessageModalOpen(false);
-            setMessagingTargetUser(null);
-            setMessagingTargetClass(null);
-          }}
-          senderProfile={currentUser}
-          targetStudent={messagingTargetUser}
-          targetClassroom={messagingTargetClass}
-          classrooms={classrooms}
-          students={allRegisteredUsers}
-        />
-      )}
     </div>
   );
 };
