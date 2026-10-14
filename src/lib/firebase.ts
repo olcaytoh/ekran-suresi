@@ -100,6 +100,13 @@ export function isBlockedEmail(email?: string | null): boolean {
 export async function purgeBlockedEmailsFromFirestore(): Promise<void> {
   try {
     if (typeof window !== 'undefined') {
+      const lastPurge = localStorage.getItem('last_email_purge_date');
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (lastPurge === todayStr) {
+        return; // Günde 1 kez çalışır, her açılışta veritabanı okuması yapmaz
+      }
+      localStorage.setItem('last_email_purge_date', todayStr);
+
       const remembered = localStorage.getItem('rememberedEmail');
       if (isBlockedEmail(remembered)) {
         localStorage.removeItem('rememberedEmail');
@@ -1786,25 +1793,28 @@ export function subscribeAllUsers(
     (error: any) => {
       if (error?.code !== 'resource-exhausted' && !error?.message?.includes('Quota limit exceeded')) {
         console.error('Subscribe all users error:', error);
-      }
-      onSnapshot(usersRef, (snap) => {
-        const activeWeekId = getCurrentWeekInfo().weekId;
-        const users: UserProfile[] = [];
-        snap.forEach((d) => {
-          const item = { uid: d.id, ...d.data() } as UserProfile;
-          if (isBlockedEmail(item.email)) {
-            deleteDoc(d.ref).catch(() => {});
-            return;
+        onSnapshot(usersRef, (snap) => {
+          const activeWeekId = getCurrentWeekInfo().weekId;
+          const users: UserProfile[] = [];
+          snap.forEach((d) => {
+            const item = { uid: d.id, ...d.data() } as UserProfile;
+            if (isBlockedEmail(item.email)) {
+              deleteDoc(d.ref).catch(() => {});
+              return;
+            }
+            users.push(normalizeUserForCurrentWeek(item, activeWeekId));
+          });
+          onUpdate(users);
+        }, (subErr: any) => {
+          if (subErr?.code !== 'resource-exhausted' && !subErr?.message?.includes('Quota limit exceeded')) {
+            console.error('Fallback subscribe all users error:', subErr);
           }
-          users.push(normalizeUserForCurrentWeek(item, activeWeekId));
+          if (onError) onError(subErr);
         });
-        onUpdate(users);
-      }, (subErr: any) => {
-        if (subErr?.code !== 'resource-exhausted' && !subErr?.message?.includes('Quota limit exceeded')) {
-          console.error('Fallback subscribe all users error:', subErr);
-        }
-        if (onError) onError(subErr);
-      });
+      } else {
+        onUpdate([]);
+        if (onError) onError(error);
+      }
     }
   );
 }

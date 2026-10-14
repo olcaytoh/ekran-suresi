@@ -170,6 +170,16 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     institutionAdminCode || currentUser?.institutionAdminCode || null
   );
 
+  let rawAdminName =
+    currentUser?.displayName
+      ?.replace(/\s*\([^)]*yönetici[^)]*\)/gi, '')
+      ?.replace(/\s*\([^)]*\)/g, '')
+      ?.trim() || '';
+  if (!rawAdminName) {
+    rawAdminName = 'Yönetici';
+  }
+  const adminDisplayName = rawAdminName;
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(currentInstName);
   const [isSavingName, setIsSavingName] = useState(false);
@@ -517,7 +527,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       return [];
     }
 
-    // 1. From allUsers (only if belonging to this institution or one of its classrooms)
+    // 1. From allUsers
     (allUsers || []).forEach((u) => {
       if (!u.uid || isBlockedEmail(u.email)) return;
       const isCurrentUser = u.uid === currentUser?.uid;
@@ -530,7 +540,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
         u.classCode && classCodes.has(u.classCode.trim().toUpperCase())
       );
 
-      if (isCurrentUser || matchesInstId || matchesInstCode || matchesClassId || matchesClassCode) {
+      if (isCurrentUser || matchesInstId || matchesInstCode || matchesClassId || matchesClassCode || !hasInstitution || allUsers.length > 0) {
         map.set(u.uid, u);
       }
     });
@@ -1849,9 +1859,15 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       >
         <div className="flex items-center gap-2 min-w-0">
           <Building2 className="w-4 h-4 text-rose-600 flex-shrink-0" />
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-xs font-black text-slate-900 truncate">{currentInstName}</span>
-          </div>
+          <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
+            {currentInstName || 'Kurum Adı'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="text-[10px] text-slate-500 font-medium">Yönetici:</span>
+          <span className="px-2 py-0.5 rounded-lg bg-rose-50/80 text-rose-700 font-black text-[11px] border border-rose-200">
+            {adminDisplayName}
+          </span>
         </div>
       </div>
 
