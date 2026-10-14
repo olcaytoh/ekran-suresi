@@ -651,42 +651,6 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     [allRegisteredUsers]
   );
 
-  // Giriş ekranındaki "test girişi" butonlarıyla her basışta oluşan deneme hesapları
-  const TEST_LOGIN_EMAILS = ['veli@example.com', 'ogretmen@okul.k12.tr'];
-  const testAccounts = useMemo(
-    () =>
-      allRegisteredUsers.filter(
-        (u) =>
-          u.role !== 'admin' &&
-          u.uid !== currentUser?.uid &&
-          TEST_LOGIN_EMAILS.includes((u.email || '').trim().toLowerCase())
-      ),
-    [allRegisteredUsers, currentUser?.uid]
-  );
-  const [isCleaningTests, setIsCleaningTests] = useState(false);
-
-  const handleCleanTestAccounts = async () => {
-    if (testAccounts.length === 0 || isCleaningTests) return;
-    const ok = window.confirm(
-      `${testAccounts.length} adet deneme (test girişi) hesabı kalıcı olarak silinecek. ` +
-        `Bunlar veli@example.com ve ogretmen@okul.k12.tr e-postalı test kayıtlarıdır. Devam edilsin mi?`
-    );
-    if (!ok) return;
-    try {
-      setIsCleaningTests(true);
-      for (const u of testAccounts) {
-        await onDeleteUser?.(u.uid, u.classId);
-      }
-      setFeedback({ type: 'success', text: `${testAccounts.length} deneme hesabı silindi.` });
-      setTimeout(() => setFeedback(null), 3500);
-    } catch (err) {
-      console.error('Error cleaning test accounts:', err);
-      setFeedback({ type: 'error', text: 'Deneme hesapları silinirken hata oluştu.' });
-    } finally {
-      setIsCleaningTests(false);
-    }
-  };
-
   const handleCopyInstCode = () => {
     if (!currentInstCode) return;
     navigator.clipboard.writeText(currentInstCode);
@@ -2678,23 +2642,6 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               Sisteme kayıt olan tüm hesapları buradan inceleyebilirsiniz. Yanlışlıkla açılan veya hatalı e-posta ile üye olunan bir hesap olduğunda, yanındaki <strong>&quot;Sıfırla &amp; Sil&quot;</strong> butonunu kullanarak hesabı veritabanından tamamen silebilirsiniz. Böylece o e-posta adresi serbest kalır ve kullanıcı sıfırdan yeniden kayıt olabilir.
             </p>
           </div>
-
-          {testAccounts.length > 0 && (
-            <div className="relative z-10 flex items-center justify-between gap-2 rounded-2xl p-3 bg-amber-50/80 border border-amber-300">
-              <p className="text-[11px] text-amber-900 font-bold leading-snug">
-                {testAccounts.length} adet deneme (test girişi) hesabı bulundu.
-              </p>
-              <button
-                type="button"
-                id="btn-clean-test-accounts"
-                onClick={handleCleanTestAccounts}
-                disabled={isCleaningTests}
-                className="px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap cursor-pointer bg-rose-600 hover:bg-rose-700 text-white shadow-xs active:scale-95 disabled:opacity-50"
-              >
-                {isCleaningTests ? 'Siliniyor...' : 'Deneme hesaplarını sil'}
-              </button>
-            </div>
-          )}
 
           {/* Arama & Rol Filtreleri */}
           <div className="relative z-10 space-y-2">
