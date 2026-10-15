@@ -1082,7 +1082,20 @@ export default function App() {
       return;
     }
 
-    if ((authUser || activeLocalProfile) && institutionClassrooms.length > 0) {
+    if (isSuperAdmin) {
+      // Superadmin already subscribes to allUsers, so derive classStudentsMap from allUsers to avoid duplicate reads!
+      const map: Record<string, UserProfile[]> = {};
+      allUsers.forEach((u) => {
+        if (u.classId) {
+          if (!map[u.classId]) map[u.classId] = [];
+          map[u.classId].push(u);
+        }
+      });
+      setClassStudentsMap(map);
+      return;
+    }
+
+    if ((authUser || activeLocalProfile) && institutionClassrooms.length > 0 && isTeacher) {
       const unsubs = institutionClassrooms.map((c) =>
         subscribeClassroomStudents(c.id, (students) => {
           setClassStudentsMap((prev) => ({ ...prev, [c.id]: students }));
@@ -1124,6 +1137,7 @@ export default function App() {
     effectiveProfile?.institutionId,
     effectiveProfile?.institutionCode,
     institutionClassrooms,
+    allUsers,
   ]);
 
   // Admin için kuruma ait sınıfların öğrencileri, öğretmen/veli için kendi sınıf/öğrenci listesi

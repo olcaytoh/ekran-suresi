@@ -22,6 +22,9 @@ import { Capacitor } from '@capacitor/core';
 import {
   getFirestore,
   initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  clearIndexedDbPersistence,
   setLogLevel,
   doc,
   getDoc,
@@ -56,12 +59,24 @@ try {
 
 function createFirestoreInstance(): Firestore {
   const dbId = firebaseConfig.firestoreDatabaseId;
+  const cacheConfig = {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager(),
+    }),
+    experimentalForceLongPolling: true,
+  };
   try {
     return dbId
-      ? initializeFirestore(app, { experimentalForceLongPolling: true }, dbId)
-      : initializeFirestore(app, { experimentalForceLongPolling: true });
+      ? initializeFirestore(app, cacheConfig, dbId)
+      : initializeFirestore(app, cacheConfig);
   } catch {
-    return dbId ? getFirestore(app, dbId) : getFirestore(app);
+    try {
+      return dbId
+        ? initializeFirestore(app, { experimentalForceLongPolling: true }, dbId)
+        : initializeFirestore(app, { experimentalForceLongPolling: true });
+    } catch {
+      return dbId ? getFirestore(app, dbId) : getFirestore(app);
+    }
   }
 }
 
@@ -1224,30 +1239,61 @@ export async function forgetAndClearAllDeviceData(): Promise<void> {
     console.warn('Storage clear error:', e);
   }
 
-  // 3. Delete Firebase Auth persistence IndexedDB databases and wait briefly for completion
+  // 3. Clear Firestore persistent cache and delete all IndexedDB databases
+  try {
+    await clearIndexedDbPersistence(db);
+  } catch (e) {
+    console.warn('Clear indexed db persistence warning:', e);
+  }
+
   if (typeof window !== 'undefined' && 'indexedDB' in window) {
     try {
-      const knownDbs = [
-        'firebaseLocalStorageDb',
-        'firebase-heartbeat-database',
-        'firebase-installations-database',
-      ];
-      await Promise.all(
-        knownDbs.map(
-          (dbName) =>
-            new Promise<void>((resolve) => {
-              try {
-                const req = window.indexedDB.deleteDatabase(dbName);
-                req.onsuccess = () => resolve();
-                req.onerror = () => resolve();
-                req.onblocked = () => resolve();
-                setTimeout(resolve, 250);
-              } catch {
-                resolve();
-              }
-            })
-        )
-      );
+      if (typeof window.indexedDB.databases === 'function') {
+        const dbs = await window.indexedDB.databases();
+        await Promise.all(
+          dbs.map(
+            (info) =>
+              new Promise<void>((resolve) => {
+                if (info.name) {
+                  try {
+                    const req = window.indexedDB.deleteDatabase(info.name);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => resolve();
+                    req.onblocked = () => resolve();
+                    setTimeout(resolve, 200);
+                  } catch {
+                    resolve();
+                  }
+                } else {
+                  resolve();
+                }
+              })
+          )
+        );
+      } else {
+        const knownDbs = [
+          'firebaseLocalStorageDb',
+          'firebase-heartbeat-database',
+          'firebase-installations-database',
+          'firestore/[DEFAULT]/[DEFAULT]/main',
+        ];
+        await Promise.all(
+          knownDbs.map(
+            (dbName) =>
+              new Promise<void>((resolve) => {
+                try {
+                  const req = window.indexedDB.deleteDatabase(dbName);
+                  req.onsuccess = () => resolve();
+                  req.onerror = () => resolve();
+                  req.onblocked = () => resolve();
+                  setTimeout(resolve, 250);
+                } catch {
+                  resolve();
+                }
+              })
+          )
+        );
+      }
     } catch (e) {
       console.warn('IndexedDB cleanup error:', e);
     }
@@ -1370,10 +1416,31 @@ export async function syncUserProfile(
       } catch {}
     }
 
+    let adminInstData: any = null;
+    try {
+      const instQ = query(collection(db, 'institutions'), where('adminUid', '==', user.uid));
+      const instSnap = await getDocs(instQ);
+      if (!instSnap.empty) {
+        adminInstData = instSnap.docs[0].data();
+      }
+    } catch {}
+
+    const hasAdminCode = Boolean(
+      data.institutionAdminCode ||
+      emailInstSource.institutionAdminCode ||
+      adminInstData?.adminCode ||
+      data.role === 'admin' ||
+      emailInstSource.role === 'admin' ||
+      adminInstData
+    );
+
     let role: UserRole;
     let userType: 'teacher' | 'parent';
 
-    if (pendingRole) {
+    if (hasAdminCode) {
+      role = 'admin';
+      userType = 'teacher';
+    } else if (pendingRole) {
       role = pendingRole;
       userType = pendingRole === 'parent' ? 'parent' : 'teacher';
     } else if (data.role || emailInstSource.role) {
@@ -1384,10 +1451,10 @@ export async function syncUserProfile(
       userType = data.userType || 'parent';
     }
 
-    const mergedInstId = data.institutionId || emailInstSource.institutionId;
-    const mergedInstCode = data.institutionCode || emailInstSource.institutionCode;
-    const mergedInstAdminCode = role === 'admin' ? (data.institutionAdminCode || emailInstSource.institutionAdminCode) : undefined;
-    const mergedInstName = data.institutionName || emailInstSource.institutionName;
+    const mergedInstId = data.institutionId || emailInstSource.institutionId || adminInstData?.id;
+    const mergedInstCode = data.institutionCode || emailInstSource.institutionCode || adminInstData?.code;
+    const mergedInstAdminCode = role === 'admin' ? (data.institutionAdminCode || emailInstSource.institutionAdminCode || adminInstData?.adminCode) : undefined;
+    const mergedInstName = data.institutionName || emailInstSource.institutionName || adminInstData?.name;
     const mergedClassId = data.classId || emailInstSource.classId;
     const mergedClassCode = data.classCode || emailInstSource.classCode;
     const mergedClassName = data.className || emailInstSource.className;
@@ -3177,11 +3244,13 @@ export function subscribeInstitutionClassrooms(
   const unsubs = queryList.map((q, idx) =>
     onSnapshot(
       q,
-      (snap) => {
+      (snap: any) => {
         const list: ClassroomInfo[] = [];
-        snap.forEach((d) => {
-          list.push({ id: d.id, ...d.data() } as ClassroomInfo);
-        });
+        if (snap && typeof snap.forEach === 'function') {
+          snap.forEach((d: any) => {
+            list.push({ id: d.id, ...d.data() } as ClassroomInfo);
+          });
+        }
         cache.set(idx, list);
         emit();
       },
