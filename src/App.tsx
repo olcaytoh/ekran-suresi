@@ -925,7 +925,8 @@ export default function App() {
               if (err?.code !== 'permission-denied') {
                 console.error('Error subscribing all users:', err);
               }
-            }
+            },
+            effectiveProfile.institutionId
           );
           return () => unsubscribeAll();
         } else {

@@ -578,6 +578,29 @@ export async function signInWithEmailAndPasswordAuth(
       password
     );
     const user = userCredential.user;
+
+    // Strict validation: if any Firestore doc for this email has an explicit passwordHash, ensure it matches entered password
+    try {
+      const usersRef = collection(db, 'users');
+      const checkSnap = await getDocs(query(usersRef, where('email', '==', cleanEmail)));
+      const encodedPwd = btoa(password);
+      for (const d of checkSnap.docs) {
+        const dData = d.data() as any;
+        if (dData.passwordHash && dData.passwordHash !== encodedPwd) {
+          await signOut(auth);
+          const wrongPwdErr: any = new Error(
+            'Girdiğiniz şifre hatalı. Şifrenizi değiştirdiyseniz lütfen yeni şifrenizle giriş yapınız.'
+          );
+          wrongPwdErr.code = 'auth/wrong-password';
+          throw wrongPwdErr;
+        }
+      }
+    } catch (hashCheckErr: any) {
+      if (hashCheckErr?.code === 'auth/wrong-password' || hashCheckErr?.message?.includes('şifre hatalı')) {
+        throw hashCheckErr;
+      }
+    }
+
     const profile = await syncUserProfile(user);
     // Sync latest working passwordHash to Firestore so both stay in sync
     if (!firestoreHasExplicitPassword) {
@@ -1390,10 +1413,10 @@ export async function syncUserProfile(
   if (snap.exists()) {
     const data = snap.data() as Partial<UserProfile>;
 
-    // If this user doc is missing institutionId or classId, check if another doc with the same email has them
+    // Always check if another doc with the same email has institution, class, or admin info and consolidate
     const targetEmail = (emailOverride || user.email || data.email || '').trim().toLowerCase();
     let emailInstSource: any = {};
-    if (targetEmail && targetEmail !== 'misafir@ekran.takip' && (!data.institutionId || !data.classId)) {
+    if (targetEmail && targetEmail !== 'misafir@ekran.takip') {
       try {
         const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', targetEmail)));
         for (const d of emailSnap.docs) {
@@ -1409,9 +1432,16 @@ export async function syncUserProfile(
             emailInstSource.classCode = ed.classCode;
             emailInstSource.className = ed.className;
           }
-          if (ed.role && !data.role) {
+          if (ed.role && (!data.role || data.role === 'parent')) {
             emailInstSource.role = ed.role;
           }
+          if ((ed as any).passwordHash && !((data as any).passwordHash)) {
+            emailInstSource.passwordHash = (ed as any).passwordHash;
+          }
+        }
+        if (Object.keys(emailInstSource).length > 0) {
+          await setDoc(userRef, emailInstSource, { merge: true });
+          Object.assign(data, emailInstSource);
         }
       } catch {}
     }
@@ -1818,10 +1848,14 @@ export function subscribeUserWeeks(
 
 export function subscribeAllUsers(
   onUpdate: (users: UserProfile[]) => void,
-  onError?: (err: Error) => void
+  onError?: (err: Error) => void,
+  institutionId?: string
 ) {
   const usersRef = collection(db, 'users');
-  const q = query(usersRef, orderBy('updatedAt', 'desc'));
+  const cleanInstId = (institutionId || '').trim();
+  const q = cleanInstId
+    ? query(usersRef, where('institutionId', '==', cleanInstId), orderBy('updatedAt', 'desc'))
+    : query(usersRef, orderBy('updatedAt', 'desc'));
 
   return onSnapshot(
     q,
