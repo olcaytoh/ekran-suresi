@@ -1861,16 +1861,46 @@ export function subscribeAllUsers(
     q,
     (snap) => {
       const activeWeekId = getCurrentWeekInfo().weekId;
-      const users: UserProfile[] = [];
+      const usersMap = new Map<string, UserProfile>();
       snap.forEach((d) => {
         const item = { uid: d.id, ...d.data() } as UserProfile;
         if (isBlockedEmail(item.email)) {
           deleteDoc(d.ref).catch(() => {});
           return;
         }
-        users.push(normalizeUserForCurrentWeek(item, activeWeekId));
+
+        if (item.email && typeof window !== 'undefined') {
+          try {
+            const deletedList = JSON.parse(localStorage.getItem('deleted_user_emails') || '[]');
+            if (deletedList.includes(item.email.trim().toLowerCase())) {
+              deleteDoc(d.ref).catch(() => {});
+              return;
+            }
+          } catch {}
+        }
+
+        const normalized = normalizeUserForCurrentWeek(item, activeWeekId);
+        const emailKey = (normalized.email || '').trim().toLowerCase();
+
+        if (emailKey && emailKey !== 'misafir@ekran.takip') {
+          if (usersMap.has(emailKey)) {
+            const existing = usersMap.get(emailKey)!;
+            const scoreExisting = (existing.institutionAdminCode ? 4 : 0) + (existing.role === 'admin' ? 3 : 0) + (existing.institutionId ? 2 : 0);
+            const scoreNew = (normalized.institutionAdminCode ? 4 : 0) + (normalized.role === 'admin' ? 3 : 0) + (normalized.institutionId ? 2 : 0);
+            if (scoreNew >= scoreExisting) {
+              deleteDoc(doc(db, 'users', existing.uid)).catch(() => {});
+              usersMap.set(emailKey, normalized);
+            } else {
+              deleteDoc(d.ref).catch(() => {});
+            }
+          } else {
+            usersMap.set(emailKey, normalized);
+          }
+        } else {
+          usersMap.set(d.id, normalized);
+        }
       });
-      onUpdate(users);
+      onUpdate(Array.from(usersMap.values()));
     },
     (error: any) => {
       if (error?.code !== 'resource-exhausted' && !error?.message?.includes('Quota limit exceeded')) {
@@ -3040,6 +3070,14 @@ export async function createClassroom(
 export async function adminDeleteUser(userUid: string): Promise<void> {
   if (!userUid) return;
 
+  let userEmail = '';
+  try {
+    const snap = await getDoc(doc(db, 'users', userUid));
+    if (snap.exists()) {
+      userEmail = (snap.data() as any)?.email || '';
+    }
+  } catch {}
+
   try {
     // 1. Delete all weeks subcollection documents for this user
     const weeksRef = collection(db, 'users', userUid, 'weeks');
@@ -3051,12 +3089,10 @@ export async function adminDeleteUser(userUid: string): Promise<void> {
   }
 
   try {
-    // 2. If user had created any classrooms as teacher, update or clear teacher info
+    // 2. If user had created any classrooms as teacher, delete them
     const classesQ = query(collection(db, 'classes'), where('teacherUid', '==', userUid));
     const classesSnap = await getDocs(classesQ);
-    const updateClasses = classesSnap.docs.map((d) =>
-      deleteDoc(d.ref) // Delete empty class owned by deleted teacher
-    );
+    const updateClasses = classesSnap.docs.map((d) => deleteDoc(d.ref));
     await Promise.all(updateClasses);
   } catch (err) {
     console.warn('Error clearing classes for deleted user:', err);
@@ -3065,6 +3101,25 @@ export async function adminDeleteUser(userUid: string): Promise<void> {
   // 3. Delete user document from Firestore
   const userRef = doc(db, 'users', userUid);
   await deleteDoc(userRef);
+
+  // 4. Also delete any other user documents sharing this email address and blacklist the email
+  if (userEmail && userEmail !== 'misafir@ekran.takip') {
+    try {
+      const emailQ = query(collection(db, 'users'), where('email', '==', userEmail.trim().toLowerCase()));
+      const emailSnap = await getDocs(emailQ);
+      for (const d of emailSnap.docs) {
+        await deleteDoc(d.ref).catch(() => {});
+      }
+      if (typeof window !== 'undefined') {
+        const deletedList = JSON.parse(localStorage.getItem('deleted_user_emails') || '[]');
+        const cleanEmail = userEmail.trim().toLowerCase();
+        if (!deletedList.includes(cleanEmail)) {
+          deletedList.push(cleanEmail);
+          localStorage.setItem('deleted_user_emails', JSON.stringify(deletedList));
+        }
+      }
+    } catch {}
+  }
 }
 
 export async function adminSendPasswordResetEmail(email: string): Promise<string> {
