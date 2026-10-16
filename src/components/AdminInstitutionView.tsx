@@ -54,6 +54,7 @@ import {
   Lock,
   Unlock,
   Clock,
+  Eye,
 } from 'lucide-react';
 import { StatsExportModal } from './StatsExportModal';
 
@@ -84,6 +85,7 @@ interface AdminInstitutionViewProps {
   onSelectClassId?: (classId: string | null) => void;
   adminSection?: 'classrooms' | 'registered_emails';
   onChangeAdminSection?: (section: 'classrooms' | 'registered_emails') => void;
+  onSelectStudent?: (student: UserProfile) => void;
 }
 
 function computeClassStats(students: UserProfile[]) {
@@ -129,6 +131,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   onSelectClassId,
   adminSection: controlledAdminSection,
   onChangeAdminSection,
+  onSelectStudent,
 }) => {
   // Navigation & Tabs
   const [internalSelectedClassId, setInternalSelectedClassId] = useState<string | null>(null);
@@ -149,7 +152,7 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [emailSearchQuery, setEmailSearchQuery] = useState('');
-  const [emailRoleFilter, setEmailRoleFilter] = useState<'all' | 'parent' | 'teacher' | 'admin' | 'unassigned'>('all');
+  const [emailRoleFilter, setEmailRoleFilter] = useState<'all' | 'parent' | 'teacher' | 'admin' | 'unassigned' | 'pending'>('all');
 
   // Copy States
   const [copiedInstCode, setCopiedInstCode] = useState(false);
@@ -332,6 +335,49 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       setTimeout(() => setFeedback(null), 3500);
     } catch (err) {
       console.error('Error rejecting student:', err);
+    }
+  };
+
+  const handleMakeAdmin = async (uid: string, teacherName: string) => {
+    if (!onUpdateUser) return;
+    if (window.confirm(`"${teacherName || 'Öğretmen'}" kullanıcısına yönetici (admin) yetkisi vermek istediğinize emin misiniz?`)) {
+      try {
+        const updates: Partial<UserProfile> = {
+          role: 'admin',
+          userType: 'teacher',
+        };
+        if (currentAdminCode) updates.institutionAdminCode = currentAdminCode;
+        if (currentInstCode) updates.institutionCode = currentInstCode;
+        if (currentInstName) updates.institutionName = currentInstName;
+        if (currentUser?.institutionId) updates.institutionId = currentUser.institutionId;
+
+        await onUpdateUser(uid, updates);
+        setFeedback({
+          type: 'success',
+          text: `👑 "${teacherName || 'Öğretmen'}" kullanıcısına yönetici yetkisi verildi.`,
+        });
+        setTimeout(() => setFeedback(null), 3500);
+        playTapSound();
+      } catch (err) {
+        console.error('Error promoting teacher to admin:', err);
+      }
+    }
+  };
+
+  const handleRevokeAdmin = async (uid: string, teacherName: string) => {
+    if (!onUpdateUser) return;
+    if (window.confirm(`"${teacherName || 'Yönetici'}" yöneticisinin yetkisini alıp öğretmen yapmak istediğinize emin misiniz?`)) {
+      try {
+        await onUpdateUser(uid, { role: 'teacher', userType: 'teacher' });
+        setFeedback({
+          type: 'success',
+          text: `🎓 "${teacherName || 'Yönetici'}" yetkisi öğretmene çevrildi.`,
+        });
+        setTimeout(() => setFeedback(null), 3500);
+        playTapSound();
+      } catch (err) {
+        console.error('Error revoking admin privilege:', err);
+      }
     }
   };
 
@@ -580,6 +626,14 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
     return Array.from(map.values());
   }, [allUsers, classrooms, studentsByClass, currentUser?.uid, currentUser?.institutionId, currentUser?.institutionCode, currentInstCode]);
 
+  const pendingCount = useMemo(() => {
+    return allRegisteredUsers.filter((u) => {
+      const isPendingTeacher = u.role === 'teacher' && (u.institutionApprovalStatus === 'pending' || u.classApprovalStatus === 'pending');
+      const isPendingStudent = (u.classApprovalStatus === 'pending' || u.institutionApprovalStatus === 'pending');
+      return isPendingTeacher || isPendingStudent;
+    }).length;
+  }, [allRegisteredUsers]);
+
   // Filtered Registered Users
   const filteredRegisteredUsers = useMemo(() => {
     const filtered = allRegisteredUsers.filter((u) => {
@@ -588,6 +642,11 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
       if (emailRoleFilter === 'teacher' && u.role !== 'teacher') return false;
       if (emailRoleFilter === 'admin' && u.role !== 'admin') return false;
       if (emailRoleFilter === 'unassigned' && (u.classId || u.role === 'admin')) return false;
+      if (emailRoleFilter === 'pending') {
+        const isPendingTeacher = u.role === 'teacher' && (u.institutionApprovalStatus === 'pending' || u.classApprovalStatus === 'pending');
+        const isPendingStudent = (u.classApprovalStatus === 'pending' || u.institutionApprovalStatus === 'pending');
+        if (!isPendingTeacher && !isPendingStudent) return false;
+      }
 
       // Search query
       if (!emailSearchQuery.trim()) return true;
@@ -1240,7 +1299,8 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               return (
                 <div
                   key={user.uid}
-                  className="relative rounded-xl p-2 sm:p-2.5 shadow-xs flex flex-col gap-1.5 backdrop-blur-md overflow-hidden transition-all duration-150"
+                  onClick={() => onSelectStudent?.(user)}
+                  className={`relative rounded-xl p-2 sm:p-2.5 shadow-xs flex flex-col gap-1.5 backdrop-blur-md overflow-hidden transition-all duration-150 ${onSelectStudent ? 'cursor-pointer hover:scale-[1.01] hover:bg-white/40' : ''}`}
                   style={{
                     background: isRed
                       ? 'rgba(255, 241, 242, 0.38)'
@@ -1315,6 +1375,20 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                           {minutes} dk
                         </span>
                       </div>
+                      {onSelectStudent && (
+                        <button
+                          type="button"
+                          id={`btn-view-student-${user.uid}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectStudent(user);
+                          }}
+                          title="Bu öğrencinin veli/öğrenci ekranını görüntüle"
+                          className="p-1 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white/50 border border-transparent hover:border-indigo-200 transition-colors cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         id={`btn-edit-student-${user.uid}`}
@@ -2728,6 +2802,18 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
               >
                 Yöneticiler ({adminCount})
               </button>
+              <button
+                type="button"
+                id="filter-role-pending"
+                onClick={() => setEmailRoleFilter('pending')}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap cursor-pointer transition-all ${
+                  emailRoleFilter === 'pending'
+                    ? 'bg-amber-600 text-white shadow-xs animate-pulse'
+                    : 'bg-white/40 backdrop-blur-md text-amber-900 border border-amber-300/80 hover:bg-amber-50/80'
+                }`}
+              >
+                ⏳ Onay Bekleyenler ({pendingCount})
+              </button>
               {unassignedCount > 0 && (
                 <button
                   type="button"
@@ -2894,7 +2980,78 @@ export const AdminInstitutionView: React.FC<AdminInstitutionViewProps> = ({
                                 Sizin Hesabınız
                               </span>
                             )}
+
+                            {isTeacherRole && onUpdateUser && (
+                              <button
+                                type="button"
+                                id={`btn-make-admin-${user.uid}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMakeAdmin(user.uid, rawDisplay || user.email || 'Öğretmen');
+                                }}
+                                className="text-[8.5px] font-black px-1.5 py-0.5 rounded bg-violet-100 hover:bg-violet-200 text-violet-800 border border-violet-300 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                title="Bu öğretmene yönetici yetkisi ver"
+                              >
+                                <ShieldCheck className="w-2.5 h-2.5" />
+                                <span>Yönetici Yap</span>
+                              </button>
+                            )}
+
+                            {isAdminRole && !isCurrentAdminAccount && onUpdateUser && (
+                              <button
+                                type="button"
+                                id={`btn-revoke-admin-${user.uid}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRevokeAdmin(user.uid, rawDisplay || user.email || 'Yönetici');
+                                }}
+                                className="text-[8.5px] font-black px-1.5 py-0.5 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                title="Yönetici yetkisini kaldır ve öğretmen yap"
+                              >
+                                <GraduationCap className="w-2.5 h-2.5" />
+                                <span>Öğretmene Çevir</span>
+                              </button>
+                            )}
                           </div>
+
+                          {/* Onay Bekliyor Durumu ve Onay/Red Butonları */}
+                          {(user.institutionApprovalStatus === 'pending' || user.classApprovalStatus === 'pending') && (
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1.5 pt-1 border-t border-amber-200/60">
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 border border-amber-400">
+                                ⏳ Onay Bekliyor
+                              </span>
+                              <button
+                                type="button"
+                                id={`btn-approve-user-${user.uid}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isTeacherRole) {
+                                    handleApproveTeacher(user.uid, user.classId, rawDisplay || user.displayName || 'Öğretmen');
+                                  } else {
+                                    handleApproveStudent(user);
+                                  }
+                                }}
+                                className="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 transition-colors inline-flex items-center gap-1 cursor-pointer shadow-xs"
+                              >
+                                <Check className="w-3 h-3 stroke-[3]" /> Onayla
+                              </button>
+                              <button
+                                type="button"
+                                id={`btn-reject-user-${user.uid}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isTeacherRole) {
+                                    handleRejectTeacher(user.uid, user.classId, rawDisplay || user.displayName || 'Öğretmen');
+                                  } else {
+                                    handleRejectStudent(user);
+                                  }
+                                }}
+                                className="text-[9px] font-black px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-700 text-white border border-rose-500 transition-colors inline-flex items-center gap-1 cursor-pointer shadow-xs"
+                              >
+                                <UserX className="w-3 h-3" /> Reddet
+                              </button>
+                            </div>
+                          )}
 
                           {/* Sınıf ve Süre Bilgisi (Kademe yok) */}
                           <div className="text-[10.5px] text-slate-800 flex items-center gap-1.5 flex-wrap font-bold leading-none">

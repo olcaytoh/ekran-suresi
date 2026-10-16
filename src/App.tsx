@@ -9,6 +9,7 @@ import {
   auth,
   subscribeUserProfile,
   subscribeAllUsers,
+  subscribeInstitutionUsers,
   subscribeClassroom,
   subscribeClassroomStudents,
   subscribeInstitutionClassrooms,
@@ -71,6 +72,7 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [classroom, setClassroom] = useState<ClassroomInfo | null>(null);
   const [institutionClassrooms, setInstitutionClassrooms] = useState<ClassroomInfo[]>([]);
+  const adminClassIdsKey = institutionClassrooms.map((c) => c.id).sort().join(',');
   const [classStudentsMap, setClassStudentsMap] = useState<Record<string, UserProfile[]>>({});
   const [authLoading, setAuthLoading] = useState(true);
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
@@ -917,16 +919,17 @@ export default function App() {
         }
       } else if (isSuperAdmin) {
         if (effectiveProfile?.institutionId) {
-          const unsubscribeAll = subscribeAllUsers(
+          const unsubscribeAll = subscribeInstitutionUsers(
+            effectiveProfile.institutionId,
+            [],
             (users) => {
               setAllUsers(users);
             },
             (err: any) => {
               if (err?.code !== 'permission-denied') {
-                console.error('Error subscribing all users:', err);
+                console.error('Error subscribing institution users:', err);
               }
-            },
-            effectiveProfile.institutionId
+            }
           );
           return () => unsubscribeAll();
         } else {
@@ -1583,6 +1586,7 @@ export default function App() {
                   onSelectClassId={setAdminSelectedClassId}
                   adminSection={adminSection}
                   onChangeAdminSection={setAdminSection}
+                  onSelectStudent={handleSelectStudentAsParent}
                 />
               ) : (
                 <TeacherHomeView
@@ -1596,7 +1600,6 @@ export default function App() {
                   onUpdateUser={handleUpdateStudentUser}
                   onSwitchRole={handleSwitchRole}
                   onUpgradeToAdminWithCode={handleUpgradeToAdminWithCode}
-                  onSelectStudentAsParent={handleSelectStudentAsParent}
                 />
               )
             )}

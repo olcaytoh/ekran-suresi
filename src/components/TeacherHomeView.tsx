@@ -46,7 +46,6 @@ interface TeacherHomeViewProps {
   onUpdateUser?: (userUid: string, updates: Partial<UserProfile>) => Promise<void> | void;
   onSwitchRole?: (role: 'admin' | 'teacher') => void;
   onUpgradeToAdminWithCode?: (code: string) => Promise<void>;
-  onSelectStudentAsParent?: (student: UserProfile) => void;
 }
 
 export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
@@ -60,7 +59,6 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
   onUpdateUser,
   onSwitchRole,
   onUpgradeToAdminWithCode,
-  onSelectStudentAsParent,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<'all' | 'critical' | 'warning' | 'moderate' | 'safe'>('all');
@@ -810,24 +808,9 @@ export const TeacherHomeView: React.FC<TeacherHomeViewProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1.5 min-w-0 flex-wrap leading-tight">
-                        {onSelectStudentAsParent ? (
-                          <button
-                            type="button"
-                            id={`btn-teacher-view-parent-${user.uid}`}
-                            onClick={() => onSelectStudentAsParent(user)}
-                            title={`${sName} öğrencisinin veli hesabına giriş yap / görüntüle`}
-                            className="text-left text-xs sm:text-[13px] font-black tracking-tight text-slate-900 hover:text-indigo-700 leading-snug break-words whitespace-normal cursor-pointer inline-flex items-center gap-1 group transition-colors [font-family:inherit]"
-                          >
-                            <span className="underline decoration-indigo-400/60 group-hover:decoration-indigo-600 underline-offset-2">
-                              {sName}
-                            </span>
-                            <ExternalLink className="w-3 h-3 text-indigo-600 shrink-0 opacity-85 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                          </button>
-                        ) : (
-                          <h4 className="text-xs sm:text-[13px] font-black tracking-tight text-slate-900 leading-snug break-words whitespace-normal [font-family:inherit]">
-                            {sName}
-                          </h4>
-                        )}
+                        <h4 className="text-xs sm:text-[13px] font-black tracking-tight text-slate-900 leading-snug break-words whitespace-normal [font-family:inherit]">
+                          {sName}
+                        </h4>
                         <span className={`text-[9.5px] font-semibold tracking-wide px-1.5 py-0.5 rounded-md leading-none shrink-0 ${badgeColorClass}`}>
                           {category.name}
                         </span>

@@ -618,6 +618,7 @@ export async function signInWithEmailAndPasswordAuth(
     console.warn('Firebase Auth sign in warning:', authErr?.code, authErr?.message);
 
     // 3. Fallback: Search Firestore for this email
+    let lookupFailed = false;
     try {
       const usersRef = collection(db, 'users');
       const existingEmailQuery = query(usersRef, where('email', '==', cleanEmail));
@@ -644,6 +645,15 @@ export async function signInWithEmailAndPasswordAuth(
           );
           wrongPwdErr.code = 'auth/wrong-password';
           throw wrongPwdErr;
+        }
+
+        // Kayıtlı şifresi olmayan hesaba her şifreyle giriş yapılmasın
+        if (!activePasswordHash) {
+          const noPwdErr: any = new Error(
+            "Bu hesap için kayıtlı bir şifre bulunamadı. Lütfen 'Şifremi unuttum' ile yeni bir şifre belirleyin."
+          );
+          noPwdErr.code = 'auth/wrong-password';
+          throw noPwdErr;
         }
 
         const profile: UserProfile = mergedFirestoreProfile || {
@@ -674,26 +684,14 @@ export async function signInWithEmailAndPasswordAuth(
     } catch (err: any) {
       if (err?.code === 'auth/wrong-password' || (err.message && err.message.includes('şifre hatalı'))) throw err;
       console.warn('Firestore sign in lookup error:', err);
+      lookupFailed = true;
     }
 
-    // Special bypass for Olcayto (only if Firestore did not already have an explicit password)
-    if (cleanEmail === 'olcaytoh@gmail.com' && !firestoreHasExplicitPassword) {
-      const adminProfile: UserProfile = {
-        uid: 'admin_olcayto_master',
-        displayName: 'Olcayto (Kurum Yöneticisi)',
-        email: 'olcaytoh@gmail.com',
-        role: 'admin',
-        userType: 'teacher',
-        currentWeekId: getCurrentWeekInfo().weekId,
-        currentWeekMinutes: 120,
-        currentWeekStage: 4,
-      };
-      await setDoc(doc(db, 'users', adminProfile.uid), {
-        ...adminProfile,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      setActiveAppProfile(adminProfile, rememberMe);
-      return adminProfile;
+    // Kayıt okunamadıysa (kota dolu, bağlantı sorunu) şifre doğrulanamaz: giriş verilmez
+    if (lookupFailed) {
+      throw new Error(
+        'Şu an şifre doğrulaması yapılamıyor (sunucu yoğun olabilir). Lütfen daha sonra tekrar deneyiniz.'
+      );
     }
 
     // If disabled in Firebase Console and not yet registered
@@ -1413,10 +1411,10 @@ export async function syncUserProfile(
   if (snap.exists()) {
     const data = snap.data() as Partial<UserProfile>;
 
-    // Always check if another doc with the same email has institution, class, or admin info and consolidate
+    // If this user doc is missing institutionId or classId, check if another doc with the same email has them
     const targetEmail = (emailOverride || user.email || data.email || '').trim().toLowerCase();
     let emailInstSource: any = {};
-    if (targetEmail && targetEmail !== 'misafir@ekran.takip') {
+    if (targetEmail && targetEmail !== 'misafir@ekran.takip' && (!data.institutionId || !data.classId)) {
       try {
         const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', targetEmail)));
         for (const d of emailSnap.docs) {
@@ -1432,16 +1430,9 @@ export async function syncUserProfile(
             emailInstSource.classCode = ed.classCode;
             emailInstSource.className = ed.className;
           }
-          if (ed.role && (!data.role || data.role === 'parent')) {
+          if (ed.role && !data.role) {
             emailInstSource.role = ed.role;
           }
-          if ((ed as any).passwordHash && !((data as any).passwordHash)) {
-            emailInstSource.passwordHash = (ed as any).passwordHash;
-          }
-        }
-        if (Object.keys(emailInstSource).length > 0) {
-          await setDoc(userRef, emailInstSource, { merge: true });
-          Object.assign(data, emailInstSource);
         }
       } catch {}
     }
@@ -1461,6 +1452,7 @@ export async function syncUserProfile(
       adminInstData?.adminCode ||
       data.role === 'admin' ||
       emailInstSource.role === 'admin' ||
+      pendingRole === 'admin' ||
       adminInstData
     );
 
@@ -1483,7 +1475,17 @@ export async function syncUserProfile(
 
     const mergedInstId = data.institutionId || emailInstSource.institutionId || adminInstData?.id;
     const mergedInstCode = data.institutionCode || emailInstSource.institutionCode || adminInstData?.code;
-    const mergedInstAdminCode = role === 'admin' ? (data.institutionAdminCode || emailInstSource.institutionAdminCode || adminInstData?.adminCode) : undefined;
+    let resolvedAdminCode = data.institutionAdminCode || emailInstSource.institutionAdminCode || adminInstData?.adminCode;
+    if (role === 'admin' && !resolvedAdminCode && mergedInstCode) {
+      try {
+        const instQ = query(collection(db, 'institutions'), where('code', '==', mergedInstCode));
+        const instSnap = await getDocs(instQ);
+        if (!instSnap.empty) {
+          resolvedAdminCode = instSnap.docs[0].data().adminCode;
+        }
+      } catch {}
+    }
+    const mergedInstAdminCode = role === 'admin' ? resolvedAdminCode : undefined;
     const mergedInstName = data.institutionName || emailInstSource.institutionName || adminInstData?.name;
     const mergedClassId = data.classId || emailInstSource.classId;
     const mergedClassCode = data.classCode || emailInstSource.classCode;
@@ -1861,46 +1863,16 @@ export function subscribeAllUsers(
     q,
     (snap) => {
       const activeWeekId = getCurrentWeekInfo().weekId;
-      const usersMap = new Map<string, UserProfile>();
+      const users: UserProfile[] = [];
       snap.forEach((d) => {
         const item = { uid: d.id, ...d.data() } as UserProfile;
         if (isBlockedEmail(item.email)) {
           deleteDoc(d.ref).catch(() => {});
           return;
         }
-
-        if (item.email && typeof window !== 'undefined') {
-          try {
-            const deletedList = JSON.parse(localStorage.getItem('deleted_user_emails') || '[]');
-            if (deletedList.includes(item.email.trim().toLowerCase())) {
-              deleteDoc(d.ref).catch(() => {});
-              return;
-            }
-          } catch {}
-        }
-
-        const normalized = normalizeUserForCurrentWeek(item, activeWeekId);
-        const emailKey = (normalized.email || '').trim().toLowerCase();
-
-        if (emailKey && emailKey !== 'misafir@ekran.takip') {
-          if (usersMap.has(emailKey)) {
-            const existing = usersMap.get(emailKey)!;
-            const scoreExisting = (existing.institutionAdminCode ? 4 : 0) + (existing.role === 'admin' ? 3 : 0) + (existing.institutionId ? 2 : 0);
-            const scoreNew = (normalized.institutionAdminCode ? 4 : 0) + (normalized.role === 'admin' ? 3 : 0) + (normalized.institutionId ? 2 : 0);
-            if (scoreNew >= scoreExisting) {
-              deleteDoc(doc(db, 'users', existing.uid)).catch(() => {});
-              usersMap.set(emailKey, normalized);
-            } else {
-              deleteDoc(d.ref).catch(() => {});
-            }
-          } else {
-            usersMap.set(emailKey, normalized);
-          }
-        } else {
-          usersMap.set(d.id, normalized);
-        }
+        users.push(normalizeUserForCurrentWeek(item, activeWeekId));
       });
-      onUpdate(Array.from(usersMap.values()));
+      onUpdate(users);
     },
     (error: any) => {
       if (error?.code !== 'resource-exhausted' && !error?.message?.includes('Quota limit exceeded')) {
@@ -1929,6 +1901,69 @@ export function subscribeAllUsers(
       }
     }
   );
+}
+
+/**
+ * Yönetici için kurumun kullanıcıları:
+ *  - kurum kimliği (institutionId) olan hesaplar (öğretmenler, yöneticiler)
+ *  - kurumun sınıflarına bağlı hesaplar (veliler/öğrenciler, kurum kimliği olmasa bile)
+ * Tüm koleksiyonu okumaz; sorgular birleştirilir.
+ */
+export function subscribeInstitutionUsers(
+  institutionId: string,
+  classIds: string[],
+  onUpdate: (users: UserProfile[]) => void,
+  onError?: (err: Error) => void
+) {
+  const usersRef = collection(db, 'users');
+  const cleanInstId = (institutionId || '').trim();
+  const ids = Array.from(new Set((classIds || []).filter(Boolean)));
+  const parts = new Map<string, UserProfile[]>();
+  const unsubs: Array<() => void> = [];
+
+  const emit = () => {
+    const activeWeekId = getCurrentWeekInfo().weekId;
+    const merged = new Map<string, UserProfile>();
+    parts.forEach((list) => list.forEach((u) => merged.set(u.uid, u)));
+    const out = Array.from(merged.values()).map((u) => normalizeUserForCurrentWeek(u, activeWeekId));
+    out.sort(
+      (a: any, b: any) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0)
+    );
+    onUpdate(out);
+  };
+
+  const listen = (key: string, q: any) => {
+    unsubs.push(
+      onSnapshot(
+        q,
+        (snap: any) => {
+          const list: UserProfile[] = [];
+          snap.forEach((d: any) => {
+            const item = { uid: d.id, ...d.data() } as UserProfile;
+            if (isBlockedEmail(item.email)) return;
+            list.push(item);
+          });
+          parts.set(key, list);
+          emit();
+        },
+        (err: any) => {
+          if (err?.code !== 'resource-exhausted' && !err?.message?.includes('Quota limit exceeded')) {
+            console.error('Subscribe institution users error:', key, err);
+          }
+          if (onError) onError(err);
+        }
+      )
+    );
+  };
+
+  if (cleanInstId) {
+    listen('inst', query(usersRef, where('institutionId', '==', cleanInstId)));
+  }
+  for (let i = 0; i < ids.length; i += 10) {
+    listen(`cls${i}`, query(usersRef, where('classId', 'in', ids.slice(i, i + 10))));
+  }
+
+  return () => unsubs.forEach((u) => u());
 }
 
 export async function setUserRole(
@@ -3070,14 +3105,6 @@ export async function createClassroom(
 export async function adminDeleteUser(userUid: string): Promise<void> {
   if (!userUid) return;
 
-  let userEmail = '';
-  try {
-    const snap = await getDoc(doc(db, 'users', userUid));
-    if (snap.exists()) {
-      userEmail = (snap.data() as any)?.email || '';
-    }
-  } catch {}
-
   try {
     // 1. Delete all weeks subcollection documents for this user
     const weeksRef = collection(db, 'users', userUid, 'weeks');
@@ -3089,10 +3116,12 @@ export async function adminDeleteUser(userUid: string): Promise<void> {
   }
 
   try {
-    // 2. If user had created any classrooms as teacher, delete them
+    // 2. If user had created any classrooms as teacher, update or clear teacher info
     const classesQ = query(collection(db, 'classes'), where('teacherUid', '==', userUid));
     const classesSnap = await getDocs(classesQ);
-    const updateClasses = classesSnap.docs.map((d) => deleteDoc(d.ref));
+    const updateClasses = classesSnap.docs.map((d) =>
+      deleteDoc(d.ref) // Delete empty class owned by deleted teacher
+    );
     await Promise.all(updateClasses);
   } catch (err) {
     console.warn('Error clearing classes for deleted user:', err);
@@ -3101,25 +3130,6 @@ export async function adminDeleteUser(userUid: string): Promise<void> {
   // 3. Delete user document from Firestore
   const userRef = doc(db, 'users', userUid);
   await deleteDoc(userRef);
-
-  // 4. Also delete any other user documents sharing this email address and blacklist the email
-  if (userEmail && userEmail !== 'misafir@ekran.takip') {
-    try {
-      const emailQ = query(collection(db, 'users'), where('email', '==', userEmail.trim().toLowerCase()));
-      const emailSnap = await getDocs(emailQ);
-      for (const d of emailSnap.docs) {
-        await deleteDoc(d.ref).catch(() => {});
-      }
-      if (typeof window !== 'undefined') {
-        const deletedList = JSON.parse(localStorage.getItem('deleted_user_emails') || '[]');
-        const cleanEmail = userEmail.trim().toLowerCase();
-        if (!deletedList.includes(cleanEmail)) {
-          deletedList.push(cleanEmail);
-          localStorage.setItem('deleted_user_emails', JSON.stringify(deletedList));
-        }
-      }
-    } catch {}
-  }
 }
 
 export async function adminSendPasswordResetEmail(email: string): Promise<string> {
